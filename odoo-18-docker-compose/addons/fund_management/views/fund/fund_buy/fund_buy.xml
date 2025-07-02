@@ -1,0 +1,186 @@
+<odoo>
+  <template id="fund_buy" name="Fund Buy Page">
+    <t t-call="web.layout">
+      <t t-set="title">Đặt lệnh mua</t>
+
+      <t t-call-assets="web.assets_frontend" t-js="true" />
+      <t t-set="head">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+        <style>
+          .profile-container {
+            max-width: 1400px;
+            margin: 0 auto;
+          }
+        </style>
+      </t>
+
+      <t t-call="fund_management.fund_header_template"/>
+
+      <div class="profile-container">
+        <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4">
+          <div class="bg-white rounded-4 px-3 py-3">
+            <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 border py-1 " >
+              <div class="collapse navbar-collapse justify-content-center">
+                <ul class="navbar-nav d-flex w-100 justify-content-center fs-5">
+                  <li class="nav-item flex-fill text-center">
+                    <a class="fw-bold px-2" href="fund_buy">Mua</a>
+                  </li>
+                  <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
+                    <a class="px-2" href="fund_sell">Bán</a>
+                  </li>
+                  <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
+                    <a class="px-2" href="#">Chuyển đổi</a>
+                  </li>
+                </ul>
+              </div>
+            </nav>
+
+
+            <!-- Bước tiến trình -->
+            <div class="progress-steps mx-auto" style="max-width: 500px;">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <!-- Bước 1 -->
+                <div class="text-center">
+                  <div class="step-circle active">1</div>
+                  <small class="d-block mt-2">Đặt lệnh</small>
+                </div>
+
+                <!-- Đường nối -->
+                <div class="flex-grow-1 mx-2 border-top position-relative" style="top: -18px;"></div>
+
+                <!-- Bước 2 -->
+                <div class="text-center">
+                  <div class="step-circle">2</div>
+                  <small class="d-block mt-2">Xác nhận</small>
+                </div>
+
+                <!-- Đường nối -->
+                <div class="flex-grow-1 mx-2 border-top position-relative" style="top: -18px;"></div>
+
+                <!-- Bước 3 -->
+                <div class="text-center">
+                  <div class="step-circle">3</div>
+                  <small class="d-block mt-2">Kết quả</small>
+                </div>
+              </div>
+            </div>
+
+
+            <!-- Main Form -->
+            <div class="row">
+              <!-- Form Input -->
+              <div class="col-md-7">
+                <div class="card p-4 shadow-sm rounded-4">
+                  <h5 class="mb-4">Đặt lệnh mua</h5>
+
+                  <form id="fund-buy-form">
+                    <div class="mb-3">
+                      <label class="form-label">Chọn sản phẩm <span class="text-danger">*</span></label>
+                      <select id="fund-select" class="form-select">
+                        <option>Quỹ Đầu tư Trái phiếu FCTEST</option>
+                      </select>
+                    </div>
+
+                    <div class="mb-3">
+                      <label class="form-label">ID</label>
+                      <div id="current-id" class="form-control bg-light">...</div>
+                    </div>
+
+                    <div class="mb-3">
+                      <label class="form-label">Giá trị của 1 cổ phiếu hiện tại</label>
+                      <div id="current-nav" class="form-control bg-light">...</div>
+                    </div>
+
+                    <div class="mb-3">
+                      <label class="form-label">Chọn chương trình <span class="text-danger">*</span></label>
+                      <select class="form-select">
+                        <option>FFC1 - Flex</option>
+                      </select>
+                    </div>
+
+                    <div class="mb-3">
+                      <label class="form-label">Nhập số tiền mua <span class="text-danger">*</span></label>
+                      <input id="amount-input" type="text" class="form-control" placeholder="Vui lòng nhập số tiền"/>
+                      <div class="form-text text-warning">Số tiền đầu tư tối thiểu 100,000đ</div>
+                    </div>
+
+                    <div class="mb-3">
+                      <label class="form-label">Phí mua</label>
+                      <input id="fee-input" type="text" class="form-control" value="0" readonly="1"/>
+                      <a href="#" class="form-text" data-bs-toggle="modal" data-bs-target="#feeModal">Xem biểu phí</a>
+                    </div>
+
+                    <div class="row text-muted small mt-3">
+                      <div class="col-md-6">
+                        <div>Thời điểm đóng sổ lệnh: <strong>09:58 17/04/2022</strong></div>
+                        <div>Phiên giao dịch: <strong>19/04/2022</strong></div>
+                      </div>
+                      <div class="col-md-6 text-end">
+                        <div>Vui lòng chuyển tiền trước <strong>18:00 18/04/2022</strong></div>
+                        <div class="text-warning">20 giờ 31 phút 26 giây</div>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Investment Summary -->
+              <div class="col-md-5">
+                <div class="card p-4 shadow-sm rounded-4">
+                  <h5 class="mb-3">Thông tin đầu tư</h5>
+                  <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                      <span>Quỹ đầu tư</span>
+                      <strong id="summary-fund-name">FCTEST</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                      <span>Chương trình</span>
+                      <strong>FFC1 - Flex</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                      <span>Loại lệnh</span>
+                      <strong>Mua</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                      <span>Ngày đặt lệnh</span>
+                      <strong id="buy-order-date">...</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                      <span>Số tiền mua</span>
+                      <strong id="summary-amount">0đ</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                      <span>Tiền phí</span>
+                      <strong id="summary-fee">0đ</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                      <span>Tổng cộng thanh toán</span>
+                      <strong id="summary-total">0đ</strong>
+                    </li>
+
+                    <li class="list-group-item d-flex justify-content-between">
+                      <span>Tổng số cổ phiếu đang mua</span>
+                      <strong id="summary-units">0</strong>
+                    </li>
+
+                  </ul>
+
+                  <div class="d-flex justify-content-between mt-4">
+                    <button type="button" class="btn btn-outline-secondary" id="back-btn">Quay lại</button>
+                    <button type="button" class="btn btn-primary" id="payment-btn">Thanh toán</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ Modal biểu phí -->
+      <t t-call="fund_management.fee_template"/>
+
+    </t>
+  </template>
+</odoo>

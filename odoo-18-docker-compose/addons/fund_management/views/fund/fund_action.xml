@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+
+        <record id="action_user" model="ir.actions.act_window">
+            <field name="name">Users</field>
+            <field name="res_model">auth.user</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_account" model="ir.actions.act_window">
+            <field name="name">Accounts</field>
+            <field name="res_model">auth.account</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_session" model="ir.actions.act_window">
+            <field name="name">Sessions</field>
+            <field name="res_model">auth.session</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_verification_token" model="ir.actions.act_window">
+            <field name="name">Verification Tokens</field>
+            <field name="res_model">auth.verification_token</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_investment" model="ir.actions.act_window">
+            <field name="name">Investments</field>
+            <field name="res_model">portfolio.investment</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_fund" model="ir.actions.act_window">
+            <field name="name">Funds</field>
+            <field name="res_model">portfolio.fund</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_transactions" model="ir.actions.act_window">
+            <field name="name">Transactions</field>
+            <field name="res_model">portfolio.transaction</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_account_balance" model="ir.actions.act_window">
+            <field name="name">Account Balance</field>
+            <field name="res_model">portfolio.account_balance</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_balance_history" model="ir.actions.act_window">
+            <field name="name">Balance History</field>
+            <field name="res_model">portfolio.balance_history</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_comparisons" model="ir.actions.act_window">
+            <field name="name">Comparisons</field>
+            <field name="res_model">portfolio.comparison</field>
+            <field name="view_mode">list,form</field>
+        </record>
+        
+    </data>
+</odoo>

@@ -1,0 +1,31 @@
+<odoo>
+    <data>
+        <record id="stock_vinhomes" model="assets.stock">
+            <field name="id_stock">VN001</field>
+            <field name="name">Vinhomes</field>
+            <field name="description">Công ty bất động sản hàng đầu Việt Nam</field>
+            <field name="change_percent">+5.2%</field>
+        </record>
+
+        <record id="stock_vinamilk" model="assets.stock">
+            <field name="id_stock">VN002</field>
+            <field name="name">Vinamilk</field>
+            <field name="description">Công ty sữa lớn nhất Việt Nam</field>
+            <field name="change_percent">-2.1%</field>
+        </record>
+
+        <record id="stock_vietcombank" model="assets.stock">
+            <field name="id_stock">VCB</field>
+            <field name="name">Vietcombank</field>
+            <field name="description">Ngân hàng thương mại</field>
+            <field name="change_percent">+1.8%</field>
+        </record>
+
+        <record id="stock_fpt" model="assets.stock">
+            <field name="id_stock">FPT</field>
+            <field name="name">FPT Corporation</field>
+            <field name="description">Công ty công nghệ thông tin</field>
+            <field name="change_percent">+3.5%</field>
+        </record>
+    </data>
+</odoo>

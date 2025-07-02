@@ -1,0 +1,182 @@
+
+<odoo>
+  <template id="fund_sell" name="Fund Sell Page">
+    <t t-call="web.layout">
+      <t t-set="title">Kết quả lệnh mua</t>
+
+      <t t-call-assets="web.assets_frontend" t-js="true" />
+      <t t-set="head">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+        <style>
+          .profile-container {
+            max-width: 1400px;
+            margin: 0 auto;
+          }
+        </style>
+      </t>
+
+      <t t-call="fund_management.fund_header_template"/>
+
+      <div class="profile-container">
+        <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4">
+            <div class="bg-white rounded-4 px-3 py-3">
+                <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 border py-1 " >
+                  <div class="collapse navbar-collapse justify-content-center">
+                    <ul class="navbar-nav d-flex w-100 justify-content-center fs-5">
+                      <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
+                        <a class=" px-2 py-2" href="fund_buy">Mua</a>
+                      </li>
+                      <li class="nav-item flex-fill text-center">
+                        <a class="fw-bold px-2 py-2" href="fund_sell">Bán</a>
+                      </li>
+                      <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
+                        <a class="px-2 py-2" href="#">Chuyển đổi</a>
+                      </li>
+                    </ul>
+                  </div>
+                </nav>
+
+              <!-- Bước tiến trình -->
+                <div class="progress-steps mx-auto" style="max-width: 500px;">
+                  <div class="d-flex justify-content-between align-items-center mb-4">
+                    <!-- Bước 1 -->
+                    <div class="text-center">
+                      <div class="step-circle active">1</div>
+                      <small class="d-block mt-2">Đặt lệnh</small>
+                    </div>
+
+                    <!-- Đường nối -->
+                    <div class="flex-grow-1 mx-2 border-top position-relative" style="top: -18px;"></div>
+
+                    <!-- Bước 2 -->
+                    <div class="text-center">
+                      <div class="step-circle">2</div>
+                      <small class="d-block mt-2">Xác nhận</small>
+                    </div>
+
+                    <!-- Đường nối -->
+                    <div class="flex-grow-1 mx-2 border-top position-relative" style="top: -18px;"></div>
+
+                    <!-- Bước 3 -->
+                    <div class="text-center">
+                      <div class="step-circle">3</div>
+                      <small class="d-block mt-2">Kết quả</small>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Main Form -->
+                <div class="row">
+                      <!-- Cột trái: Thông tin đặt lệnh bán -->
+                      <div class="col-md-7">
+                        <div class="card p-4 shadow-sm rounded-4">
+                          <h5 class="fw-semibold mb-3">Đặt lệnh bán</h5>
+
+                          <div class="mb-3">
+                            <label for="fund-sell-select" class="form-label fw-semibold">Chọn sản phẩm</label>
+                            <select id="fund-sell-select" class="form-select"></select>
+                          </div>
+
+                          <!-- Thêm hai dòng này để hiển thị thông tin quỹ đã mua -->
+                          <div class="small">Tổng giá trị đầu tư: <strong id="fund-sell-amount">--</strong></div>
+
+                          <div class="small">NAV hiện tại của quỹ: <strong id="fund-sell-current-nav">--</strong></div>
+
+
+                          <div class="mb-3 small text-muted">
+                            <span class="me-2">Chọn chương trình:</span>
+                            <strong class="text-dark">FFC1 - Flex</strong>
+                          </div>
+
+                          <!-- Nhập số lượng muốn bán -->
+                          <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                              <label for="fund-sell-amount-input" class="form-label fw-semibold mb-0">Số lượng muốn bán (Phải nhỏ hơn số lượng khả dụng)</label>
+                              <div class="small text-muted">Khả dụng: <strong id="fund-sell-units">--</strong></div>
+                            </div>
+                            <input type="number" id="fund-sell-amount-input" class="form-control mt-1" min="1" placeholder="Nhập số lượng muốn bán" />
+                          </div>
+
+                          <div class="mb-3 small text-muted">
+                            <span class="me-2">Phí bán:</span>
+                            <strong class="text-dark">626,841đ</strong>
+                          </div>
+
+<!--                          <div class="mb-4">-->
+<!--                            <table class="table table-sm table-bordered small mb-0">-->
+<!--                              <thead class="table-light">-->
+<!--                                <tr>-->
+<!--                                  <th>Ngày mua</th>-->
+<!--                                  <th>TG nắm giữ</th>-->
+<!--                                  <th>SL bán</th>-->
+<!--                                  <th>Phí</th>-->
+<!--                                </tr>-->
+<!--                              </thead>-->
+<!--                              <tbody>-->
+<!--                                <tr>-->
+<!--                                  <td>18/10/2021</td>-->
+<!--                                  <td>191 ngày</td>-->
+<!--                                  <td>85</td>-->
+<!--                                  <td>2%</td>-->
+<!--                                </tr>-->
+<!--                                <tr>-->
+<!--                                  <td>19/02/2022</td>-->
+<!--                                  <td>59 ngày</td>-->
+<!--                                  <td>1,914</td>-->
+<!--                                  <td>2%</td>-->
+<!--                                </tr>-->
+<!--                              </tbody>-->
+<!--                            </table>-->
+<!--                          </div>-->
+
+                          <div class="d-flex justify-content-between text-muted small mt-2">
+                            <div>
+                              <div>Phiên giao dịch: <strong class="text-dark">19/04/2022</strong></div>
+                              <div class="text-warning mt-1">
+                                19 giờ: 12 phút : 47 giây
+                              </div>
+                            </div>
+                            <div class="text-end">
+                              <div>Thời điểm đóng sổ lệnh:</div>
+                              <strong class="text-dark">09:55 18/04/2022</strong>
+                              <div class="mt-1">NAV/CCQ dự kiến: <strong class="text-dark">15,678.874</strong></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Cột phải: Giá trị và xác nhận -->
+                      <div class="col-md-5">
+                        <div class="card p-4 shadow-sm rounded-4">
+                          <h6 class="fw-semibold mb-3">Giá trị ước tính sau thuế, phí</h6>
+                          <div class="fs-3 fw-bold text-primary mb-3" id="fund-sell-estimated-value">--</div>
+                          <p class="small text-muted">
+                            (*) Giá trị thực nhận phụ thuộc vào NAV của ngày phiên khớp lệnh
+                          </p>
+
+                          <h6 class="fw-semibold mb-3">Thông tin đầu tư</h6>
+                          <div class="small text-muted mb-2">
+                            Quỹ đầu tư: <strong class="text-dark" id="fund-sell-summary-name">--</strong>
+                          </div>
+                          <div class="small text-muted mb-2">Chương trình: <strong class="text-dark">FFC1 - Flex</strong></div>
+                          <div class="small text-muted mb-2">Loại lệnh: <strong class="text-dark">Bán</strong></div>
+                          <div class="small text-muted mb-2">Ngày đặt lệnh: <strong class="text-dark">17/04/2022, 14:41:36</strong></div>
+                          <div class="small text-muted mb-4">Phiên giao dịch: <strong class="text-dark">19/04/2022</strong></div>
+                          <div class="small text-muted mb-4">
+                            Số lượng bán: <strong class="text-dark" id="fund-sell-summary-amount">--</strong>
+                          </div>
+                          <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-primary px-4">Quay lại</button>
+                            <button type="button" class="btn btn-primary px-4" id="fund-sell-confirm-btn">Xác nhận</button>
+                          </div>
+                        </div>
+                      </div>
+                </div>
+            </div>
+        </div>
+      </div>
+    </t>
+  </template>
+</odoo>

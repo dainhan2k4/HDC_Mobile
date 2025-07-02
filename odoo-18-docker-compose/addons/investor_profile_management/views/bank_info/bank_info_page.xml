@@ -1,0 +1,33 @@
+<odoo>
+  <template id="investor_profile_management.bank_info_page" name="Bank Information">
+    <t t-call="web.layout">
+      <t t-set="title">Bank Information</t>
+
+      <t t-call-assets="web.assets_frontend" t-js="true"/>
+      <t t-set="head">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
+      </t>
+
+      <!-- Header Container -->
+      <div id="header-container"></div>
+
+      <div class="profile-container w-full max-w-full md:max-w-[1400px] mx-auto pt-4 md:pt-8 px-2 sm:px-4">
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="loading-spinner flex justify-center items-center h-32 md:h-48">
+          <div class="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-t-2 border-b-2 border-indigo-600" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+        </div>
+
+        <!-- OWL Component Container -->
+        <div id="bankInfoWidget" class="w-full" style="display: none;">
+          <!-- OWL component will be rendered here -->
+        </div>
+      </div>
+
+      <!-- Scripts -->
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </t>
+  </template>
+</odoo> 

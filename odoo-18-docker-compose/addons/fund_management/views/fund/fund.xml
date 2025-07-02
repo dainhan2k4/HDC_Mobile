@@ -1,0 +1,139 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+
+        <record id="view_auth_user_list" model="ir.ui.view">
+            <field name="name">User View</field>
+            <field name="model">auth.user</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="id"/>
+                    <field name="name"/>
+                    <field name="email"/>
+                    <field name="email_verified"/>
+                    <field name="image"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Account -->
+        <record id="view_auth_account_list" model="ir.ui.view">
+            <field name="name">auth.account.list</field>
+            <field name="model">auth.account</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="user_id"/>
+                    <field name="provider"/>
+                    <field name="access_token"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Session -->
+        <record id="view_auth_session_list" model="ir.ui.view">
+            <field name="name">auth.session.list</field>
+            <field name="model">auth.session</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="session_token"/>
+                    <field name="user_id"/>
+                    <field name="expires"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Verification Token -->
+        <record id="view_auth_verification_token_list" model="ir.ui.view">
+            <field name="name">auth.verification_token.list</field>
+            <field name="model">auth.verification_token</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="identifier"/>
+                    <field name="token"/>
+                    <field name="expires"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Investment -->
+        <record id="view_portfolio_investment_list" model="ir.ui.view">
+            <field name="name">portfolio.investment.list</field>
+            <field name="model">portfolio.investment</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="user_id"/>
+                    <field name="fund_id"/>
+                    <field name="units"/>
+                    <field name="amount"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Fund -->
+        <record id="view_portfolio_fund_list" model="ir.ui.view">
+            <field name="name">portfolio.fund.list</field>
+            <field name="model">portfolio.fund</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="name"/>
+                    <field name="ticker"/>
+                    <field name="current_nav"/>
+                    <field name="investment_type"/>
+                    <field name="description"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Transactions -->
+        <record id="view_portfolio_transaction_list" model="ir.ui.view">
+            <field name="name">portfolio.transaction.list</field>
+            <field name="model">portfolio.transaction</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="user_id"/>
+                    <field name="fund_id"/>
+                    <field name="transaction_type"/>
+                    <field name="amount"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Account Balance -->
+        <record id="view_portfolio_account_balance_list" model="ir.ui.view">
+            <field name="name">portfolio.account_balance.list</field>
+            <field name="model">portfolio.account_balance</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="user_id"/>
+                    <field name="balance"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Balance History -->
+        <record id="view_portfolio_balance_history_list" model="ir.ui.view">
+            <field name="name">portfolio.balance_history.list</field>
+            <field name="model">portfolio.balance_history</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="user_id"/>
+                    <field name="balance"/>
+                    <field name="change_type"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Comparisons -->
+        <record id="view_portfolio_comparison_list" model="ir.ui.view">
+            <field name="name">portfolio.comparison.list</field>
+            <field name="model">portfolio.comparison</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="user_id"/>
+                    <field name="fund_ids"/>
+                </list>
+            </field>
+        </record>
+
+    </data>
+</odoo>

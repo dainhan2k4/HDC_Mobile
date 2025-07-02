@@ -1,0 +1,127 @@
+<odoo>
+  <template id="fund_result" name="Fund Result Page">
+    <t t-call="web.layout">
+      <t t-set="title">Kết quả lệnh mua</t>
+
+      <t t-call-assets="web.assets_frontend" t-js="true" />
+      <t t-set="head">
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+
+        <style>
+          .profile-container {
+            max-width: 1400px;
+            margin: 0 auto;
+          }
+        </style>
+      </t>
+
+      <t t-call="fund_management.fund_header_template"/>
+
+      <div class="profile-container">
+        <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4">
+            <div class="bg-white rounded-4 px-3 py-3">
+                  <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 border py-1 " >
+                    <div class="collapse navbar-collapse justify-content-center">
+                      <ul class="navbar-nav d-flex w-100 justify-content-center fs-5">
+                        <li class="nav-item flex-fill text-center" >
+                          <a class="fw-bold px-2 py-2" href="fund_buy">Mua</a>
+                        </li>
+                        <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
+                          <a class="px-2 py-2" href="fund_sell">Bán</a>
+                        </li>
+                        <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
+                          <a class="px-2 py-2" href="#">Chuyển đổi</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </nav>
+
+                <!-- Progress Steps -->
+                  <!-- Bước tiến trình -->
+                  <div class="progress-steps mx-auto" style="max-width: 500px;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                      <!-- Bước 1 -->
+                      <div class="text-center">
+                        <div class="step-circle">1</div>
+                        <small class="d-block mt-2">Đặt lệnh</small>
+                      </div>
+
+                      <!-- Đường nối -->
+                      <div class="flex-grow-1 mx-2 border-top position-relative" style="top: -18px;"></div>
+
+                      <!-- Bước 2 -->
+                      <div class="text-center">
+                        <div class="step-circle">2</div>
+                        <small class="d-block mt-2">Xác nhận</small>
+                      </div>
+
+                      <!-- Đường nối -->
+                      <div class="flex-grow-1 mx-2 border-top position-relative" style="top: -18px;"></div>
+
+                      <!-- Bước 3 -->
+                      <div class="text-center">
+                        <div class="step-circle active">3</div>
+                        <small class="d-block mt-2">Kết quả</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Main Form -->
+                  <div class="row">
+                      <!-- Thông tin chuyển khoản -->
+                        <div class="col-md-7">
+                          <div class="card p-4 shadow-sm rounded-4">
+
+
+                            <h6 class="fw-semibold mb-3 mt-4">Thông tin chuyển khoản</h6>
+                            <div class="row small text-muted">
+                              <div class="col-6 mb-2">Tên thụ hưởng: <strong class="text-dark">FFC2</strong></div>
+                              <div class="col-6 mb-2">Số tài khoản: <strong class="text-dark">8888888888</strong></div>
+                              <div class="col-6 mb-2">Ngân hàng: <strong class="text-dark">NH Standard Chartered VN</strong></div>
+                              <div class="col-6 mb-2">Nội dung: <strong class="text-dark">911CL39541 - FFC2N003</strong></div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Thông tin đầu tư -->
+                        <div class="col-md-5">
+                          <div class="card p-4 shadow-sm rounded-4">
+                            <h6 class="fw-semibold mb-3">Thông tin đầu tư</h6>
+                            <div class="mb-2 small text-muted">
+                              Quỹ đầu tư: <strong id="result-fund-name" class="text-dark">...</strong>
+                            </div>
+                            <div class="mb-2 small text-muted">
+                              Chương trình: <strong id="result-program" class="text-dark">FFC2 - FFlex</strong>
+                            </div>
+                            <div class="mb-2 small text-muted">
+                              Loại lệnh: <strong id="result-order-type" class="text-dark">Mua</strong>
+                            </div>
+                            <div class="mb-2 small text-muted">
+                              Ngày đặt lệnh: <strong id="result-order-date" class="text-dark">...</strong>
+                            </div>
+                            <div class="mb-2 small text-muted">
+                              Số tiền cổ phiếu đã mua: <strong id="result-amount" class="text-dark fs-5">...</strong>
+                            </div>
+                            <div class="mb-2 small text-muted">
+                              Tổng số tiền đã thanh toán: <strong id="result-total-amount" class="text-dark fs-5">...</strong>
+                            </div>
+                            <div class="mb-4 small text-muted">
+                              Tổng số cổ phiếu đã mua: <strong id="result-units" class="text-dark fs-5">...</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                              <button type="button" class="btn btn-outline-primary px-4" id="add-more-btn">Mua thêm</button>
+                              <button type="button" class="btn btn-primary px-4" id="finish-btn">Hoàn tất</button>
+                            </div>
+                          </div>
+                        </div>
+                  </div>
+            </div>
+        </div>
+      </div>
+    </t>
+  </template>
+</odoo>

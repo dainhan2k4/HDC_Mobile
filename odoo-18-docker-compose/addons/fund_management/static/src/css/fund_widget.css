@@ -1,0 +1,15 @@
+.custom-range-btn {
+  color: #36A2EB;
+  border: none;
+  background-color: transparent;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.custom-range-btn:hover {
+  background-color: rgba(54, 162, 235, 0.1);
+}
+
+.active-range {
+  background-color: #36A2EB;
+  color: white !important;
+}

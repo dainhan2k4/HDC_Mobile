@@ -1,0 +1,162 @@
+<odoo>
+  <template id="fund_confirm" name="Fund Confirm Page">
+    <t t-call="web.layout">
+      <t t-set="title">Xác nhận lệnh mua</t>
+
+      <t t-call-assets="web.assets_frontend" t-js="true" />
+      <t t-set="head">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+
+        <style>
+          .profile-container {
+            max-width: 1400px;
+            margin: 0 auto;
+          }
+        </style>
+      </t>
+
+      <t t-call="fund_management.fund_header_template"/>
+
+      <div class="profile-container">
+        <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4">
+          <div class="bg-white rounded-4 px-3 py-3">
+                  <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 border py-1 " >
+                    <div class="collapse navbar-collapse justify-content-center">
+                      <ul class="navbar-nav d-flex w-100 justify-content-center fs-5">
+                        <li class="nav-item flex-fill text-center">
+                          <a class="fw-bold px-2 py-2" href="fund_buy">Mua</a>
+                        </li>
+                        <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
+                          <a class="px-2 py-2" href="fund_sell">Bán</a>
+                        </li>
+                        <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
+                          <a class="px-2 py-2" href="#">Chuyển đổi</a>
+                        </li>
+                      </ul>
+                    </div>
+                  </nav>
+
+                <!-- Progress Steps -->
+                  <!-- Bước tiến trình -->
+                  <div class="progress-steps mx-auto" style="max-width: 500px;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                      <!-- Bước 1 -->
+                      <div class="text-center">
+                        <div class="step-circle">1</div>
+                        <small class="d-block mt-2">Đặt lệnh</small>
+                      </div>
+
+                      <!-- Đường nối -->
+                      <div class="flex-grow-1 mx-2 border-top position-relative" style="top: -18px;"></div>
+
+                      <!-- Bước 2 -->
+                      <div class="text-center">
+                        <div class="step-circle active">2</div>
+                        <small class="d-block mt-2">Xác nhận</small>
+                      </div>
+
+                      <!-- Đường nối -->
+                      <div class="flex-grow-1 mx-2 border-top position-relative" style="top: -18px;"></div>
+
+                      <!-- Bước 3 -->
+                      <div class="text-center">
+                        <div class="step-circle">3</div>
+                        <small class="d-block mt-2">Kết quả</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Main Form -->
+                  <div class="row">
+                      <!-- Phương thức thanh toán -->
+                      <div class="col-md-7">
+                        <div class="card p-4 shadow-sm rounded-4">
+                          <h5 class="mb-4">Phương thức thanh toán</h5>
+
+                          <form id="payment-method-form">
+                            <div class="mb-3">
+                              <div class="form-check">
+                                <input class="form-check-input" type="radio" name="paymentMethod" id="bankTransfer" checked="1"/>
+                                <label class="form-check-label" for="bankTransfer">
+                                  Chuyển khoản qua ngân hàng
+                                </label>
+                              </div>
+                              <div class="form-text">
+                                Nhà đầu tư vui lòng chuyển tiền trước <span class="text-primary fw-bold">17:00 18/04/2022</span>
+                              </div>
+                            </div>
+
+                            <div class="bg-light rounded-3 p-3">
+                              <h6 class="fw-semibold mb-3">Thông tin chuyển khoản:</h6>
+                              <div class="row small text-muted">
+                                <div class="col-6 mb-2">Tên thụ hưởng: <strong class="text-dark">FFC2</strong></div>
+                                <div class="col-6 mb-2">Số tài khoản: <strong class="text-dark">8888888888</strong></div>
+                                <div class="col-6 mb-2">Ngân hàng: <strong class="text-dark">NH Standard Chartered VN</strong></div>
+                                <div class="col-6 mb-2">Nội dung: <strong class="text-dark">911CL39541 - FFC2N003</strong></div>
+                              </div>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+
+                    <!-- Investment Summary -->
+                     <!-- Thông tin đầu tư -->
+                      <div class="col-md-5">
+                        <div class="card p-4 shadow-sm rounded-4">
+                          <h6 class="fw-semibold mb-3">Thông tin đầu tư</h6>
+                          <div class="mb-2 small text-muted">Quỹ đầu tư: <strong id="confirm-fund-name" class="text-dark">Quỹ Đầu tư Cổ phiếu FC2</strong></div>
+                          <div class="mb-2 small text-muted">Chương trình: <strong id="confirm-program" class="text-dark">FFC2 - FFlex</strong></div>
+                          <div class="mb-2 small text-muted">Loại lệnh: <strong id="confirm-order-type" class="text-dark">Mua</strong></div>
+                          <div class="mb-3 small text-muted">Ngày đặt lệnh: <strong class="text-dark" id="confirm-order-date">...</strong></div>
+                          <div class="mb-2 small text-muted">Số tiền cổ phiếu: <strong id="confirm-amount" class="text-dark fs-5">30,000,000đ</strong></div>
+                          <div class="mb-2 small text-muted">Tổng cộng thanh toán: <strong id="confirm-total-amount" class="text-dark fs-5">30,000,000đ</strong></div>
+                          <div class="mb-4 small text-muted">Tổng số cổ phiếu đang mua: <strong id="confirm-units" class="text-dark fs-5">0</strong></div>
+                          <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary px-4" id="back-payment-btn">Quay lại</button>
+                            <button type="submit" class="btn btn-primary px-4" id="payment-confirm-btn">Xác nhận thanh toán</button>
+                          </div>
+                        </div>
+                      </div>
+                </div>
+            </div>
+
+
+
+        </div>
+    </div>
+
+<!--      <div class="bg-light min-vh-100 py-3 px-3">-->
+
+<!--        <div class="container my-5">-->
+
+<!--            &lt;!&ndash; Top Menu &ndash;&gt;-->
+<!--            <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 py-2">-->
+<!--              <a class="navbar-brand fw-bold" href="#">Sản phẩm đầu tư</a>-->
+<!--              <div class="collapse navbar-collapse">-->
+<!--                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">-->
+<!--                  <li class="nav-item mx-2">-->
+<!--                    <a class="nav-link" href="#">Tổng quan</a>-->
+<!--                  </li>-->
+<!--                  <li class="nav-item mx-2">-->
+<!--                    <a class="nav-link active" href="#">Sản phẩm đầu tư</a>-->
+<!--                  </li>-->
+<!--                  <li class="nav-item mx-2">-->
+<!--                    <a class="nav-link" href="#">Quản lý giao dịch</a>-->
+<!--                  </li>-->
+<!--                  <li class="nav-item mx-2">-->
+<!--                    <a class="nav-link" href="#">Quản lý tài sản</a>-->
+<!--                  </li>-->
+<!--                  <li class="nav-item mx-2">-->
+<!--                    <a class="nav-link" href="#">Hồ sơ cá nhân</a>-->
+<!--                  </li>-->
+<!--                </ul>-->
+<!--              </div>-->
+<!--            </nav>-->
+<!--                -->
+<!--        </div>-->
+<!--      </div>-->
+    </t>
+  </template>
+</odoo>

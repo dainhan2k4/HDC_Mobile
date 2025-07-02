@@ -1,0 +1,33 @@
+<odoo>
+    <template id="transaction_management_page" name="Quản lý giao dịch">
+        <t t-call="web.layout">
+            <t t-set="head">
+                <script src="https://cdn.tailwindcss.com"></script>
+                <script>
+                  tailwind.config = {
+                    theme: {
+                      extend: {
+                        colors: {
+                          primary: '#2B4BFF',
+                          success: '#3C9E3C',
+                          warning: '#FF8C00',
+                          danger: '#B22222',
+                        }
+                      }
+                    }
+                  }
+                </script>
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
+                <style>
+                  .no-scrollbar::-webkit-scrollbar { display: none; }
+                  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                </style>
+                <t t-call-assets="web.assets_frontend" t-js="true"/>
+            </t>
+            <body class="bg-gray-50 font-sans text-gray-700">
+              <div id="header-container"></div>
+              <div id="pending-widget-container" t-att-data-orders="orders_json"></div>
+            </body>
+        </t>
+    </template>
+</odoo>
