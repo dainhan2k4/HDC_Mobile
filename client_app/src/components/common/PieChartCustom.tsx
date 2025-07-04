@@ -1,3 +1,4 @@
+import formatVND from '../../hooks/formatCurrency';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import PieChart from 'react-native-pie-chart';
@@ -58,13 +59,13 @@ export const PieChartCustom: React.FC<PieChartCustomProps> = ({ data, sliceColor
           <View key={index} style={styles.legendItem}>
             <View style={[styles.colorIndicator, { backgroundColor: sliceColor[index % sliceColor.length] }]} />
             <Text style={styles.legendText}>
-              {item.name}: {item.value.toLocaleString()} ({((item.value / totalValue) * 100).toFixed(1)}%)
+              {item.name}: {formatVND(item.value)} ({((item.value / totalValue) * 100).toFixed(1)}%)
             </Text>
           </View>
         ))}
-      </View>
+      </View> 
       
-      <Text style={styles.totalText}>Tổng: {totalValue.toLocaleString()}</Text>
+      <Text style={styles.totalText}>Tổng: {formatVND(totalValue)}</Text>
     </View>
   );
 };

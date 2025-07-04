@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons'
+import { useNavigation, NavigationProp } from '@react-navigation/native';
 
 import backgroundImage from '../../../assets/images/auth/background.jpg';
-import loginImage from '../../../assets/images/auth/login.png';
 import {
   View,
   Text,
@@ -14,33 +14,44 @@ import {
   KeyboardAvoidingView,
   Platform,
   ImageBackground,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { apiService } from '@/config/api';
+import { useAuth } from '@/context/AuthContext';
+import { AuthStackParamList } from '@/navigation/AppNavigator';
 
-interface LoginScreenProps {
-  onLogin: (email: string, password: string) => void;
-  onNavigateToSignup: () => void;
-  onNavigateToForgotPassword: () => void;
-  isLoading?: boolean;
-}
+type LoginScreenNavigationProp = NavigationProp<
+  AuthStackParamList,
+  'Login'
+>;
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({
-  onLogin,
-  onNavigateToSignup,
-  onNavigateToForgotPassword,
-  isLoading = false,
-}) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export const LoginScreen: React.FC = () => {
+  const navigation = useNavigation<LoginScreenNavigationProp>();
+  const { signIn } = useAuth();
+  const [email, setEmail] = useState('pnttmtr15@gmail.com');
+  const [password, setPassword] = useState('123');
   const [showPassword, setShowPassword] = useState(false);
-  const handleLogin = () => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin');
       return;
     }
-    onLogin(email, password);
+    setIsLoading(true);
+    try {
+      await signIn(email, password);
+      // Navigation will happen automatically because the AppNavigator is watching the session state
+    } catch (error: any) {
+      Alert.alert(
+        'Đăng nhập thất bại',
+        error.message || 'Vui lòng kiểm tra thông tin và thử lại.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
+
   const viewPassword = () => {
     setShowPassword(!showPassword);
   };
@@ -74,7 +85,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholderTextColor="#6C757D"
+                placeholderTextColor="#6C757D"  
+
 
               />
             </View>
@@ -100,7 +112,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     
             <TouchableOpacity
               style={styles.forgotPassword}
-              onPress={onNavigateToForgotPassword}
+              onPress={() => navigation.navigate('ForgotPassword')}
             >
               <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
             </TouchableOpacity>
@@ -110,14 +122,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               onPress={handleLogin}
               disabled={isLoading}
             >
-              <Text style={styles.loginButtonText}>
-                {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
-              </Text>
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.loginButtonText}>Đăng nhập</Text>
+              )}
             </TouchableOpacity>
 
             <View style={styles.signupContainer}>
               <Text style={styles.signupText}>Chưa có tài khoản? </Text>
-              <TouchableOpacity onPress={onNavigateToSignup}>
+              <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
                 <Text style={styles.signupLink}>Đăng ký ngay</Text>
               </TouchableOpacity>
             </View>

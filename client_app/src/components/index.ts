@@ -5,7 +5,7 @@ export { LoginScreen } from './auth/LoginScreen';
 export { FundListScreen } from './fund/FundListScreen';
 
 // Portfolio Components
-export { PortfolioOverviewScreen } from '../screens/portfolio/PortfolioOverviewScreen';
+export { PortfolioOverviewScreen } from '../screens/overview/PortfolioOverviewScreen';
 
 // Common Components
 export { FundCard } from './common/FundCard';

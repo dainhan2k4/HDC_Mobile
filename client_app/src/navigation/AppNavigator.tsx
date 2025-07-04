@@ -3,11 +3,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { View, ActivityIndicator } from 'react-native';
 
 // Import screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { FundListScreen } from '../screens/fund/FundListScreen';
-import { PortfolioOverviewScreen } from '../screens/portfolio/PortfolioOverviewScreen';
+import { PortfolioOverviewScreen } from '../screens/overview/PortfolioOverviewScreen';
 
 import { SignupScreen } from '../screens/auth/SignupScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
@@ -15,6 +16,7 @@ import { FundBuyScreen } from '../screens/fund/FundBuyScreen';
 import { FundSellScreen } from '../screens/fund/FundSellScreen';
 import { FundDetailScreen } from '../screens/fund/FundDetailScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { useAuth } from '../context/AuthContext';
 
 // Import types
 import { PortfolioOverview } from '../types/portfolio';
@@ -294,25 +296,10 @@ const PortfolioTabScreen: React.FC = () => (
 const PortfolioTabComponent = PortfolioTabScreen as unknown as React.ComponentType<any>;
 
 // Auth Navigator
-const AuthNavigator = ({onAuthenticated}:{onAuthenticated:()=>void}) => {
+const AuthNavigator = () => {
   return (
-    <AuthStack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <AuthStack.Screen name="Login">
-        {({ navigation }) => (
-          <LoginScreen
-            onLogin={(email, password) => {
-              // TODO: thực hiện gọi API xác thực thực tế
-              onAuthenticated();
-            }}
-            onNavigateToSignup={() => navigation.navigate('Signup')}
-            onNavigateToForgotPassword={() => navigation.navigate('ForgotPassword')}
-          />
-        )}
-      </AuthStack.Screen>
+    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuthStack.Screen name="Login" component={LoginScreenComponent} />
       <AuthStack.Screen name="Signup" component={SignupScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </AuthStack.Navigator>
@@ -405,17 +392,25 @@ const MainTabNavigator = () => {
 
 // Root Navigator
 export const AppNavigator = () => {
-  const [isAuthenticated, setAuthenticated] = useState(false);
+  const { sessionId, isLoading } = useAuth();
+
+  if (isLoading) {
+    // We haven't finished checking for the session yet
+    // You can render a splash screen or loading indicator here
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
+        {sessionId ? (
           <Stack.Screen name="Main" component={MainTabNavigator} />
         ) : (
-          <Stack.Screen name="Auth">
-            {() => <AuthNavigator onAuthenticated={() => setAuthenticated(true)} />}
-          </Stack.Screen>
+          <Stack.Screen name="Auth" component={AuthNavigator} />
         )}
       </Stack.Navigator>
     </NavigationContainer>
