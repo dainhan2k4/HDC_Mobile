@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Fund } from '../../types/fund';
 
 interface FundCardProps {
@@ -15,111 +10,43 @@ interface FundCardProps {
   onSellPress?: (fund: Fund) => void;
 }
 
-export const FundCard: React.FC<FundCardProps> = ({
-  fund,
-  onPress,
-  showActions = false,
-  onBuyPress,
-  onSellPress,
-}) => {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
-  };
-
-  const formatPercentage = (percentage: number) => {
-    return `${percentage >= 0 ? '+' : ''}${percentage.toFixed(2)}%`;
-  };
-
-  const getPerformanceColor = (percentage: number) => {
-    return percentage >= 0 ? '#33FF57' : '#DC143C';
-  };
-
+export const FundCard: React.FC<FundCardProps> = ({ fund, onPress, showActions, onBuyPress, onSellPress }) => {
   return (
-    <TouchableOpacity style={styles.container} onPress={() => onPress(fund)}>
+    <TouchableOpacity style={styles.card} onPress={() => onPress(fund)}>
       <View style={styles.header}>
-        <View style={styles.tickerContainer}>
-          <View style={[styles.colorIndicator, { backgroundColor: fund.color }]} />
-          <View>
-            <Text style={styles.ticker}>{fund.ticker}</Text>
-            <Text style={styles.name} numberOfLines={1}>
-              {fund.name}
-            </Text>
-          </View>
+        <View style={[styles.colorDot, { backgroundColor: fund.color }]} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.ticker}>{fund.ticker}</Text>
+          <Text style={styles.name} numberOfLines={1}>{fund.name}</Text>
         </View>
-        <View style={styles.typeContainer}>
-          <Text style={styles.type}>{fund.investment_type}</Text>
-        </View>
+        <Text style={[styles.status, { color: fund.status === 'active' ? '#33FF57' : '#DC143C' }]}>
+          {fund.status === 'active' ? 'Đang hoạt động' : 'Ngừng giao dịch'}
+        </Text>
       </View>
-
-      <View style={styles.content}>
-        <View style={styles.metricsRow}>
-          <View style={styles.metric}>
-            <Text style={styles.metricLabel}>NAV</Text>
-            <Text style={styles.metricValue}>
-              {formatCurrency(fund.current_nav)}
-            </Text>
-          </View>
-          <View style={styles.metric}>
-            <Text style={styles.metricLabel}>YTD</Text>
-            <Text
-              style={[
-                styles.metricValue,
-                { color: getPerformanceColor(fund.current_ytd) },
-              ]}
-            >
-              {formatPercentage(fund.current_ytd)}
-            </Text>
-          </View>
-          <View style={styles.metric}>
-            <Text style={styles.metricLabel}>P/L</Text>
-            <Text
-              style={[
-                styles.metricValue,
-                { color: getPerformanceColor(fund.profit_loss_percentage) },
-              ]}
-            >
-              {formatPercentage(fund.profit_loss_percentage)}
-            </Text>
-          </View>
-        </View>
-
-        {fund.total_investment > 0 && (
-          <View style={styles.holdingsRow}>
-            <View style={styles.holding}>
-              <Text style={styles.holdingLabel}>Đầu tư</Text>
-              <Text style={styles.holdingValue}>
-                {formatCurrency(fund.total_investment)}
-              </Text>
-            </View>
-            <View style={styles.holding}>
-              <Text style={styles.holdingLabel}>Giá trị hiện tại</Text>
-              <Text style={styles.holdingValue}>
-                {formatCurrency(fund.current_value)}
-              </Text>
-            </View>
-          </View>
-        )}
+      <View style={styles.infoRow}>
+        <Text style={styles.label}>Giá NAV:</Text>
+        <Text style={styles.value}>{fund.current_nav.toLocaleString('vi-VN')} đ</Text>
       </View>
-
+      <View style={styles.infoRow}>
+        <Text style={styles.label}>Lãi/Lỗ:</Text>
+        <Text style={[styles.value, { color: fund.profit_loss >= 0 ? '#33FF57' : '#DC143C' }]}>
+          {fund.profit_loss >= 0 ? '+' : ''}{fund.profit_loss.toLocaleString('vi-VN')} đ
+        </Text>
+      </View>
+      <View style={styles.infoRow}>
+        <Text style={styles.label}>Tỷ suất:</Text>
+        <Text style={[styles.value, { color: fund.profit_loss_percentage >= 0 ? '#33FF57' : '#DC143C' }]}>
+          {fund.profit_loss_percentage >= 0 ? '+' : ''}{fund.profit_loss_percentage}%
+        </Text>
+      </View>
       {showActions && (
         <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.buyButton]}
-            onPress={() => onBuyPress?.(fund)}
-          >
-            <Text style={styles.buyButtonText}>Mua</Text>
+          <TouchableOpacity style={styles.buyButton} onPress={() => onBuyPress && onBuyPress(fund)}>
+            <Text style={styles.actionText}>Mua</Text>
           </TouchableOpacity>
-          {fund.total_units > 0 && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.sellButton]}
-              onPress={() => onSellPress?.(fund)}
-            >
-              <Text style={styles.sellButtonText}>Bán</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={styles.sellButton} onPress={() => onSellPress && onSellPress(fund)}>
+            <Text style={styles.actionText}>Bán</Text>
+          </TouchableOpacity>
         </View>
       )}
     </TouchableOpacity>
@@ -127,126 +54,77 @@ export const FundCard: React.FC<FundCardProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#FFFFFF',
+  card: {
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  tickerContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    marginBottom: 8,
   },
-  colorIndicator: {
-    width: 4,
-    height: 24,
-    borderRadius: 2,
+  colorDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     marginRight: 12,
   },
   ticker: {
-    fontSize: 18,
     fontWeight: 'bold',
-    color: '#212529',
-    marginBottom: 2,
+    fontSize: 16,
+    color: '#2B4BFF',
   },
   name: {
     fontSize: 14,
-    color: '#6C757D',
-    flex: 1,
-  },
-  typeContainer: {
-    backgroundColor: '#E9ECEF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  type: {
-    fontSize: 12,
-    color: '#495057',
-    fontWeight: '500',
-  },
-  content: {
-    marginBottom: 16,
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  metric: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: '#6C757D',
-    marginBottom: 4,
-  },
-  metricValue: {
-    fontSize: 16,
-    fontWeight: '600',
     color: '#212529',
   },
-  holdingsRow: {
+  status: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E9ECEF',
-  },
-  holding: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  holdingLabel: {
-    fontSize: 12,
-    color: '#6C757D',
     marginBottom: 4,
   },
-  holdingValue: {
-    fontSize: 14,
-    fontWeight: '600',
+  label: {
+    fontSize: 13,
+    color: '#6C757D',
+  },
+  value: {
+    fontSize: 13,
+    fontWeight: 'bold',
     color: '#212529',
   },
   actions: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 12,
   },
   buyButton: {
     backgroundColor: '#2B4BFF',
-  },
-  buyButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    marginRight: 8,
   },
   sellButton: {
     backgroundColor: '#FF5733',
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
   },
-  sellButtonText: {
-    color: '#FFFFFF',
+  actionText: {
+    color: '#fff',
+    fontWeight: 'bold',
     fontSize: 14,
-    fontWeight: '600',
   },
 }); 

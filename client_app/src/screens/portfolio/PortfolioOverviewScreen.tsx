@@ -8,16 +8,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PortfolioOverview } from '../../types/portfolio';
-import PieChartCustom from '@/components/common/PieChartCustom';
+import { PieChartCustom } from '../../components/common/PieChartCustom';
+import { Fund } from '../../types/fund';
 
 interface PortfolioOverviewScreenProps {
   portfolio: PortfolioOverview;
+  fundsInvested: Fund[];
   onFundPress: (fund: any) => void;
   onTransactionPress: (transaction: any) => void;
 }
 
 export const PortfolioOverviewScreen: React.FC<PortfolioOverviewScreenProps> = ({
   portfolio,
+  fundsInvested,
   onFundPress,
   onTransactionPress,
 }) => {
@@ -72,47 +75,47 @@ export const PortfolioOverviewScreen: React.FC<PortfolioOverviewScreenProps> = (
     </View>
   );
 
-  const renderTopFunds = () => (
+  const renderDetailFund = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Quỹ hàng đầu</Text>
-        <TouchableOpacity>
-          <Text style={styles.seeAllText}>Xem tất cả</Text>
-        </TouchableOpacity>
+        <Text style={styles.sectionTitle}>Chi tiết quỹ</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {portfolio.funds.slice(0, 5).map((fund) => (
-          <TouchableOpacity
-            key={fund.id}
-            style={styles.fundCard}
-            onPress={() => onFundPress(fund)}
-          >
-            <View style={styles.fundHeader}>
-              <View style={[styles.fundColor, { backgroundColor: fund.color }]} />
-              <View>
-                <Text style={styles.fundTicker}>{fund.ticker}</Text>
-                <Text style={styles.fundName} numberOfLines={1}>
-                  {fund.name}
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.fundValue}>
-              {formatCurrency(fund.current_value)}
-            </Text>
-            <Text
-              style={[
-                styles.fundPerformance,
-                { color: getPerformanceColor(fund.profit_loss_percentage) },
-              ]}
+        {fundsInvested && fundsInvested.length > 0 ? (
+          fundsInvested.map((fund) => (
+            <TouchableOpacity 
+              key={fund.id} 
+              style={styles.fundCard}
+              onPress={() => onFundPress(fund)}
             >
-              {formatPercentage(fund.profit_loss_percentage)}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <View style={styles.fundHeader}>
+                <View style={[styles.fundColor, { backgroundColor: fund.color }]} />
+                <View>
+                  <Text style={styles.fundTicker}>{fund.ticker}</Text>
+                  <Text style={styles.fundName}>{fund.name}</Text>
+                </View>
+              </View>
+              <Text style={styles.fundValue}>{formatCurrency(fund.current_nav)}</Text>
+              <Text 
+                style={[
+                  styles.fundPerformance, 
+                  { color: getPerformanceColor(fund.profit_loss_percentage) }
+                ]}
+              >
+                {formatPercentage(fund.profit_loss_percentage)}
+              </Text>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.fundCard}>
+            <Text>Không có dữ liệu quỹ</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
 
+  
   const renderRecentTransactions = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
@@ -167,17 +170,16 @@ export const PortfolioOverviewScreen: React.FC<PortfolioOverviewScreenProps> = (
         <View style={styles.topPadding} />
 
         {renderPortfolioSummary()}
-        {renderTopFunds()}
+        {renderDetailFund()}
         {renderRecentTransactions()}
 
-        <PieChartCustom data={[
-            { name: 'Fund A', value: 100 },
-            { name: 'Fund B', value: 200 },
-            { name: 'Fund C', value: 300 },
-            { name: 'Fund D', value: 400 }
-          ]}
-       sliceColor={['#2B4BFF', '#FF5733', '#33FF57', '#FFA500']}
-        title='Biểu đồ cơ bản'
+        <PieChartCustom 
+          data={fundsInvested.map(fund => ({
+            name: fund.ticker,
+            value: fund.current_value
+          }))}
+          sliceColor={fundsInvested.map(fund => fund.color || '#2B4BFF')}
+          title='Phân bổ danh mục đầu tư'
         />
         <View style={styles.bottomPadding} />
 

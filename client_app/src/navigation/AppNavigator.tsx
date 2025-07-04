@@ -5,16 +5,16 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
 // Import screens
-import { LoginScreen } from '../components/auth/LoginScreen';
-import { FundListScreen } from '../components/fund/FundListScreen';
+import { LoginScreen } from '../screens/auth/LoginScreen';
+import { FundListScreen } from '../screens/fund/FundListScreen';
 import { PortfolioOverviewScreen } from '../screens/portfolio/PortfolioOverviewScreen';
 
-import { SignupScreen } from '../components/auth/SignupScreen';
-import { ForgotPasswordScreen } from '../components/auth/ForgotPasswordScreen';
-import { FundDetailScreen } from '../components/fund/FundDetailScreen';
-import { FundBuyScreen } from '../components/fund/FundBuyScreen';
-import { FundSellScreen } from '../components/fund/FundSellScreen';
-import { ProfileScreen } from '../components/profile/ProfileScreen';
+import { SignupScreen } from '../screens/auth/SignupScreen';
+import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
+import { FundBuyScreen } from '../screens/fund/FundBuyScreen';
+import { FundSellScreen } from '../screens/fund/FundSellScreen';
+import { FundDetailScreen } from '../screens/fund/FundDetailScreen';
+import { ProfileScreen } from '../screens/profile/ProfileScreen';
 
 // Import types
 import { PortfolioOverview } from '../types/portfolio';
@@ -36,8 +36,10 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   Portfolio: undefined;
-  Funds: undefined;
-  Profile: undefined;
+  Fund_widget: undefined;
+  transaction_management: undefined;
+  assetmanagement: undefined;
+  personal_profile: undefined;
 };
 
 export type FundStackParamList = {
@@ -64,20 +66,130 @@ const ProfileScreenComponent = ProfileScreen as unknown as React.ComponentType<a
 // Dummy portfolio data
 const dummyFunds: Fund[] = [
   {
-    id:1,
-    ticker:'VFMVN30',
-    name:'Fund A',
-    description:'Demo',
-    current_ytd: 5,
+    id: 1,
+    ticker: 'VFMVN30',
+    name: 'Vietnam VN30 Fund',
+    description: 'Quỹ đầu tư chỉ số VN30 - Đầu tư vào 30 cổ phiếu vốn hóa lớn nhất thị trường chứng khoán Việt Nam',
+    current_ytd: 8.5,
     current_nav: 25000,
-    investment_type:'equity',
-    current_value:1000000,
-    color:'#2B4BFF',
-    profit_loss_percentage:5,
-    profit_loss:50000,
-    created_at:'',
-    status:'active' as any,
-  } as unknown as Fund,
+    investment_type: 'equity',
+    is_shariah: false,
+    status: 'active',
+    launch_price: 10000,
+    currency_id: 1,
+    total_units: 1000000,
+    total_investment: 25000000000,
+    current_value: 26250000000,
+    profit_loss: 1250000000,
+    profit_loss_percentage: 5,
+    flex_sip_percentage: 0,
+    color: '#2B4BFF',
+    previous_nav: 24000,
+    flex_units: 0,
+    sip_units: 0,
+    last_update: '2024-06-01',
+    investment_count: 1250,
+  },
+  {
+    id: 2,
+    ticker: 'VFMVF4',
+    name: 'Vietnam Value Fund',
+    description: 'Quỹ đầu tư giá trị Việt Nam - Đầu tư vào các cổ phiếu có giá trị nội tại tốt và tiềm năng tăng trưởng cao',
+    current_ytd: 6.2,
+    current_nav: 20000,
+    investment_type: 'fixed_income',
+    is_shariah: false,
+    status: 'active',
+    launch_price: 10000,
+    currency_id: 1,
+    total_units: 2000000,
+    total_investment: 40000000000,
+    current_value: 41200000000,
+    profit_loss: 1200000000,
+    profit_loss_percentage: 3,
+    flex_sip_percentage: 0,
+    color: '#FF5733',
+    previous_nav: 19500,
+    flex_units: 0,
+    sip_units: 0,
+    last_update: '2024-06-01',
+    investment_count: 950,
+  },
+  {
+    id: 3,
+    ticker: 'VFMVSF',
+    name: 'Vietnam Strategic Fund',
+    description: 'Quỹ đầu tư chiến lược Việt Nam - Đầu tư vào các doanh nghiệp có lợi thế cạnh tranh bền vững',
+    current_ytd: 7.8,
+    current_nav: 22500,
+    investment_type: 'balanced',
+    is_shariah: false,
+    status: 'active',
+    launch_price: 10000,
+    currency_id: 1,
+    total_units: 1500000,
+    total_investment: 33750000000,
+    current_value: 35000000000,
+    profit_loss: 1250000000,
+    profit_loss_percentage: 3.7,
+    flex_sip_percentage: 0,
+    color: '#33FF57',
+    previous_nav: 21800,
+    flex_units: 0,
+    sip_units: 0,
+    last_update: '2024-06-01',
+    investment_count: 1100,
+  },
+  {
+    id: 4,
+    ticker: 'VFMBOND',
+    name: 'Vietnam Bond Fund',
+    description: 'Quỹ trái phiếu Việt Nam - Đầu tư vào trái phiếu chính phủ và trái phiếu doanh nghiệp có xếp hạng tín nhiệm tốt',
+    current_ytd: 4.5,
+    current_nav: 15000,
+    investment_type: 'fixed_income',
+    is_shariah: false,
+    status: 'active',
+    launch_price: 10000,
+    currency_id: 1,
+    total_units: 3000000,
+    total_investment: 45000000000,
+    current_value: 46000000000,
+    profit_loss: 1000000000,
+    profit_loss_percentage: 2.2,
+    flex_sip_percentage: 0,
+    color: '#FFA500',
+    previous_nav: 14800,
+    flex_units: 0,
+    sip_units: 0,
+    last_update: '2024-06-01',
+    investment_count: 1800,
+  },
+  {
+    id: 5,
+    ticker: 'VFMREIT',
+    name: 'Vietnam Real Estate Fund',
+    description: 'Quỹ bất động sản Việt Nam - Đầu tư vào các dự án bất động sản và cổ phiếu bất động sản tiềm năng',
+    current_ytd: 5.8,
+    current_nav: 18000,
+    investment_type: 'real_estate',
+    is_shariah: false,
+    status: 'active',
+    launch_price: 10000,
+    currency_id: 1,
+    total_units: 2500000,
+    total_investment: 45000000000,
+    current_value: 46500000000,
+    profit_loss: 1500000000,
+    profit_loss_percentage: 3.3,
+    flex_sip_percentage: 0,
+    color: '#9370DB',
+    previous_nav: 17500,
+    flex_units: 0,
+    sip_units: 0,
+    last_update: '2024-06-01',
+    investment_count: 1450,
+  },
 ];
 const dummyTransactions: Transaction[] = [];
 
@@ -90,10 +202,89 @@ const dummyPortfolio: PortfolioOverview = {
   transactions: dummyTransactions,
   comparisons: [],
 };
+// Danh sách quỹ đã đầu tư mẫu (dummyFundsInvested) - số tiền nhỏ hơn, phù hợp với đầu tư cá nhân
+const dummyFundsInvested: Fund[] = [
+  {
+    id: 1,
+    ticker: 'FPTIF',
+    name: 'FPTIF',
+    description: 'Quỹ đầu tư FPTIF',
+    current_ytd: 120000,
+    current_nav: 345800,
+    investment_type: 'equity',
+    is_shariah: false,
+    status: 'active',
+    launch_price: 10000,
+    currency_id: 1,
+    total_units: 10,
+    total_investment: 3458000,
+    current_value: 3458000,
+    profit_loss: 0,
+    profit_loss_percentage: 0,
+    flex_sip_percentage: 0,
+    color: '#2B4BFF',
+    previous_nav: 340000,
+    flex_units: 0,
+    sip_units: 0,
+    last_update: '2024-06-01',
+    investment_count: 1,
+  },
+  {
+    id: 2,
+    ticker: 'VCBBF',
+    name: 'VCBBF',
+    description: 'Quỹ đầu tư VCBBF',
+    current_ytd: 25000,
+    current_nav: 302120,
+    investment_type: 'fixed_income',
+    is_shariah: false,
+    status: 'active',
+    launch_price: 10000,
+    currency_id: 1,
+    total_units: 5,
+    total_investment: 1510600,
+    current_value: 1510600,
+    profit_loss: 0,
+    profit_loss_percentage: 0,
+    flex_sip_percentage: 0,
+    color: '#FF5733',
+    previous_nav: 300000,
+    flex_units: 0,
+    sip_units: 0,
+    last_update: '2024-06-01',
+    investment_count: 1,
+  },
+  {
+    id: 3,
+    ticker: 'VCBSEF',
+    name: 'VCBSEF',
+    description: 'Quỹ đầu tư VCBSEF',
+    current_ytd: 63000,
+    current_nav: 300000,
+    investment_type: 'balanced',
+    is_shariah: false,
+    status: 'active',
+    launch_price: 10000,
+    currency_id: 1,
+    total_units: 2,
+    total_investment: 600000,
+    current_value: 600000,
+    profit_loss: 0,
+    profit_loss_percentage: 0,
+    flex_sip_percentage: 0,
+    color: '#33FF57',
+    previous_nav: 295000,
+    flex_units: 0,
+    sip_units: 0,
+    last_update: '2024-06-01',
+    investment_count: 1,
+  },
+];
 
 const PortfolioTabScreen: React.FC = () => (
   <PortfolioOverviewScreen
     portfolio={dummyPortfolio}
+    fundsInvested={dummyFundsInvested}
     onFundPress={(f)=>{}}
     onTransactionPress={()=>{}}
   />
@@ -153,14 +344,19 @@ const MainTabNavigator = () => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
           if (route.name === 'Portfolio') {
-            iconName = focused ? 'pie-chart' : 'pie-chart-outline';
-          } else if (route.name === 'Funds') {
-            iconName = focused ? 'trending-up' : 'trending-up-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          } else {
-            iconName = 'help-outline';
+            iconName = focused ? 'pie-chart' : 'pie-chart-outline'; // Tổng quan: biểu đồ tròn
+          } else if (route.name === 'Fund_widget') {
+            iconName = focused ? 'bar-chart' : 'bar-chart-outline'; // Sản phẩm đầu tư: biểu đồ cột
+          } else if (route.name === 'transaction_management') {
+            iconName = focused ? 'swap-horizontal' : 'swap-horizontal-outline'; // Giao dịch: mũi tên chuyển đổi
+          } else if (route.name === 'assetmanagement') {
+            iconName = focused ? 'wallet' : 'wallet-outline'; // Quản lý tài sản: ví
+          } else if (route.name === 'personal_profile') {
+            iconName = focused ? 'person-circle' : 'person-circle-outline'; // Hồ sơ cá nhân: avatar
           }
+          // else {
+          //   iconName = 'help-outline';
+          // }
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -170,9 +366,9 @@ const MainTabNavigator = () => {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E9ECEF',
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 60,
+          paddingBottom: 0,
+          paddingTop: 0,
+          height: 70,
         },
         headerShown: false,
       })}
@@ -183,16 +379,27 @@ const MainTabNavigator = () => {
         options={{ title: 'Tổng quan', headerShown: true }}
       />
       <MainTab.Screen 
-        name="Funds" 
+        name="Fund_widget" 
         component={FundStackNavigator}
-        options={{ title: 'Quỹ' }}
+        options={{ title: 'Sản phẩm đầu tư' }}
       />
       <MainTab.Screen 
-        name="Profile" 
+        name="assetmanagement" 
         component={ProfileScreenComponent}
-        options={{ title: 'Hồ sơ' }}
+        options={{ title: 'Quản lý tài sản' }}
       />
-    </MainTab.Navigator>
+      <MainTab.Screen 
+        name="transaction_management" 
+        component={ProfileScreenComponent}
+        options={{ title: 'Giao dịch' }}
+      />
+      <MainTab.Screen 
+        name="personal_profile" 
+        component={ProfileScreenComponent}
+        options={{ title: 'Hồ sơ cá nhân' }}
+      />
+      
+      </MainTab.Navigator>
   );
 };
 

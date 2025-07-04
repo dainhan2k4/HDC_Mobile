@@ -8,4 +8,5 @@ export { FundListScreen } from './fund/FundListScreen';
 export { PortfolioOverviewScreen } from '../screens/portfolio/PortfolioOverviewScreen';
 
 // Common Components
-export { FundCard } from './common/FundCard'; 
+export { FundCard } from './common/FundCard';
+export { PieChartCustom } from './common/PieChartCustom'; 

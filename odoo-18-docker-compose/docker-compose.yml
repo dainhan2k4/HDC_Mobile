@@ -17,8 +17,8 @@ services:
     depends_on:
       - db
     ports:
-      - "10018:8069"
-      - "20018:8072" # live chat
+      - "11018:8069"
+      - "21018:8072" # live chat
     tty: true
     command: --
     environment:
@@ -36,7 +36,6 @@ services:
     volumes:
       #- /etc/timezone:/etc/timezone:ro
       #- /etc/localtime:/etc/localtime:ro
-      - ./entrypoint.sh:/entrypoint.sh
       - ./addons:/mnt/extra-addons
       - ./etc:/etc/odoo
       # Mount for development - auto-reload

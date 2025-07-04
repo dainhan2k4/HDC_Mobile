@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FundCard } from '../common/FundCard';
+import { FundCard } from '../../components/common/FundCard';
 import { Fund } from '../../types/fund';
 
 interface FundListScreenProps {
@@ -212,27 +212,16 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 24,
-    paddingBottom: 100,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6C757D',
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 48,
+    marginTop: 40,
   },
   emptyStateTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#212529',
     marginBottom: 8,
   },
@@ -240,5 +229,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6C757D',
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6C757D',
+    marginTop: 8,
   },
 }); 

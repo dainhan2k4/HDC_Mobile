@@ -1,134 +1,129 @@
-import React from 'react'
-import { StyleSheet, ScrollView, Text, View } from 'react-native'
-import PieChart from 'react-native-pie-chart'
-import { Fund } from '@/types/fund';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import PieChart from 'react-native-pie-chart';
 
-type PieChartCustomProps = {
-  data?: FundData[],
-  sliceColor?: string[],
-  title?: string,
-  
-
-}
-type FundData = {
-  name: string,
-  value: number,
+interface PieChartCustomProps {
+  data: { name: string; value: number }[];
+  sliceColor: string[];
+  title?: string;
 }
 
-const PieChartCustom: React.FC<PieChartCustomProps> = ({
-   data = [], sliceColor = [], title = '' }) => {
-    const fundsData: FundData[] = data.map((value: FundData, index: number) => ({
-      name: value.name,
-      value: value.value
-    }))
-
-  const widthAndHeight = 250
-
-  // Nếu không có dữ liệu thì hiển thị thông báo
-  if (!data.length) {
+export const PieChartCustom: React.FC<PieChartCustomProps> = ({ data, sliceColor, title }) => {
+  // Kiểm tra nếu không có dữ liệu hoặc tất cả giá trị đều là 0
+  if (!data || data.length === 0 || data.every(item => item.value === 0)) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Không có dữ liệu để hiển thị biểu đồ</Text>
+      <View style={styles.container}>
+        {title && <Text style={styles.title}>{title}</Text>}
+        <View style={styles.noDataContainer}>
+          <Text style={styles.noDataText}>Không có dữ liệu</Text>
+        </View>
       </View>
-      
-    )
+    );
   }
   
-
-  // Đảm bảo số lượng màu đủ cho số lượng data, nếu thiếu thì lặp lại màu cuối cùng
-  const colors = data.map((_, idx) => sliceColor[idx] || sliceColor[sliceColor.length - 1] || '#000000')
-
-  // Tính series kèm label phần trăm
-  const total = data.reduce((a: number, b: FundData) => a + b.value, 0)
-  const series = data.map((value: FundData, index: number) => {
-    const percent = ((value.value / total) * 100).toFixed(1)
-    return {
-      value: value.value  ,
-      color: colors[index],
-      label: {
-        text: `${percent}%`,
-        fontSize: 12,
-        fontWeight: 'bold',
-        fill: '#fff',
-      },
+  // Chuyển đổi dữ liệu sang định dạng mới của react-native-pie-chart v4
+  const series = data.map((item, index) => ({
+    value: item.value,
+    color: sliceColor[index % sliceColor.length],
+    label: { 
+      text: `${((item.value / data.reduce((sum, item) => sum + item.value, 0)) * 100).toFixed(0)}%`,
+      fontSize: 12,
+      fontWeight: 'semibold',
+      fill: '#fff',
+      stroke: '#000',
+      strokeWidth: 0.5
     }
-  })
-
+  }));
+  
+  // Tính tổng giá trị
+  const totalValue = data.reduce((sum, item) => sum + item.value, 0);
+  
   return (
-    <View style={styles.chartRow}>
-      <View style={styles.chartContainer}> 
-        {title ? <Text style={styles.title}>{title}</Text> : null}
+    <View style={styles.container}>
+      {title && <Text style={styles.title}>{title}</Text>}
+      
+      <View style={styles.chartContainer}>
+        {/* Biểu đồ tròn */}
         <PieChart
-          widthAndHeight={widthAndHeight}
+          widthAndHeight={200}
           series={series}
-          cover={0.45}
+          cover={0.3} // Tạo lỗ ở giữa (dạng donut)
+          style={styles.chart}
         />
-         </View>
-      <View style={styles.percentList}>
-        {data.map((value: FundData, index: number ) => (
-          <View key={index} style={styles.percentItem}>
-            <View style={[styles.percentDot, { backgroundColor: colors[index] }]} />
-            <Text style={styles.percentTextValue}>{fundsData[index].name}</Text>
+      </View>
+      
+      {/* Chú thích */}
+      <View style={styles.legendContainer}>
+        {data.map((item, index) => (
+          <View key={index} style={styles.legendItem}>
+            <View style={[styles.colorIndicator, { backgroundColor: sliceColor[index % sliceColor.length] }]} />
+            <Text style={styles.legendText}>
+              {item.name}: {item.value.toLocaleString()} ({((item.value / totalValue) * 100).toFixed(1)}%)
+            </Text>
           </View>
         ))}
       </View>
+      
+      <Text style={styles.totalText}>Tổng: {totalValue.toLocaleString()}</Text>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
-  chartRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-    padding: 10,
-  },
-  chartContainer: {
-    flex: 1,
-    alignItems: 'center',
+  container: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    margin: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   title: {
-    fontSize: 24,
-    margin: 10,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-  },
-  emptyText: {
     fontSize: 18,
-    color: '#888',
+    fontWeight: 'bold',
+    marginBottom: 16,
     textAlign: 'center',
   },
-  percentList: {
-    marginTop: 20,
+  chartContainer: {
     alignItems: 'center',
-    gap: 4,
+    marginBottom: 20,
   },
-  percentItem: {
+  chart: {
+    margin: 10,
+  },
+  legendContainer: {
+    marginTop: 10,
+  },
+  legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    marginBottom: 8,
   },
-  percentDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#000',
+  colorIndicator: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginRight: 8,
   },
-  percentText: {
-    fontSize: 16,
-  },
-  percentTextValue: {
+  legendText: {
     fontSize: 14,
-    fontWeight: '500',
-    paddingLeft: 10,
-    paddingRight: 10, 
   },
-})
-
-export default PieChartCustom
+  totalText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 8,
+    textAlign: 'right',
+  },
+  noDataContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noDataText: {
+    fontSize: 16,
+    color: '#6C757D',
+  },
+}); 
