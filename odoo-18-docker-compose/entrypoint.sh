@@ -14,4 +14,5 @@ odoo -c /etc/odoo/odoo.conf \
      --db_port $DB_PORT \
      --db_user $DB_USER \
      --db_password $DB_PASSWORD \
-     --database $DB_DATABASE
+     --database $DB_DATABASE \
+     -i custom_auth,fund_management,overview_fund_management
