@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -20,8 +20,9 @@ import { useAuth } from '../context/AuthContext';
 
 // Import types
 import { PortfolioOverview } from '../types/portfolio';
-import { Fund } from '../types/fund';
+import { Fund, Investment } from '../types/fund';
 import { Transaction } from '../types/transaction';
+import { getInvestments } from '../api/fundApi';
 
 // Types
 export type RootStackParamList = {
@@ -204,93 +205,53 @@ const dummyPortfolio: PortfolioOverview = {
   transactions: dummyTransactions,
   comparisons: [],
 };
-// Danh sách quỹ đã đầu tư mẫu (dummyFundsInvested) - số tiền nhỏ hơn, phù hợp với đầu tư cá nhân
-const dummyFundsInvested: Fund[] = [
-  {
-    id: 1,
-    ticker: 'FPTIF',
-    name: 'FPTIF',
-    description: 'Quỹ đầu tư FPTIF',
-    current_ytd: 120000,
-    current_nav: 345800,
-    investment_type: 'equity',
-    is_shariah: false,
-    status: 'active',
-    launch_price: 10000,
-    currency_id: 1,
-    total_units: 10,
-    total_investment: 3458000,
-    current_value: 3458000,
-    profit_loss: 0,
-    profit_loss_percentage: 0,
-    flex_sip_percentage: 0,
-    color: '#2B4BFF',
-    previous_nav: 340000,
-    flex_units: 0,
-    sip_units: 0,
-    last_update: '2024-06-01',
-    investment_count: 1,
-  },
-  {
-    id: 2,
-    ticker: 'VCBBF',
-    name: 'VCBBF',
-    description: 'Quỹ đầu tư VCBBF',
-    current_ytd: 25000,
-    current_nav: 302120,
-    investment_type: 'fixed_income',
-    is_shariah: false,
-    status: 'active',
-    launch_price: 10000,
-    currency_id: 1,
-    total_units: 5,
-    total_investment: 1510600,
-    current_value: 1510600,
-    profit_loss: 0,
-    profit_loss_percentage: 0,
-    flex_sip_percentage: 0,
-    color: '#FF5733',
-    previous_nav: 300000,
-    flex_units: 0,
-    sip_units: 0,
-    last_update: '2024-06-01',
-    investment_count: 1,
-  },
-  {
-    id: 3,
-    ticker: 'VCBSEF',
-    name: 'VCBSEF',
-    description: 'Quỹ đầu tư VCBSEF',
-    current_ytd: 63000,
-    current_nav: 300000,
-    investment_type: 'balanced',
-    is_shariah: false,
-    status: 'active',
-    launch_price: 10000,
-    currency_id: 1,
-    total_units: 2,
-    total_investment: 600000,
-    current_value: 600000,
-    profit_loss: 0,
-    profit_loss_percentage: 0,
-    flex_sip_percentage: 0,
-    color: '#33FF57',
-    previous_nav: 295000,
-    flex_units: 0,
-    sip_units: 0,
-    last_update: '2024-06-01',
-    investment_count: 1,
-  },
-];
+const PortfolioTabScreen: React.FC = () => {
+  const [fundsInvested, setFundsInvested] = useState<Investment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { sessionId } = useAuth();
 
-const PortfolioTabScreen: React.FC = () => (
-  <PortfolioOverviewScreen
-    portfolio={dummyPortfolio}
-    fundsInvested={dummyFundsInvested}
-    onFundPress={(f)=>{}}
-    onTransactionPress={()=>{}}
-  />
-);
+  useEffect(() => {
+    const fetchInvestments = async () => {
+      if (!sessionId) {
+        console.log('Chưa đăng nhập, không thể lấy dữ liệu đầu tư');
+        setFundsInvested([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log('Đang lấy dữ liệu đầu tư với sessionId:', sessionId);
+        const investments = await getInvestments();
+        setFundsInvested(investments);
+        console.log('Dữ liệu đầu tư:', investments);
+      } catch (error) {
+        console.error('Lỗi khi lấy dữ liệu đầu tư:', error);
+        setFundsInvested([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInvestments();
+  }, [sessionId]);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  return (
+    <PortfolioOverviewScreen
+      portfolio={dummyPortfolio}
+      fundsInvested={fundsInvested}
+      onFundPress={(f)=>{}}
+      onTransactionPress={()=>{}}
+    />
+  );
+};
 
 // Cast
 const PortfolioTabComponent = PortfolioTabScreen as unknown as React.ComponentType<any>;
@@ -328,7 +289,7 @@ const MainTabNavigator = () => {
     <MainTab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap;
+          let iconName: keyof typeof Ionicons.glyphMap = 'help-outline'; // Default value
 
           if (route.name === 'Portfolio') {
             iconName = focused ? 'pie-chart' : 'pie-chart-outline'; // Tổng quan: biểu đồ tròn
@@ -341,9 +302,6 @@ const MainTabNavigator = () => {
           } else if (route.name === 'personal_profile') {
             iconName = focused ? 'person-circle' : 'person-circle-outline'; // Hồ sơ cá nhân: avatar
           }
-          // else {
-          //   iconName = 'help-outline';
-          // }
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },

@@ -42,3 +42,14 @@ export interface FundComparison {
   total_return: number;
   return_percentage: number;
 } 
+
+export interface Investment {
+    id: number;
+    fund_id: number;
+    fund_name: string;
+    fund_ticker: string;
+    units: number;
+    amount: number;
+    current_nav: number;
+    investment_type: string;
+}

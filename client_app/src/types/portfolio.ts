@@ -4,16 +4,20 @@ import { Transaction } from './transaction';
 export interface Investment {
   id: number;
   fund_id: number;
-  user_id: number;
-  amount: number;
+  fund_name: string;
+  fund_ticker: string;
   units: number;
-  investment_type: 'stock' | 'bond';
-  status: 'active' | 'inactive';
-  created_at: string;
-  current_value: number;
-  profit_loss: number;
-  profit_loss_percentage: number;
-  fund: Fund;
+  amount: number;
+  current_nav: number;
+  investment_type: string;
+  // Optional fields for compatibility
+  user_id?: number;
+  status?: 'active' | 'inactive';
+  created_at?: string;
+  current_value?: number;
+  profit_loss?: number;
+  profit_loss_percentage?: number;
+  fund?: Fund;
 }
 
 export interface PortfolioOverview {

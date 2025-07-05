@@ -1,6 +1,26 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { login as apiLogin } from '@/api/authApi'; // Assuming authApi is in src/api
+import { apiService } from '@/config/apiService';
+
+// Define the shape for the Odoo login response result
+interface OdooLoginResult {
+  uid: number;
+  is_system: boolean;
+  is_admin: boolean;
+  user_context: object;
+  db: string;
+  server_version: string;
+  server_version_info: number[];
+  name: string;
+  username: string;
+  partner_display_name: string;
+  company_id: number;
+  partner_id: number;
+  web_tours: any[];
+  notification_type: string;
+  // Add other fields from Odoo's response as needed
+}
 
 // Define the shape of the context state
 interface AuthContextType {
@@ -26,6 +46,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let userSessionId: string | null = null;
       try {
         userSessionId = await AsyncStorage.getItem('sessionId');
+        if (userSessionId) {
+          // Set session ID in ApiService if found
+          apiService.setSessionId(userSessionId);
+        }
       } catch (e) {
         // Restoring token failed
         console.error('Failed to load session from storage', e);
@@ -41,15 +65,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, sessionId: newSessionId } = await apiLogin(email, password);
+      const { data: response, sessionId: newSessionId } = await apiLogin(email, password);
       
-      if (data.error) {
-        throw new Error(data.error.message || 'Login failed');
+      if (response.error) {
+        throw new Error(response.message || 'Login failed');
       }
 
       if (newSessionId) {
         setSessionId(newSessionId);
-        setUser(data.result); // Save user info
+        // Set session ID in ApiService for future API calls
+        apiService.setSessionId(newSessionId);
+        // Cast the user data to the specific type
+        const userData = response.data as { result: OdooLoginResult };
+        setUser(userData.result); 
         await AsyncStorage.setItem('sessionId', newSessionId);
       } else {
         throw new Error('Could not retrieve session ID');
@@ -64,6 +92,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     setSessionId(null);
     setUser(null);
+    // Clear session from ApiService
+    apiService.clearTokens();
     await AsyncStorage.removeItem('sessionId');
   };
 

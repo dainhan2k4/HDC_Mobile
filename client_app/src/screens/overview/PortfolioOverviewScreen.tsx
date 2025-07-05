@@ -9,13 +9,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PortfolioOverview } from '../../types/portfolio';
 import { PieChartCustom } from '../../components/common/PieChartCustom';
-import { Fund } from '../../types/fund';
+import { Investment } from '../../types/fund';
 import { formatVND, formatDate } from '../../utils/formatters';
 import { TransactionItem } from '../../components/common/Transaction/TransactionItem';
 
 interface PortfolioOverviewScreenProps {
   portfolio: PortfolioOverview;
-  fundsInvested: Fund[];
+  fundsInvested: Investment[];
   onFundPress: (fund: any) => void;
   onTransactionPress: (transaction: any) => void;
 }
