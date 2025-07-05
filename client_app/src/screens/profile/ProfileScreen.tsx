@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Button } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/context/AuthContext';
 
 // Dữ liệu mẫu cho hồ sơ
 const dummyProfile = {
@@ -36,6 +37,15 @@ const dummyProfile = {
 
 export const ProfileScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState('personal');
+  const { signOut } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Failed to sign out:', error);
+    }
+  };
   
   const renderPersonalInfo = () => (
     <View style={styles.sectionContainer}>
@@ -205,6 +215,13 @@ export const ProfileScreen: React.FC = () => {
         {activeTab === 'bank' && renderBankInfo()}
         {activeTab === 'address' && renderAddressInfo()}
       </ScrollView>
+
+      <View style={styles.logoutContainer}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={22} color="#FFFFFF" />
+          <Text style={styles.logoutButtonText}>Đăng xuất</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -251,6 +268,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    padding: 16,
   },
   sectionContainer: {
     padding: 16,
@@ -427,5 +445,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#495057',
     lineHeight: 20,
+  },
+  logoutContainer: {
+    padding: 16,
+    backgroundColor: '#F8F9FA',
+    borderTopWidth: 1,
+    borderTopColor: '#DEE2E6',
+  },
+  logoutButton: {
+    backgroundColor: '#FF5733',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  logoutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
 }); 

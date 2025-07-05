@@ -12,7 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FundCard } from '../../components/common/FundCard';
 import { Fund } from '../../types/fund';
-
+import ScrollingChartWithPointer from '../../components/common/ScrollingChartWithPointer';
+  
 interface FundListScreenProps {
   funds: Fund[];
   isLoading?: boolean;
@@ -23,7 +24,7 @@ interface FundListScreenProps {
 }
 
 export const FundListScreen: React.FC<FundListScreenProps> = ({
-  funds,
+  funds = [],
   isLoading = false,
   onRefresh,
   onFundPress,
@@ -31,7 +32,23 @@ export const FundListScreen: React.FC<FundListScreenProps> = ({
   onSellPress,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredFunds, setFilteredFunds] = useState<Fund[]>(funds);
+  const filteredFunds = React.useMemo(() => {
+    let filtered: Fund[] = funds || [];
+
+    if (searchQuery) {
+      const lower = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (fund) => fund.name.toLowerCase().includes(lower) || fund.ticker.toLowerCase().includes(lower)
+      );
+    }
+
+    if (selectedType !== 'all') {
+      filtered = filtered.filter((fund) => fund.investment_type === selectedType);
+    }
+
+    return filtered;
+  }, [funds, searchQuery, selectedType]);
+
   const [selectedType, setSelectedType] = useState<string>('all');
 
   const investmentTypes = [
@@ -41,30 +58,6 @@ export const FundListScreen: React.FC<FundListScreenProps> = ({
     { key: 'balanced', label: 'Cân bằng' },
     { key: 'money_market', label: 'Thị trường tiền tệ' },
   ];
-
-  useEffect(() => {
-    filterFunds();
-  }, [funds, searchQuery, selectedType]);
-
-  const filterFunds = () => {
-    let filtered = funds;
-
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (fund) =>
-          fund.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          fund.ticker.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Filter by investment type
-    if (selectedType !== 'all') {
-      filtered = filtered.filter((fund) => fund.investment_type === selectedType);
-    }
-
-    setFilteredFunds(filtered);
-  };
 
   const renderFundItem = ({ item }: { item: Fund }) => (
     <FundCard
@@ -148,13 +141,14 @@ export const FundListScreen: React.FC<FundListScreenProps> = ({
               refreshing={isLoading}
               onRefresh={onRefresh}
               colors={['#2B4BFF']}
-            />
+            />  
           }
           ListEmptyComponent={renderEmptyState}
         />
       )}
 
       <View style={styles.bottomPadding} />
+      <ScrollingChartWithPointer />
     </SafeAreaView>
   );
 };

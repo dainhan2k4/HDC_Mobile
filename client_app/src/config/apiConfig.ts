@@ -1,20 +1,10 @@
 import { ApiConfig, ApiEndpoints } from '../types/api';
 
-// Environment-based API Configuration
-const getBaseUrl = () => {
-  // Kiểm tra environment
-  if (__DEV__) {
-    // Development: sử dụng localhost với port cụ thể
-    return 'http://192.168.50.104:11018';
-  } else {
-    // Production: sử dụng đường dẫn tương đối
-    return '';
-  }
-};
+const API_BASE_URL = 'https://fund-p2p.onrender.com';
 
 // API Configuration
 export const API_CONFIG: ApiConfig = {
-  BASE_URL: getBaseUrl(),
+  BASE_URL: API_BASE_URL,
   TIMEOUT: 10000,
   HEADERS: {
     'Content-Type': 'application/json',

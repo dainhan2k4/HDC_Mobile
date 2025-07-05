@@ -1,3 +1,5 @@
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+
 import { ApiResponse } from '../types/api';
 import { API_CONFIG, API_ENDPOINTS } from './apiConfig';
 
@@ -6,9 +8,29 @@ export class ApiService {
   private static instance: ApiService;
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
-  private sessionId: string | null = null;
+  private sessionId: string | null = null; // We still expose this for AuthContext logic
 
-  private constructor() {}
+  private axiosInstance: AxiosInstance;
+
+  private constructor() {
+    this.axiosInstance = axios.create({
+      baseURL: API_CONFIG.BASE_URL,
+      timeout: API_CONFIG.TIMEOUT,
+      withCredentials: true,
+      headers: { ...API_CONFIG.HEADERS },
+    });
+
+    // Request interceptor to attach session cookie
+    this.axiosInstance.interceptors.request.use(async (config) => {
+      if (this.sessionId) {
+        config.headers = {
+          ...(config.headers || {}),
+          Cookie: `session_id=${this.sessionId}`,
+        } as any;
+      }
+      return config;
+    });
+  }
 
   static getInstance(): ApiService {
     if (!ApiService.instance) {
@@ -17,13 +39,15 @@ export class ApiService {
     return ApiService.instance;
   }
 
+  /* ----------------------------- AUTH HELPERS ---------------------------- */
+
   // Set tokens
   setTokens(accessToken: string, refreshToken: string) {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
   }
 
-  // Set session ID for Odoo authentication
+  // Set session ID manually (optional fallback)
   setSessionId(sessionId: string) {
     this.sessionId = sessionId;
   }
@@ -35,124 +59,94 @@ export class ApiService {
     this.sessionId = null;
   }
 
-  // Get headers
-  private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = { ...API_CONFIG.HEADERS };
-    
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
+  /* ---------------------------- CORE REQUEST ----------------------------- */
 
-    // Add session ID for Odoo authentication
-    if (this.sessionId) {
-      headers['Cookie'] = `session_id=${this.sessionId}`;
-      // Also add as X-Session-ID header as backup
-      headers['X-Session-ID'] = this.sessionId;
-    }
-    
-    return headers;
-  }
-
-  // Make API request
-  private async makeRequest<T>(
+  private async makeRequest<T = any>(
     endpoint: string,
-    options: RequestInit = {}
+    config: AxiosRequestConfig = {}
   ): Promise<ApiResponse<T>> {
     try {
-      const url = `${API_CONFIG.BASE_URL}${endpoint}`;
-      const headers = this.getHeaders();
+      // Attach auth header if available
+      const headers: Record<string, string> = {};
+      if (this.accessToken) {
+        headers['Authorization'] = `Bearer ${this.accessToken}`;
+      }
 
+      // Merge headers
+      config.headers = { ...(config.headers || {}), ...headers };
+
+      // Log request
       console.log('API Request:', {
-        url,
-        method: options.method || 'GET',
-        headers,
+        url: endpoint,
+        method: config.method || 'GET',
+        headers: config.headers,
       });
 
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          ...headers,
-          ...options.headers,
-        },
-        credentials: 'include', // Important for sending cookies
+      const response: AxiosResponse = await this.axiosInstance.request({
+        url: endpoint,
+        ...config,
       });
 
+      // Log response meta
       console.log('API Response:', {
         status: response.status,
         statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
+        headers: response.headers,
       });
 
-      // Get response text first to see what we're getting
-      const responseText = await response.text();
-      console.log('Response text (first 200 chars):', responseText.substring(0, 200));
+      // Axios already parses JSON when possible
+      const data = response.data;
 
-      // Try to parse as JSON
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('JSON Parse Error. Full response:', responseText);
-        throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 100)}...`);
-      }
-
-      if (!response.ok) {
-        throw new Error(data.error || `API request failed with status ${response.status}`);
-      }
-
-      // For direct data endpoints, return the data directly
+      // If data is an array, wrap into ApiResponse format
       if (Array.isArray(data)) {
-        return { success: true, data: data as T, rawResponse: response };
+        return { success: true, data: data as T, rawResponse: response as any };
       }
 
-      return { ...data, rawResponse: response };
-    } catch (error) {
+      return { ...(data as ApiResponse<T>), rawResponse: response as any };
+    } catch (error: any) {
       console.error('API Error:', error);
       throw error;
     }
   }
 
-  // GET request
+  /* ------------------------------ HTTP VERBS ----------------------------- */
+
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
-    let url = endpoint;
-    
-    if (params) {
-      const searchParams = new URLSearchParams();
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          searchParams.append(key, String(value));
-        }
-      });
-      url += `?${searchParams.toString()}`;
-    }
-
-    return this.makeRequest<T>(url, { method: 'GET' });
+    return this.makeRequest<T>(endpoint, { method: 'GET', params });
   }
 
-  // POST request
   async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
-    return this.makeRequest<T>(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    });
+    return this.makeRequest<T>(endpoint, { method: 'POST', data });
   }
 
-  // PUT request
   async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
-    return this.makeRequest<T>(endpoint, {
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-    });
+    return this.makeRequest<T>(endpoint, { method: 'PUT', data });
   }
 
-  // DELETE request
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, { method: 'DELETE' });
   }
 
+  /* ----------------------------- API ENDPOINTS --------------------------- */
+
   // Authentication methods
   async login(email: string, password: string) {
-    return this.post(API_ENDPOINTS.AUTH.LOGIN, { email, password });
+    const res = await this.post(API_ENDPOINTS.AUTH.LOGIN, {
+      db: 'p2p',
+      login: email,
+      password: password,
+      context: {},
+    });
+
+    // Try to extract session_id from Set-Cookie header (axios lower-cases headers)
+    const setCookie: string | undefined = (res.rawResponse?.headers as any)?.['set-cookie'];
+    if (setCookie) {
+      const match = /session_id=([^;]+)/.exec(Array.isArray(setCookie) ? setCookie[0] : setCookie);
+      if (match) {
+        this.sessionId = match[1];
+      }
+    }
+    return res;
   }
 
   async signup(userData: {
@@ -192,7 +186,6 @@ export class ApiService {
     return this.get(API_ENDPOINTS.FUNDS.DETAIL(id));
   }
 
-  // Fund data methods (for direct data access)
   async getFundData() {
     return this.get(API_ENDPOINTS.FUNDS.DATA);
   }
@@ -248,10 +241,6 @@ export class ApiService {
     return this.get(API_ENDPOINTS.TRANSACTIONS.PENDING);
   }
 
-  async getTransactionDetail(id: number) {
-    return this.get(API_ENDPOINTS.TRANSACTIONS.DETAIL(id));
-  }
-
   // Profile methods
   async getProfile() {
     return this.get(API_ENDPOINTS.PROFILE.INFO);
@@ -304,7 +293,7 @@ export class ApiService {
     return this.post(API_ENDPOINTS.PROFILE.VERIFY, data);
   }
 
-  // Account balance methods
+  // Account Balance methods
   async getBalance() {
     return this.get(API_ENDPOINTS.ACCOUNT.BALANCE);
   }
@@ -319,5 +308,5 @@ export class ApiService {
   }
 }
 
-// Export singleton instance
+// Singleton export
 export const apiService = ApiService.getInstance(); 
