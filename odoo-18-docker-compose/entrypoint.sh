@@ -3,16 +3,15 @@
 # Default to 8069 if PORT is not set (for local execution).
 ODOO_HTTP_PORT=${PORT:-8069}
 
-# Start Odoo
-# --http-port: Use the port assigned by Render.
-# --http-interface 0.0.0.0: Listen on all network interfaces, crucial for Render.
+# --- DEBUGGING STEP ---
+# We are temporarily disabling ALL custom module installations.
+# The goal is to verify if the basic Odoo service can start correctly.
+# If this deploy succeeds, it confirms the problem is within one of the custom modules.
 odoo -c /etc/odoo/odoo.conf \
      --http-port $ODOO_HTTP_PORT \
      --http-interface 0.0.0.0 \
-     -i fund_management,custom_auth,investor_profile_management,asset_management,overview_fund_management,transaction_management \
      --db_host $DB_HOST \
      --db_port $DB_PORT \
      --db_user $DB_USER \
      --db_password $DB_PASSWORD \
-     --database $DB_DATABASE \
-     --load-language=vi_VN
+     --database $DB_DATABASE
