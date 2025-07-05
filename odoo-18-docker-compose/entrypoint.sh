@@ -6,11 +6,9 @@ ODOO_HTTP_PORT=${PORT:-8069}
 # Start Odoo
 # --http-port: Use the port assigned by Render.
 # --http-interface 0.0.0.0: Listen on all network interfaces, crucial for Render.
-# --no-longpolling: Disable the longpolling port as we don't need it and it can cause port conflicts.
 odoo -c /etc/odoo/odoo.conf \
      --http-port $ODOO_HTTP_PORT \
      --http-interface 0.0.0.0 \
-     --no-longpolling \
      -i fund_management,custom_auth,investor_profile_management,asset_management,overview_fund_management,transaction_management \
      --db_host $DB_HOST \
      --db_port $DB_PORT \
