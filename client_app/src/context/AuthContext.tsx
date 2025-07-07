@@ -80,6 +80,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userData.result); 
         await AsyncStorage.setItem('sessionId', newSessionId);
       } else {
+        // Try to get session ID from response headers
+        const rawResponse = response.rawResponse;
+        if (rawResponse && rawResponse.headers) {
+          const setCookieHeader = (rawResponse.headers as any)['set-cookie'];
+          if (setCookieHeader && typeof setCookieHeader === 'string') {
+            const match = setCookieHeader.match(/session_id=([^;]+)/);
+            if (match && match[1]) {
+              const extractedSessionId = match[1];
+              setSessionId(extractedSessionId);
+              apiService.setSessionId(extractedSessionId);
+              const userData = response.data as { result: OdooLoginResult };
+              setUser(userData.result);
+              await AsyncStorage.setItem('sessionId', extractedSessionId);
+              return;
+            }
+          }
+        }
         throw new Error('Could not retrieve session ID');
       }
     } catch (error) {

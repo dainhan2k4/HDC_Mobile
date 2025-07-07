@@ -7,15 +7,17 @@ import { View, ActivityIndicator } from 'react-native';
 
 // Import screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
-import { FundListScreen } from '../screens/fund/FundListScreen';
-import { PortfolioOverviewScreen } from '../screens/overview/PortfolioOverviewScreen';
+import { FundListContainer } from '../screens/fund/FundListContainer';
+import { PortfolioOverviewContainer } from '../screens/overview/PortfolioOverviewContainer';
 
 import { SignupScreen } from '../screens/auth/SignupScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
 import { FundBuyScreen } from '../screens/fund/FundBuyScreen';
 import { FundSellScreen } from '../screens/fund/FundSellScreen';
-import { FundDetailScreen } from '../screens/fund/FundDetailScreen';
-import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { FundDetailContainer } from '../screens/fund/FundDetailContainer';
+import { ProfileContainer } from '../screens/profile/ProfileContainer';
+import { AssetManagementContainer } from '../screens/asset/AssetManagementContainer';
+import { TransactionManagementContainer } from '../screens/transaction/TransactionManagementContainer';
 import { useAuth } from '../context/AuthContext';
 
 // Import types
@@ -59,12 +61,14 @@ const FundStack = createNativeStackNavigator<FundStackParamList>();
 
 // Cast components that expect props to a generic ComponentType for navigation
 const LoginScreenComponent = LoginScreen as unknown as React.ComponentType<any>;
-const FundListScreenComponent = FundListScreen as unknown as React.ComponentType<any>;
-const PortfolioOverviewScreenComponent = PortfolioOverviewScreen as unknown as React.ComponentType<any>;
-const FundDetailScreenComponent = FundDetailScreen as unknown as React.ComponentType<any>;
+const FundListContainerComponent = FundListContainer as unknown as React.ComponentType<any>;
+const PortfolioOverviewContainerComponent = PortfolioOverviewContainer as unknown as React.ComponentType<any>;
+const FundDetailContainerComponent = FundDetailContainer as unknown as React.ComponentType<any>;
 const FundBuyScreenComponent = FundBuyScreen as unknown as React.ComponentType<any>;
 const FundSellScreenComponent = FundSellScreen as unknown as React.ComponentType<any>;
-const ProfileScreenComponent = ProfileScreen as unknown as React.ComponentType<any>;
+const ProfileContainerComponent = ProfileContainer as unknown as React.ComponentType<any>;
+const AssetManagementContainerComponent = AssetManagementContainer as unknown as React.ComponentType<any>;
+const TransactionManagementContainerComponent = TransactionManagementContainer as unknown as React.ComponentType<any>;
 
 // Dummy portfolio data
 const dummyFunds: Fund[] = [
@@ -205,56 +209,8 @@ const dummyPortfolio: PortfolioOverview = {
   transactions: dummyTransactions,
   comparisons: [],
 };
-const PortfolioTabScreen: React.FC = () => {
-  const [fundsInvested, setFundsInvested] = useState<Investment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { sessionId } = useAuth();
-
-  useEffect(() => {
-    const fetchInvestments = async () => {
-      if (!sessionId) {
-        console.log('Chưa đăng nhập, không thể lấy dữ liệu đầu tư');
-        setFundsInvested([]);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        console.log('Đang lấy dữ liệu đầu tư với sessionId:', sessionId);
-        const investments = await getInvestments();
-        setFundsInvested(investments);
-        console.log('Dữ liệu đầu tư:', investments);
-      } catch (error) {
-        console.error('Lỗi khi lấy dữ liệu đầu tư:', error);
-        setFundsInvested([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInvestments();
-  }, [sessionId]);
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
-  return (
-    <PortfolioOverviewScreen
-      portfolio={dummyPortfolio}
-      fundsInvested={fundsInvested}
-      onFundPress={(f)=>{}}
-      onTransactionPress={()=>{}}
-    />
-  );
-};
-
 // Cast
-const PortfolioTabComponent = PortfolioTabScreen as unknown as React.ComponentType<any>;
+const PortfolioTabComponent = PortfolioOverviewContainerComponent as unknown as React.ComponentType<any>;
 
 // Auth Navigator
 const AuthNavigator = () => {
@@ -275,8 +231,8 @@ const FundStackNavigator = () => {
         headerShown: false,
       }}
     >
-      <FundStack.Screen name="FundList" component={FundListScreenComponent} />
-      <FundStack.Screen name="FundDetail" component={FundDetailScreenComponent} />
+      <FundStack.Screen name="FundList" component={FundListContainerComponent} />
+      <FundStack.Screen name="FundDetail" component={FundDetailContainerComponent} />
       <FundStack.Screen name="FundBuy" component={FundBuyScreenComponent} />
       <FundStack.Screen name="FundSell" component={FundSellScreenComponent} />
     </FundStack.Navigator>
@@ -330,17 +286,17 @@ const MainTabNavigator = () => {
       />
       <MainTab.Screen 
         name="assetmanagement" 
-        component={ProfileScreenComponent}
+        component={AssetManagementContainerComponent}
         options={{ title: 'Quản lý tài sản' }}
       />
       <MainTab.Screen 
         name="transaction_management" 
-        component={ProfileScreenComponent}
+        component={TransactionManagementContainerComponent}
         options={{ title: 'Giao dịch' }}
       />
       <MainTab.Screen 
         name="personal_profile" 
-        component={ProfileScreenComponent}
+        component={ProfileContainerComponent}
         options={{ title: 'Hồ sơ cá nhân' }}
       />
       

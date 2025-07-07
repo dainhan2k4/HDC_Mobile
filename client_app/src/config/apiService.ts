@@ -16,8 +16,9 @@ export class ApiService {
     this.axiosInstance = axios.create({
       baseURL: API_CONFIG.BASE_URL,
       timeout: API_CONFIG.TIMEOUT,
-      withCredentials: true,
       headers: { ...API_CONFIG.HEADERS },
+      maxRedirects: 5, // Follow redirects
+      validateStatus: (status) => status < 500, // Accept redirects
     });
 
     // Request interceptor to attach session cookie
@@ -28,6 +29,13 @@ export class ApiService {
           Cookie: `session_id=${this.sessionId}`,
         } as any;
       }
+      
+      // Add ngrok-specific headers
+      config.headers = {
+        ...(config.headers || {}),
+        'ngrok-skip-browser-warning': 'true',
+      } as any;
+      
       return config;
     });
   }
@@ -75,27 +83,21 @@ export class ApiService {
       // Merge headers
       config.headers = { ...(config.headers || {}), ...headers };
 
-      // Log request
-      console.log('API Request:', {
-        url: endpoint,
-        method: config.method || 'GET',
-        headers: config.headers,
-      });
-
       const response: AxiosResponse = await this.axiosInstance.request({
         url: endpoint,
         ...config,
       });
 
-      // Log response meta
-      console.log('API Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-      });
-
       // Axios already parses JSON when possible
       const data = response.data;
+
+      // Handle Odoo JSON-RPC response format
+      if (data && data.jsonrpc && data.jsonrpc === "2.0") {
+        if (data.error) {
+          throw new Error(data.error.data?.message || data.error.message || 'API Error');
+        }
+        return { success: true, data: data.result as T, rawResponse: response as any };
+      }
 
       // If data is an array, wrap into ApiResponse format
       if (Array.isArray(data)) {
@@ -132,21 +134,30 @@ export class ApiService {
   // Authentication methods
   async login(email: string, password: string) {
     const res = await this.post(API_ENDPOINTS.AUTH.LOGIN, {
-      db: 'p2p',
-      login: email,
-      password: password,
-      context: {},
+      jsonrpc: "2.0",
+      method: "call",
+        params: {
+         db: "p2p",
+         login: email,
+         password: password
+       }
     });
-
-    // Try to extract session_id from Set-Cookie header (axios lower-cases headers)
-    const setCookie: string | undefined = (res.rawResponse?.headers as any)?.['set-cookie'];
-    if (setCookie) {
-      const match = /session_id=([^;]+)/.exec(Array.isArray(setCookie) ? setCookie[0] : setCookie);
-      if (match) {
-        this.sessionId = match[1];
+      // Try to extract session_id from Set-Cookie header (axios lower-cases headers)
+      const setCookie: string | undefined = (res.rawResponse?.headers as any)?.['set-cookie'];
+      
+      if (setCookie && typeof setCookie === 'string') {
+        const match = /session_id=([^;]+)/.exec(setCookie);
+        if (match) {
+          this.sessionId = match[1];
+        }
+      } else if (Array.isArray(setCookie) && setCookie.length > 0) {
+        const match = /session_id=([^;]+)/.exec(setCookie[0]);
+        if (match) {
+          this.sessionId = match[1];
+        }
       }
-    }
-    return res;
+
+      return res;
   }
 
   async signup(userData: {
@@ -157,6 +168,10 @@ export class ApiService {
     confirm_password: string;
   }) {
     return this.post(API_ENDPOINTS.AUTH.SIGNUP, userData);
+  }
+
+  async verifyOtp(otp: string) {
+    return this.post('/web/signup/verify-otp', { otp });
   }
 
   async resetPassword(email: string) {

@@ -35,7 +35,12 @@ const dummyProfile = {
   }
 };
 
-export const ProfileScreen: React.FC = () => {
+interface ProfileScreenProps {
+  profileData?: any;
+  isLoading?: boolean;
+}
+
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileData, isLoading }) => {
   const [activeTab, setActiveTab] = useState('personal');
   const { signOut } = useAuth();
 
