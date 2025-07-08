@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # Odoo Backend
+  odoo:
+    image: odoo:18.0
+    depends_on:
+      - db
+    ports:
+      - "${ODOO_PORT:-8069}:8069"
+    volumes:
+      - ./odoo-18-docker-compose/addons:/mnt/extra-addons
+      - ./odoo-18-docker-compose/etc:/etc/odoo
+      - odoo_data:/var/lib/odoo
+    environment:
+      - HOST=db
+      - USER=${POSTGRES_USER:-odoo}
+      - PASSWORD=${POSTGRES_PASSWORD:-odoo}
+    restart: unless-stopped
+    networks:
+      - odoo_network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-odoo}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-odoo}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - odoo_network
+
+  # API Middleware
+  api:
+    build:
+      context: ./api-middleware
+      dockerfile: Dockerfile
+    ports:
+      - "${API_PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - ODOO_BASE_URL=http://odoo:8069
+      - ODOO_DATABASE=${ODOO_DATABASE:-p2p}
+      - ODOO_USERNAME=${ODOO_USERNAME:-admin}
+      - ODOO_PASSWORD=${ODOO_PASSWORD:-admin}
+      - CACHE_TTL=600
+      - DEBUG_MODE=false
+    depends_on:
+      - odoo
+    restart: unless-stopped
+    networks:
+      - odoo_network
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - odoo
+      - api
+    restart: unless-stopped
+    networks:
+      - odoo_network
+
+volumes:
+  postgres_data:
+    driver: local
+  odoo_data:
+    driver: local
+
+networks:
+  odoo_network:
+    driver: bridge 

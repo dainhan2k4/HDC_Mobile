@@ -7,8 +7,9 @@ const ENVIRONMENTS = {
   ODOO_DIRECT: 'http://localhost:11018', // Fixed to localhost instead of ngrok
   
   // API Middleware (new approach - recommended)
-  MIDDLEWARE_LOCAL: 'http://192.168.50.104:3001/api/v1',
-  MIDDLEWARE_PRODUCTION: 'https://ff08e2fb94f3.ngrok-free.app/api/v1',
+  // ipconfig | findstr IPv4
+  MIDDLEWARE_LOCAL: 'http://192.168.50.104:3001/api/v1', 
+  MIDDLEWARE_PRODUCTION: '',
 };
 
 // Choose environment - change this to switch between direct Odoo vs middleware
@@ -31,7 +32,7 @@ export const API_CONFIG = {
   HEADERS: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'ngrok-skip-browser-warning': 'true', // For ngrok usage
+    'ngrok-skip-browser-warning': 'true', 
   },
 };
 
