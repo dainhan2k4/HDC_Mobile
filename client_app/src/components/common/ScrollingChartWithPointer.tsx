@@ -2,121 +2,117 @@ import React from 'react';
 import {View, Text} from 'react-native';
 import {LineChart, ruleTypes} from 'react-native-gifted-charts';
 
-const ScrollingChartWithPointer = () => {
-  const ptData = [
-    {value: 160, date: '1 Apr 2022'},
-    {value: 180, date: '2 Apr 2022'},
-    {value: 190, date: '3 Apr 2022'},
-    {value: 180, date: '4 Apr 2022'},
-    {value: 140, date: '5 Apr 2022'},
-    {value: 145, date: '6 Apr 2022'},
-    {value: 160, date: '7 Apr 2022'},
-    {value: 200, date: '8 Apr 2022'},
+type TimeRange = '1M' | '3M' | '6M' | '1Y';
 
-    {value: 220, date: '9 Apr 2022'},
-    {
-      value: 240,
-      date: '10 Apr 2022',
-      label: '10 Apr',
-      labelTextStyle: {color: 'lightgray', width: 60},
-    },
-    {value: 280, date: '11 Apr 2022'},
-    {value: 260, date: '12 Apr 2022'},
-    {value: 340, date: '13 Apr 2022'},
-    {value: 385, date: '14 Apr 2022'},
-    {value: 280, date: '15 Apr 2022'},
-    {value: 390, date: '16 Apr 2022'},
+interface ScrollingChartWithPointerProps {
+  timeRange?: TimeRange;
+}
 
-    {value: 370, date: '17 Apr 2022'},
-    {value: 285, date: '18 Apr 2022'},
-    {value: 295, date: '19 Apr 2022'},
-    {
-      value: 300,
-      date: '20 Apr 2022',
-      label: '20 Apr',
-      labelTextStyle: {color: 'lightgray', width: 60},
-    },
-    {value: 280, date: '21 Apr 2022'},
-    {value: 295, date: '22 Apr 2022'},
-    {value: 260, date: '23 Apr 2022'},
-    {value: 255, date: '24 Apr 2022'},
+const ScrollingChartWithPointer: React.FC<ScrollingChartWithPointerProps> = ({ 
+  timeRange = '1M' 
+}) => {
+  // Data tương tự như trong Odoo fund_widget.js
+  const getNavDataByRange = (range: TimeRange) => {
+    const navDataByRange = {
+      '1M': {
+        labels: ['01-06', '03-06', '05-06', '07-06', '09-06', '11-06', '13-06', '15-06', '18-06', '22-06'],
+        values: [16500, 16800, 16200, 17000, 16000, 15800, 17200, 15600, 18500, 19678]
+      },
+      '3M': {
+        labels: ['01-04', '08-04', '15-04', '22-04', '29-04', '06-05', '13-05', '20-05', '01-06', '22-06'],
+        values: [19500, 18800, 19200, 18000, 17500, 18200, 17800, 17100, 18800, 20678]
+      },
+      '6M': {
+        labels: ['01-01', '15-01', '01-02', '15-02', '01-03', '15-03', '01-04', '01-05', '01-06', '22-06'],
+        values: [21000, 20000, 19000, 19800, 18000, 18500, 17500, 16000, 22500, 21678]
+      },
+      '1Y': {
+        labels: ['06-2024', '08-2024', '10-2024', '12-2024', '01-2025', '02-2025', '03-2025', '04-2025', '05-2025', '06-2025'],
+        values: [28000, 25000, 26500, 23000, 22500, 21000, 20500, 19000, 17000, 15678]
+      }
+    };
+    return navDataByRange[range];
+  };
 
-    {value: 190, date: '25 Apr 2022'},
-    {value: 220, date: '26 Apr 2022'},
-    {value: 205, date: '27 Apr 2022'},
-    {value: 230, date: '28 Apr 2022'},
-    {value: 210, date: '29 Apr 2022'},
-    {
-      value: 200,
-      date: '30 Apr 2022',
-      label: '30 Apr',
-      labelTextStyle: {color: 'lightgray', width: 60},
-    },
-    {value: 240, date: '1 May 2022'},
-    {value: 250, date: '2 May 2022'},
-    {value: 280, date: '3 May 2022'},
-    {value: 250, date: '4 May 2022'},
-    {value: 210, date: '5 May 2022'},
-  ];
+  const chartData = getNavDataByRange(timeRange);
+  
+  // Convert to LineChart format
+  const ptData = chartData.labels.map((label, index) => ({
+    value: chartData.values[index] / 1000, // Convert to thousands for better display
+    date: label,
+    label: index % 3 === 0 ? label : undefined, // Show every third label
+    labelTextStyle: {color: '#6C757D', width: 50, fontSize: 10},
+  }));
   return (
     <View
       style={{
-        paddingVertical: 100,
-        paddingLeft: 20,
-        backgroundColor: '#1C1C1C',
+        paddingVertical: 15,
+        paddingHorizontal: 5,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 8,
+        marginTop: 10,
+        alignItems: 'center',
       }}>
+      <Text style={{
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#212529',
+        marginBottom: 10,
+        textAlign: 'center'
+      }}>
+        NAV/Unit ({timeRange === '1M' ? '1 Tháng' : timeRange === '3M' ? '3 Tháng' : timeRange === '6M' ? '6 Tháng' : '1 Năm'})
+      </Text>
       <LineChart
         areaChart
         
         data={ptData}
         rotateLabel
-        width={300}
+        width={320}
         hideDataPoints={false}
-        spacing={10}
-        color="#00ff83"
-        thickness={2}
-        startFillColor="rgba(20,105,81,0.3)"
-        endFillColor="rgba(20,85,81,0.01)"
-        startOpacity={0.9}
-        endOpacity={0.2}
+        spacing={25}
+        color="#2B4BFF"
+        thickness={3}
+        startFillColor="rgba(43,75,255,0.2)"
+        endFillColor="rgba(43,75,255,0.05)"
+        startOpacity={0.8}
+        endOpacity={0.1}
         initialSpacing={0}
-        noOfSections={6}
-        stepHeight={50}
-        height={300}
-        maxValue={600}
-        yAxisColor="white"
+        noOfSections={5}
+        stepHeight={40}
+        height={250}
+        maxValue={Math.max(...ptData.map(d => d.value)) + 5}
+        yAxisColor="transparent"
         yAxisThickness={0}
         rulesType={ruleTypes.SOLID}
-        rulesColor="gray"
-        yAxisTextStyle={{color: 'gray'}}
-        yAxisLabelPrefix="hello"
-        yAxisTextNumberOfLines={2}
-        // yAxisLabelWidth={40}
-        // yAxisSide='right'
-        xAxisColor="lightgray"
-        dataPointsColor="#00ff83"
-        dataPointsRadius={3}
+        rulesColor="#E9ECEF"
+        yAxisTextStyle={{color: '#6C757D'}}
+        yAxisLabelPrefix=""
+        yAxisLabelSuffix="k₫"
+        yAxisTextNumberOfLines={1}
+        xAxisColor="#E9ECEF"
+        dataPointsColor="#2B4BFF"
+        dataPointsRadius={4}
         pointerConfig={{
           pointerStripUptoDataPoint: true,
-          pointerStripColor: 'lightgray',
+          pointerStripColor: '#2B4BFF',
           pointerStripWidth: 2,
-          pointerColor: 'lightgray',
+          pointerColor: '#2B4BFF',
           
           radius: 6,
-          pointerLabelWidth: 100,
-          pointerLabelHeight: 90,
-          shiftPointerLabelY: -100,
+          pointerLabelWidth: 120,
+          pointerLabelHeight: 20,
+          shiftPointerLabelY: 0,
           pointerLabelComponent: (items: any) => {
             return (
-              <View style={{paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#000', borderRadius: 12}}>
+              <View style={{paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#2B4BFF', borderRadius: 8}}>
                 <Text style={{color: '#fff', fontSize: 12, fontWeight: '600'}}>{items[0].date}</Text>
               </View>
             );
           },
           pointerComponent: (item: any) => {
             return (
-              <View style={{paddingHorizontal: 10, paddingVertical: 4, backgroundColor: '#fff', borderRadius: 12}}>
-                <Text style={{fontWeight: 'bold'}}>${item.value}</Text>
+              <View style={{paddingHorizontal: 10, paddingVertical: 4, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#2B4BFF'}}>
+                <Text style={{fontWeight: 'bold', color: '#2B4BFF'}}>{(item.value * 1000).toLocaleString('vi-VN')}₫</Text>
               </View>
             );
           },
@@ -127,3 +123,4 @@ const ScrollingChartWithPointer = () => {
 };
 
 export default ScrollingChartWithPointer;
+export type { TimeRange, ScrollingChartWithPointerProps };

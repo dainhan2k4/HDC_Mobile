@@ -7,8 +7,8 @@ import { View, ActivityIndicator } from 'react-native';
 
 // Import screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
-import { FundListContainer } from '../screens/fund/FundListContainer';
-import { PortfolioOverviewContainer } from '../screens/overview/PortfolioOverviewContainer';
+import { PortfolioScreen } from '../screens/PortfolioScreen';
+import { FundScreen } from '../screens/FundScreen';
 
 import { SignupScreen } from '../screens/auth/SignupScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
@@ -61,8 +61,8 @@ const FundStack = createNativeStackNavigator<FundStackParamList>();
 
 // Cast components that expect props to a generic ComponentType for navigation
 const LoginScreenComponent = LoginScreen as unknown as React.ComponentType<any>;
-const FundListContainerComponent = FundListContainer as unknown as React.ComponentType<any>;
-const PortfolioOverviewContainerComponent = PortfolioOverviewContainer as unknown as React.ComponentType<any>;
+const PortfolioScreenComponent = PortfolioScreen as unknown as React.ComponentType<any>;
+const FundScreenComponent = FundScreen as unknown as React.ComponentType<any>;
 const FundDetailContainerComponent = FundDetailContainer as unknown as React.ComponentType<any>;
 const FundBuyScreenComponent = FundBuyScreen as unknown as React.ComponentType<any>;
 const FundSellScreenComponent = FundSellScreen as unknown as React.ComponentType<any>;
@@ -210,7 +210,7 @@ const dummyPortfolio: PortfolioOverview = {
   comparisons: [],
 };
 // Cast
-const PortfolioTabComponent = PortfolioOverviewContainerComponent as unknown as React.ComponentType<any>;
+const PortfolioTabComponent = PortfolioScreenComponent as unknown as React.ComponentType<any>;
 
 // Auth Navigator
 const AuthNavigator = () => {
@@ -231,7 +231,7 @@ const FundStackNavigator = () => {
         headerShown: false,
       }}
     >
-      <FundStack.Screen name="FundList" component={FundListContainerComponent} />
+      <FundStack.Screen name="FundList" component={FundScreenComponent} />
       <FundStack.Screen name="FundDetail" component={FundDetailContainerComponent} />
       <FundStack.Screen name="FundBuy" component={FundBuyScreenComponent} />
       <FundStack.Screen name="FundSell" component={FundSellScreenComponent} />
@@ -250,7 +250,7 @@ const MainTabNavigator = () => {
           if (route.name === 'Portfolio') {
             iconName = focused ? 'pie-chart' : 'pie-chart-outline'; // Tổng quan: biểu đồ tròn
           } else if (route.name === 'Fund_widget') {
-            iconName = focused ? 'bar-chart' : 'bar-chart-outline'; // Sản phẩm đầu tư: biểu đồ cột
+            iconName = focused ? 'bar-chart' : 'bar-chart-outline'; // Sản phẩm đầu tư: biểu đồ
           } else if (route.name === 'transaction_management') {
             iconName = focused ? 'swap-horizontal' : 'swap-horizontal-outline'; // Giao dịch: mũi tên chuyển đổi
           } else if (route.name === 'assetmanagement') {
@@ -281,7 +281,7 @@ const MainTabNavigator = () => {
       />
       <MainTab.Screen 
         name="Fund_widget" 
-        component={FundStackNavigator}
+        component={FundScreenComponent}
         options={{ title: 'Sản phẩm đầu tư' }}
       />
       <MainTab.Screen 

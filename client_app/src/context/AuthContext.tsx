@@ -65,44 +65,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data: response, sessionId: newSessionId } = await apiLogin(email, password);
+      console.log('🔐 [AuthContext] Starting login process...');
+      const loginResponse = await apiService.login(email, password);
+      console.log('🔐 [AuthContext] Login response:', loginResponse);
       
-      if (response.error) {
-        throw new Error(response.message || 'Login failed');
+      if (!loginResponse.success) {
+        throw new Error('Login failed');
       }
 
-      if (newSessionId) {
-        setSessionId(newSessionId);
-        // Set session ID in ApiService for future API calls
-        apiService.setSessionId(newSessionId);
-        // Cast the user data to the specific type
-        const userData = response.data as { result: OdooLoginResult };
-        setUser(userData.result); 
-        await AsyncStorage.setItem('sessionId', newSessionId);
+      // Get session ID from ApiService
+      const authStatus = apiService.getAuthStatus();
+      console.log('🔐 [AuthContext] Auth status after login:', authStatus);
+      
+      if (authStatus.hasSessionId) {
+        const sessionId = (apiService as any).sessionId; // Access private property
+        console.log('✅ [AuthContext] Got session ID:', sessionId);
+        
+        setSessionId(sessionId);
+        setUser({ 
+          id: 1, 
+          email: email,
+          name: email,
+          db: loginResponse.data?.result?.db || 'odoo'
+        });
+        await AsyncStorage.setItem('sessionId', sessionId);
+        console.log('✅ [AuthContext] Login successful, session saved');
       } else {
-        // Try to get session ID from response headers
-        const rawResponse = response.rawResponse;
-        if (rawResponse && rawResponse.headers) {
-          const setCookieHeader = (rawResponse.headers as any)['set-cookie'];
-          if (setCookieHeader && typeof setCookieHeader === 'string') {
-            const match = setCookieHeader.match(/session_id=([^;]+)/);
-            if (match && match[1]) {
-              const extractedSessionId = match[1];
-              setSessionId(extractedSessionId);
-              apiService.setSessionId(extractedSessionId);
-              const userData = response.data as { result: OdooLoginResult };
-              setUser(userData.result);
-              await AsyncStorage.setItem('sessionId', extractedSessionId);
-              return;
-            }
-          }
-        }
         throw new Error('Could not retrieve session ID');
       }
-    } catch (error) {
-      // Re-throw the error to be caught by the calling component (e.g., LoginScreen)
-      console.error('Sign in failed', error);
-      throw error;
+    } catch (error: any) {
+      console.error('❌ [AuthContext] Sign in failed:', error);
+      throw new Error(error.message || 'Đăng nhập thất bại. Vui lòng kiểm tra thông tin đăng nhập.');
     }
   };
 

@@ -1,12 +1,10 @@
-// Auth Components
-export { LoginScreen } from './auth/LoginScreen';
-
-// Fund Components
-export { FundListScreen } from './fund/FundListScreen';
-
-// Portfolio Components
-export { PortfolioOverviewScreen } from '../screens/overview/PortfolioOverviewScreen';
-
 // Common Components
-export { FundCard } from './common/FundCard';
 export { PieChartCustom } from './common/PieChartCustom'; 
+export { default as ScrollingChartWithPointer } from './common/ScrollingChartWithPointer';
+export { TransactionList } from './common/TransactionList';
+
+// Domain-specific Components
+export * from './fund';
+
+// Legacy exports (for gradual migration) 
+export { FundCard as LegacyFundCard } from './common/FundCard'; 

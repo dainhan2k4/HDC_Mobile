@@ -56,38 +56,56 @@ export interface ApiEndpoints {
   AUTH: {
     LOGIN: string;
     SIGNUP: string;
+    VERIFY_OTP: string;
     RESET_PASSWORD: string;
     REFRESH_TOKEN: string;
   };
   FUNDS: {
     LIST: string;
     DETAIL: (id: number) => string;
-    BUY: string;
-    SELL: string;
-    DATA: string;
-    DATA_DETAIL: (id: number) => string;
+    WIDGET: string;
+    COMPARE: string;
+    BUY_PAGE: string;
+    SELL_PAGE: string;
+    USER_DATA: string;
   };
   INVESTMENTS: {
     LIST: string;
+    CREATE: string;
+    SELL: string;
     BY_FUND: (fundId: number) => string;
   };
   PORTFOLIO: {
+    DASHBOARD: string;
+    WIDGET: string;
     OVERVIEW: string;
-    INVESTMENTS: string;
-  };
-  TRANSACTIONS: {
-    LIST: string;
-    PENDING: string;
-    DETAIL: (id: number) => string;
   };
   PROFILE: {
-    INFO: string;
-    ADDRESS: string;
-    BANK_ACCOUNTS: string;
-    VERIFY: string;
+    PERSONAL_DATA: string;
+    PERSONAL_SAVE: string;
+    UPLOAD_ID: string;
+    SAVE_ALL: string;
+    BANK_DATA: string;
+    BANK_SAVE: string;
+    ADDRESS_DATA: string;
+    ADDRESS_SAVE: string;
+  };
+  TRANSACTIONS: {
+    PERIODIC: string;
+    ORDER: string;
+    PENDING: string;
+    DETAIL: (id: number) => string;
   };
   ACCOUNT: {
     BALANCE: string;
     BALANCE_HISTORY: string;
+  };
+  REFERENCE: {
+    COUNTRIES: string;
+    CURRENCIES: string;
+    STATUS_INFO: string;
+  };
+  ASSET: {
+    MANAGEMENT: string;
   };
 } 
