@@ -9,12 +9,12 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { Fund, Investment } from '../types/fund';
-import { API_CONFIG } from '../config/apiConfig';
-import { middlewareApiService } from '../services/MiddlewareApiService';
-import { apiService } from '../config/apiService';
-import { useAuth } from '../context/AuthContext';
-import { FundListItem, FundDetails, TimeRangeSelector } from '../components/fund';
+import { Fund, Investment } from '../../types/fund';
+import { API_CONFIG } from '../../config/apiConfig';
+import { middlewareApiService } from '../../services/MiddlewareApiService';
+import { apiService } from '../../config/apiService';
+import { useAuth } from '../../context/AuthContext';
+import { FundListItem, FundDetails, TimeRangeSelector } from '../../components/fund';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth >= 768;
@@ -30,109 +30,7 @@ export const FundScreen: React.FC = () => {
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('1M');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Demo data matching the web interface
-  const demoFunds: Fund[] = [
-    {
-      id: 1,
-      ticker: 'VCBGROWTH',
-      name: 'VCB Growth Fund',
-      description: 'Quỹ tăng trưởng VCB - Đầu tư vào các cổ phiếu tăng trưởng cao với tiềm năng sinh lời dài hạn',
-      current_ytd: 12.5,
-      current_nav: 23000,
-      investment_type: 'equity',
-      is_shariah: false,
-      status: 'active',
-      launch_price: 10000,
-      currency_id: 1,
-      total_units: 2000000,
-      total_investment: 46000000000,
-      current_value: 48500000000,
-      profit_loss: 2500000000,
-      profit_loss_percentage: 5.4,
-      flex_sip_percentage: 0,
-      color: '#2B4BFF',
-      previous_nav: 22500,
-      flex_units: 0,
-      sip_units: 0,
-      last_update: '2024-06-01',
-      investment_count: 1500,
-    },
-    {
-      id: 2,
-      ticker: 'FPTINCOME',
-      name: 'FPT Income Fund', 
-      description: 'Quỹ thu nhập FPT - Tập trung vào các khoản đầu tư mang lại thu nhập ổn định và bền vững',
-      current_ytd: 8.2,
-      current_nav: 18000,
-      investment_type: 'fixed_income',
-      is_shariah: false,
-      status: 'active',
-      launch_price: 10000,
-      currency_id: 1,
-      total_units: 1800000,
-      total_investment: 32400000000,
-      current_value: 33000000000,
-      profit_loss: 600000000,
-      profit_loss_percentage: 1.9,
-      flex_sip_percentage: 0,
-      color: '#28A745',
-      previous_nav: 17800,
-      flex_units: 0,
-      sip_units: 0,
-      last_update: '2024-06-01',
-      investment_count: 1200,
-    },
-    {
-      id: 3,
-      ticker: 'VCBBALANCED',
-      name: 'VCB Balanced Fund',
-      description: 'Quỹ cân bằng VCB - Kết hợp giữa cổ phiếu và trái phiếu để tối ưu hóa rủi ro và lợi nhuận',
-      current_ytd: 10.1,
-      current_nav: 22500,
-      investment_type: 'balanced',
-      is_shariah: false,
-      status: 'active',
-      launch_price: 10000,
-      currency_id: 1,
-      total_units: 1500000,
-      total_investment: 33750000000,
-      current_value: 35000000000,
-      profit_loss: 1250000000,
-      profit_loss_percentage: 3.7,
-      flex_sip_percentage: 0,
-      color: '#33FF57',
-      previous_nav: 21800,
-      flex_units: 0,
-      sip_units: 0,
-      last_update: '2024-06-01',
-      investment_count: 1100,
-    },
-    {
-      id: 4,
-      ticker: 'VCBSHARIAH',
-      name: 'VCB Shariah Equity Fund',
-      description: 'Quỹ cổ phiếu Shariah VCB - Đầu tư tuân thủ các nguyên tắc Hồi giáo với tiềm năng tăng trưởng cao',
-      current_ytd: 15.8,
-      current_nav: 26000,
-      investment_type: 'equity',
-      is_shariah: true,
-      status: 'active',
-      launch_price: 10000,
-      currency_id: 1,
-      total_units: 1200000,
-      total_investment: 31200000000,
-      current_value: 32500000000,
-      profit_loss: 1300000000,
-      profit_loss_percentage: 4.2,
-      flex_sip_percentage: 0,
-      color: '#FFC107',
-      previous_nav: 25200,
-      flex_units: 0,
-      sip_units: 0,
-      last_update: '2024-06-01',
-      investment_count: 950,
-    },
-  ];
+  
 
   // Merge funds with user investment data
   const mergeFundsWithInvestments = (funds: Fund[], investments: Investment[]) => {
@@ -215,17 +113,12 @@ export const FundScreen: React.FC = () => {
         console.error('❌ [Fund] Direct API failed:', directError);
       }
 
-      // Fallback to mock data
-      console.log('⚠️ [Fund] No API response available, using mock data');
-      setFunds(demoFunds);
+      
       
       // Still load investments for mock data too
       await loadInvestments();
       
-      // Auto-select first fund if none selected
-      if (demoFunds.length > 0 && !selectedFund) {
-        setSelectedFund(demoFunds[0]);
-      }
+     
 
     } catch (error) {
       console.error('❌ [Fund] Critical error loading funds:', error);
@@ -446,6 +339,7 @@ export const FundScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
+    marginTop: 10,
     flex: 1,
     backgroundColor: '#F8F9FA',
   },

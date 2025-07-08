@@ -7,8 +7,8 @@ import { View, ActivityIndicator } from 'react-native';
 
 // Import screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
-import { PortfolioScreen } from '../screens/PortfolioScreen';
-import { FundScreen } from '../screens/FundScreen';
+import { PortfolioScreen } from '../screens/overview/PortfolioScreen';
+import { FundScreen } from '../screens/fund/FundScreen';
 
 import { SignupScreen } from '../screens/auth/SignupScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';

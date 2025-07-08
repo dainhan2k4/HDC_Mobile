@@ -1,6 +1,6 @@
 // Main Screens
-export { PortfolioScreen } from './PortfolioScreen';
-export { FundScreen } from './FundScreen';
+export { PortfolioScreen } from './overview/PortfolioScreen';
+export { FundScreen } from './fund/FundScreen';
 
 export { LoginScreen } from './auth/LoginScreen';
 export { SignupScreen } from './auth/SignupScreen';

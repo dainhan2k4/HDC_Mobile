@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
-import { PersonalInfo, BankInfo, AddressInfo } from '../types/profile';
-import { apiService } from '../config/apiService';
+import { useAuth } from '../../context/AuthContext';
+import { PersonalInfo, BankInfo, AddressInfo } from '../../types/profile';
+import { apiService } from '../../config/apiService';
 
 export const ProfileScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState('personal');
