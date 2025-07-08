@@ -8,6 +8,7 @@ const morgan = require('morgan');
 const config = require('./config/config');
 const portfolioRoutes = require('./routes/portfolioRoutes');
 const profileRoutes = require('./routes/profileRoutes');
+const transactionRoutes = require('./routes/transactionRoutes');
 
 const app = express();
 
@@ -71,6 +72,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use(`${config.server.apiPrefix}/portfolio`, portfolioRoutes);
 app.use(`${config.server.apiPrefix}/profile`, profileRoutes);
+app.use(`${config.server.apiPrefix}/transaction`, transactionRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -86,13 +88,18 @@ app.get('/', (req, res) => {
         investments: `${config.server.apiPrefix}/portfolio/investments`,
         funds: `${config.server.apiPrefix}/portfolio/funds`,
         performance: `${config.server.apiPrefix}/portfolio/performance`,
-        refresh: `${config.server.apiPrefix}/portfolio/refresh`
+        refresh: `${config.server.apiPrefix}/portfolio/refresh`,
+        clearCache: `${config.server.apiPrefix}/portfolio/clear-cache`
       },
       profile: {
         personal: `${config.server.apiPrefix}/profile/personal`,
         personalData: `${config.server.apiPrefix}/profile/data_personal_profile`,
         bankInfo: `${config.server.apiPrefix}/profile/data_bank_info`,
         addressInfo: `${config.server.apiPrefix}/profile/data_address_info`
+      },
+      transaction: {
+        buy: `${config.server.apiPrefix}/transaction/buy`,
+        sell: `${config.server.apiPrefix}/transaction/sell`
       }
     }
   });
@@ -112,11 +119,15 @@ app.use('*', (req, res) => {
       `${config.server.apiPrefix}/portfolio/funds`,
       `${config.server.apiPrefix}/portfolio/performance`,
       `${config.server.apiPrefix}/portfolio/refresh`,
+      `${config.server.apiPrefix}/portfolio/clear-cache`,
       
       `${config.server.apiPrefix}/profile/personal`,
       `${config.server.apiPrefix}/profile/data_personal_profile`,
       `${config.server.apiPrefix}/profile/data_bank_info`,
-      `${config.server.apiPrefix}/profile/data_address_info`
+      `${config.server.apiPrefix}/profile/data_address_info`,
+      
+      `${config.server.apiPrefix}/transaction/buy`,
+      `${config.server.apiPrefix}/transaction/sell`
     ]
   });
 });

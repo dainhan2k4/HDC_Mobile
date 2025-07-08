@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Fund } from '../types/fund';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Fund, Investment } from '../types/fund';
 import { API_CONFIG } from '../config/apiConfig';
 import { middlewareApiService } from '../services/MiddlewareApiService';
 import { apiService } from '../config/apiService';
@@ -25,6 +25,7 @@ export const FundScreen: React.FC = () => {
   const navigation = useNavigation();
   const { sessionId, user } = useAuth();
   const [funds, setFunds] = useState<Fund[]>([]);
+  const [investments, setInvestments] = useState<Investment[]>([]);
   const [selectedFund, setSelectedFund] = useState<Fund | null>(null);
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('1M');
   const [isLoading, setIsLoading] = useState(true);
@@ -133,48 +134,96 @@ export const FundScreen: React.FC = () => {
     },
   ];
 
+  // Merge funds with user investment data
+  const mergeFundsWithInvestments = (funds: Fund[], investments: Investment[]) => {
+    return funds.map(fund => {
+      const userInvestment = investments.find(inv => inv.fund_id === fund.id);
+      
+      if (userInvestment) {
+        // User has investment in this fund
+        const currentValue = userInvestment.units * fund.current_nav;
+        const profitLoss = currentValue - userInvestment.amount;
+        const profitLossPercentage = userInvestment.amount > 0 ? (profitLoss / userInvestment.amount) * 100 : 0;
+        
+        return {
+          ...fund,
+          total_units: userInvestment.units,
+          total_investment: userInvestment.amount,
+          current_value: currentValue,
+          profit_loss: profitLoss,
+          profit_loss_percentage: profitLossPercentage,
+        };
+      }
+      
+      // User has no investment in this fund
+      return {
+        ...fund,
+        total_units: 0,
+        total_investment: 0,
+        current_value: 0,
+        profit_loss: 0,
+        profit_loss_percentage: 0,
+      };
+    });
+  };
+
   const loadFunds = async () => {
     try {
       setIsLoading(true);
-      console.log('🚀 [Fund] Starting to load fund data...');
+      console.log('🔄 [Fund] Loading funds...');
       
       if (API_CONFIG.USE_MIDDLEWARE) {
-        console.log('🔄 [Fund] Using middleware API...');
         try {
           const response = await middlewareApiService.getFunds();
           if (response && Array.isArray(response)) {
             setFunds(response);
+            console.log('✅ [Fund] Middleware funds loaded successfully:', response.length);
+            
+            // Load investments to merge with fund data
+            await loadInvestments();
+            
+            // Auto-select first fund if none selected
             if (response.length > 0 && !selectedFund) {
               setSelectedFund(response[0]);
             }
-            console.log('✅ [Fund] Middleware data loaded successfully');
             return;
           }
         } catch (middlewareError) {
-          console.error('❌ [Fund] Middleware API failed:', middlewareError);
-          console.log('🔄 [Fund] Falling back to direct API...');
+          console.error('❌ [Fund] Middleware funds failed:', middlewareError);
         }
       }
 
       try {
         const response = await apiService.getFundData();
+        console.log('🔄 [Fund] Direct API response:', response);
+        
         const fundData = response?.data as any;
-        if (Array.isArray(fundData) && fundData.length > 0) {
+        if (Array.isArray(fundData)) {
           setFunds(fundData);
-          if (!selectedFund) {
+          console.log('✅ [Fund] Direct API funds loaded successfully:', fundData.length);
+          
+          // Load investments to merge with fund data
+          await loadInvestments();
+          
+          // Auto-select first fund if none selected
+          if (fundData.length > 0 && !selectedFund) {
             setSelectedFund(fundData[0]);
           }
-          console.log('✅ [Fund] Direct API data loaded successfully');
           return;
         }
-      } catch (error) {
-        console.error('❌ [Fund] Direct API failed:', error);
+      } catch (directError) {
+        console.error('❌ [Fund] Direct API failed:', directError);
       }
 
-      // Fallback to demo data
-      console.log('⚠️ [Fund] Using demo data for testing...');
+      // Fallback to mock data
+      console.log('⚠️ [Fund] No API response available, using mock data');
       setFunds(demoFunds);
-      if (!selectedFund) {
+      
+      // Still load investments for mock data too
+      await loadInvestments();
+      
+      // Auto-select first fund if none selected
+      if (demoFunds.length > 0 && !selectedFund) {
         setSelectedFund(demoFunds[0]);
       }
 
@@ -186,9 +235,73 @@ export const FundScreen: React.FC = () => {
     }
   };
 
+  const loadInvestments = async () => {
+    try {
+      console.log('🔄 [Fund] Loading user investments...');
+      
+      if (API_CONFIG.USE_MIDDLEWARE) {
+        try {
+          const response = await middlewareApiService.getLegacyPortfolioData();
+          if (response && response.investments) {
+            setInvestments(response.investments);
+            console.log('✅ [Fund] Middleware investments loaded successfully');
+            
+            // Merge with current funds
+            setFunds(currentFunds => mergeFundsWithInvestments(currentFunds, response.investments));
+            return;
+          }
+        } catch (middlewareError) {
+          console.error('❌ [Fund] Middleware investments failed:', middlewareError);
+        }
+      }
+
+      try {
+        const response = await apiService.getInvestments();
+        const investmentData = response?.data as any;
+        if (Array.isArray(investmentData)) {
+          const mappedInvestments = investmentData.map((record: any) => ({
+            id: record.id,
+            fund_id: record.fund_id || record.id,
+            fund_name: record.fund_name || record.name || `Fund ${record.id}`,
+            fund_ticker: record.fund_ticker || record.ticker || `F${record.id}`,
+            units: record.units || 0,
+            amount: record.amount || 0,
+            current_nav: record.current_nav || 10000,
+            investment_type: record.investment_type || 'equity',
+          }));
+          setInvestments(mappedInvestments);
+          console.log('✅ [Fund] Direct API investments loaded successfully');
+          
+          // Merge with current funds
+          setFunds(currentFunds => mergeFundsWithInvestments(currentFunds, mappedInvestments));
+          return;
+        }
+      } catch (error) {
+        console.error('❌ [Fund] Direct API investments failed:', error);
+      }
+
+      console.log('⚠️ [Fund] No investment data available');
+      setInvestments([]);
+      
+      // Still merge with empty investments to reset fund data
+      setFunds(currentFunds => mergeFundsWithInvestments(currentFunds, []));
+      
+    } catch (error) {
+      console.error('❌ [Fund] Critical error loading investments:', error);
+    }
+  };
+
   useEffect(() => {
     loadFunds();
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🔍 [Fund] Screen focused, refreshing data...');
+      loadFunds();
+    }, [])
+  );
 
   const handleFundSelect = (fund: Fund) => {
     setSelectedFund(fund);
@@ -200,13 +313,56 @@ export const FundScreen: React.FC = () => {
 
   const handleBuyFund = () => {
     if (selectedFund) {
-      Alert.alert('Mua quỹ', `Chức năng mua quỹ ${selectedFund.name} đang được phát triển.`);
+      console.log(`🟢 [Fund] Navigate to buy fund ${selectedFund.id}: ${selectedFund.name}`);
+      try {
+        (navigation as any).navigate('FundBuy', {
+          fundId: selectedFund.id,
+          fundName: selectedFund.name,
+          currentNav: selectedFund.current_nav
+        });
+      } catch (error) {
+        console.error('Navigation error:', error);
+        Alert.alert('Thông báo', 'Không thể mở màn hình mua quỹ');
+      }
     }
   };
 
-  const handleSellFund = () => {
+  const handleSellFund = async () => {
     if (selectedFund) {
-      Alert.alert('Bán quỹ', `Chức năng bán quỹ ${selectedFund.name} đang được phát triển.`);
+      console.log(`🔴 [Fund] Navigate to sell fund ${selectedFund.id}: ${selectedFund.name}`);
+      
+      // Refresh investment data before validating sell
+      console.log('🔄 [Fund] Refreshing investment data before sell validation...');
+      await loadInvestments();
+      
+      // Get user's current holdings for this fund
+      const userInvestment = investments.find(inv => inv.fund_id === selectedFund.id);
+      console.log(`🔍 [Fund] User investment for fund ${selectedFund.id}:`, userInvestment);
+      console.log(`🔍 [Fund] All current investments:`, investments.map(inv => ({
+        fund_id: inv.fund_id,
+        fund_name: inv.fund_name,
+        units: inv.units
+      })));
+      
+      if (!userInvestment || userInvestment.units <= 0) {
+        Alert.alert(
+          'Thông báo', 
+          `Bạn chưa có khoản đầu tư nào vào quỹ ${selectedFund.name}. Vui lòng mua quỹ trước khi bán.`
+        );
+        return;
+      }
+      
+      try {
+        (navigation as any).navigate('FundSell', {
+          fundId: selectedFund.id,
+          fundName: selectedFund.name,
+          currentUnits: userInvestment.units,
+          currentNav: selectedFund.current_nav
+        });
+      } catch (error) {
+        console.error('Navigation error:', error);
+        Alert.alert('Thông báo', 'Không thể mở màn hình bán quỹ');
+      }
     }
   };
 

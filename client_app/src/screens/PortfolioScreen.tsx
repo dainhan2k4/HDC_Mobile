@@ -9,7 +9,8 @@ import {
   Alert, 
   TouchableOpacity 
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { PortfolioOverview } from '../types/portfolio';
 import { Investment } from '../types/fund';
 import { API_CONFIG } from '../config/apiConfig';
@@ -213,6 +214,16 @@ export const PortfolioScreen: React.FC = () => {
     initializeData();
   }, [authLoading, sessionId, user]);
 
+  // Refresh portfolio when screen comes into focus (after buy/sell operations)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!authLoading && (sessionId || user)) {
+        console.log('🔍 [Portfolio] Screen focused, refreshing portfolio data...');
+        loadPortfolioData();
+      }
+    }, [authLoading, sessionId, user])
+  );
+
   const prepareChartData = () => {
     if (!investments || investments.length === 0) return [];
 
@@ -230,6 +241,16 @@ export const PortfolioScreen: React.FC = () => {
 
   const handleRefresh = async () => {
     await loadPortfolioData();
+  };
+
+  const handleNavigateToFunds = () => {
+    console.log('📈 [Portfolio] Navigate to Funds screen for buy/sell operations');
+    try {
+      (navigation as any).navigate('Fund_widget');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Thông báo', 'Không thể mở màn hình sản phẩm đầu tư');
+    }
   };
 
   if (authLoading || isLoading) {
@@ -311,7 +332,10 @@ export const PortfolioScreen: React.FC = () => {
 
       {/* Investment List */}
       <View style={styles.investmentCard}>
-        <Text style={styles.cardTitle}>Danh sách đầu tư</Text>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Danh sách đầu tư</Text>
+          <Text style={styles.cardSubtitle}>Để mua/bán quỹ, vui lòng truy cập tab &quot;Sản phẩm đầu tư&quot;</Text>
+        </View>
         {investments.map((investment) => (
           <View key={investment.id} style={styles.investmentItem}>
             <View style={styles.investmentHeader}>
@@ -331,6 +355,21 @@ export const PortfolioScreen: React.FC = () => {
                 <Text style={styles.investmentLabel}>NAV hiện tại:</Text>
                 <Text style={styles.investmentValue}>{formatVND(investment.current_nav)}</Text>
               </View>
+              <View style={styles.investmentRow}>
+                <Text style={styles.investmentLabel}>Giá trị hiện tại:</Text>
+                <Text style={styles.investmentValue}>{formatVND(investment.current_nav * investment.units)}</Text>
+              </View>
+            </View>
+            
+            {/* Navigate to Funds for Buy/Sell */}
+            <View style={styles.actionButtons}>
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.fundsButton]}
+                onPress={handleNavigateToFunds}
+              >
+                <Ionicons name="trending-up-outline" size={16} color="#FFFFFF" />
+                <Text style={styles.actionButtonText}>Mua/Bán</Text>
+              </TouchableOpacity>
             </View>
           </View>
         ))}
@@ -467,11 +506,20 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  cardHeader: {
+    marginBottom: 16,
+  },
   cardTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#212529',
-    marginBottom: 16,
+    marginBottom: 4,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: '#6C757D',
+    fontStyle: 'italic',
+    marginBottom: 12,
   },
   investmentItem: {
     borderBottomWidth: 1,
@@ -507,5 +555,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#212529',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  fundsButton: {
+    backgroundColor: '#2B4BFF',
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
 }); 

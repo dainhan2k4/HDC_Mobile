@@ -132,3 +132,70 @@ export const getPortfolioOverview = async () => {
   }
 };
 
+export const fundApi = {
+  // Get all funds
+  getFunds: async (): Promise<Fund[]> => {
+    const response = await apiService.get('/portfolio/funds');
+    return response.data as Fund[];
+  },
+
+  // Get fund details by ID
+  getFundById: async (id: number): Promise<Fund> => {
+    const funds = await fundApi.getFunds();
+    const fund = funds.find(f => f.id === id);
+    if (!fund) {
+      throw new Error('Fund not found');
+    }
+    return fund;
+  },
+
+  // Clear cache to force fresh data
+  clearCache: async () => {
+    try {
+      await apiService.post('/portfolio/clear-cache', {});
+      console.log('✅ [FundApi] Cache cleared successfully');
+      return true;
+    } catch (error: any) {
+      console.error('❌ [FundApi] Failed to clear cache:', error);
+      return false;
+    }
+  },
+
+  // Buy fund transaction
+  buyFund: async (fundId: number, amount: number, units: number) => {
+    try {
+      const response = await apiService.post('/transaction/buy', {
+        fundId,
+        amount, 
+        units
+      });
+      
+      // Clear cache after successful transaction
+      await fundApi.clearCache();
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Buy fund error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to buy fund');
+    }
+  },
+
+  // Sell fund transaction
+  sellFund: async (fundId: number, units: number) => {
+    try {
+      const response = await apiService.post('/transaction/sell', {
+        fundId,
+        units
+      });
+      
+      // Clear cache after successful transaction
+      await fundApi.clearCache();
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Sell fund error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to sell fund');
+    }
+  }
+};
+

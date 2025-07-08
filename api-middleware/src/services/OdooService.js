@@ -328,6 +328,255 @@ class OdooService {
     }
   }
 
+  // Buy fund transaction
+  async buyFund(fundId, amount, units) {
+    try {
+      console.log(`🔄 [OdooService] Creating buy transaction for fund ${fundId}:`, { amount, units });
+      
+      // Ensure valid session and get user ID
+      const session = await this.getValidSession();
+      const userId = session.uid || 2; // Use authenticated user ID
+
+      const response = await this.client.post('/web/dataset/call_kw', {
+        jsonrpc: "2.0",
+        method: "call",
+        params: {
+          model: "portfolio.transaction",
+          method: "create_transaction",
+          args: [
+            userId,
+            fundId,
+            'purchase',
+            units,
+            amount
+          ],
+          kwargs: {}
+        }
+      });
+
+      console.log('✅ [OdooService] Buy transaction created:', response.data);
+      
+      // Check for Odoo errors in response
+      if (response.data.error) {
+        console.error('❌ [OdooService] Odoo returned error:', response.data.error);
+        throw new Error(response.data.error.message || 'Odoo backend error');
+      }
+      
+      // Clear all portfolio-related cache to force refresh
+      this.dataCache.del('investments_data');
+      this.dataCache.del('portfolio_data');
+      this.dataCache.del('overview_data');
+      
+      return response.data.result;
+    } catch (error) {
+      console.error('❌ [OdooService] Failed to create buy transaction:', error.message);
+      console.error('❌ [OdooService] Error details:', error.response?.data || error);
+      throw error;
+    }
+  }
+
+  // Sell fund transaction
+  async sellFund(fundId, units) {
+    try {
+      console.log(`🔄 [OdooService] Creating sell transaction for fund ${fundId}:`, { units });
+      
+      // Ensure valid session and get user ID
+      const session = await this.getValidSession();
+      const userId = session.uid || 2; // Use authenticated user ID
+
+      // Calculate amount based on current NAV
+      const funds = await this.getFunds();
+      const fund = funds.find(f => f.id === fundId);
+      const amount = fund ? units * fund.current_nav : 0;
+
+      const response = await this.client.post('/web/dataset/call_kw', {
+        jsonrpc: "2.0",
+        method: "call",
+        params: {
+          model: "portfolio.transaction",
+          method: "create_transaction",
+          args: [
+            userId,
+            fundId,
+            'sale',
+            units,
+            amount
+          ],
+          kwargs: {}
+        }
+      });
+
+      console.log('✅ [OdooService] Sell transaction created:', response.data);
+      
+      // Check for Odoo errors in response
+      if (response.data.error) {
+        console.error('❌ [OdooService] Odoo returned error:', response.data.error);
+        throw new Error(response.data.error.message || 'Odoo backend error');
+      }
+      
+      // Clear all portfolio-related cache to force refresh
+      this.dataCache.del('investments_data');
+      this.dataCache.del('portfolio_data');
+      this.dataCache.del('overview_data');
+      
+      return response.data.result;
+    } catch (error) {
+      console.error('❌ [OdooService] Failed to create sell transaction:', error.message);
+      console.error('❌ [OdooService] Error details:', error.response?.data || error);
+      throw error;
+    }
+  }
+
+  // Alternative buy fund using standard create method
+  async buyFundDirect(fundId, amount, units) {
+    try {
+      console.log(`🔄 [OdooService] Creating buy transaction using direct create for fund ${fundId}:`, { amount, units });
+      
+      // Ensure valid session and get user ID
+      const session = await this.getValidSession();
+      const userId = session.uid || 2; // Use authenticated user ID
+
+      const response = await this.client.post('/web/dataset/call_kw', {
+        jsonrpc: "2.0",
+        method: "call",
+        params: {
+          model: "portfolio.transaction",
+          method: "create",
+          args: [{
+            user_id: userId,
+            fund_id: fundId,
+            transaction_type: 'purchase',
+            units: units,
+            amount: amount,
+            status: 'pending',
+            investment_type: 'fund_certificate',
+            transaction_date: new Date().toISOString().split('T')[0]
+          }],
+          kwargs: {}
+        }
+      });
+
+      console.log('✅ [OdooService] Direct buy transaction created:', response.data);
+
+      // Check for Odoo errors in response
+      if (response.data.error) {
+        console.error('❌ [OdooService] Odoo returned error:', response.data.error);
+        throw new Error(response.data.error.message || 'Odoo backend error');
+      }
+
+      // Complete the transaction to update investment portfolio
+      const transactionId = response.data.result;
+      console.log(`🔄 [OdooService] Completing transaction ${transactionId} to update portfolio...`);
+      
+      const completeResponse = await this.client.post('/web/dataset/call_kw', {
+        jsonrpc: "2.0",
+        method: "call",
+        params: {
+          model: "portfolio.transaction",
+          method: "action_complete",
+          args: [transactionId],
+          kwargs: {}
+        }
+      });
+
+      console.log('✅ [OdooService] Transaction completed:', completeResponse.data);
+      
+      // Clear all portfolio-related cache to force refresh
+      this.dataCache.del('investments_data');
+      this.dataCache.del('portfolio_data');
+      this.dataCache.del('overview_data');
+      
+      return transactionId;
+    } catch (error) {
+      console.error('❌ [OdooService] Failed to create direct buy transaction:', error.message);
+      console.error('❌ [OdooService] Error details:', error.response?.data || error);
+      throw error;
+    }
+  }
+
+  // Alternative sell fund using standard create method
+  async sellFundDirect(fundId, units) {
+    try {
+      console.log(`🔄 [OdooService] Creating sell transaction using direct create for fund ${fundId}:`, { units });
+      
+      // Ensure valid session and get user ID
+      const session = await this.getValidSession();
+      const userId = session.uid || 2; // Use authenticated user ID
+
+      // Debug: Check current investments before selling
+      console.log(`🔍 [OdooService] Checking current investments for user ${userId} before selling...`);
+      const currentInvestments = await this.getInvestments();
+      const userInvestment = currentInvestments.find(inv => inv.fund_id === fundId);
+      console.log(`🔍 [OdooService] User investment for fund ${fundId}:`, userInvestment);
+      
+      if (!userInvestment || userInvestment.units < units) {
+        const availableUnits = userInvestment ? userInvestment.units : 0;
+        console.warn(`⚠️ [OdooService] Insufficient units: User has ${availableUnits}, trying to sell ${units}`);
+      }
+
+      // Calculate amount based on current NAV
+      const funds = await this.getFunds();
+      const fund = funds.find(f => f.id === fundId);
+      const amount = fund ? units * fund.current_nav : 0;
+
+      const response = await this.client.post('/web/dataset/call_kw', {
+        jsonrpc: "2.0",
+        method: "call",
+        params: {
+          model: "portfolio.transaction",
+          method: "create",
+          args: [{
+            user_id: userId,
+            fund_id: fundId,
+            transaction_type: 'sale',
+            units: units,
+            amount: amount,
+            status: 'pending',
+            investment_type: 'fund_certificate',
+            transaction_date: new Date().toISOString().split('T')[0]
+          }],
+          kwargs: {}
+        }
+      });
+
+      console.log('✅ [OdooService] Direct sell transaction created:', response.data);
+
+      // Check for Odoo errors in response
+      if (response.data.error) {
+        console.error('❌ [OdooService] Odoo returned error:', response.data.error);
+        throw new Error(response.data.error.message || 'Odoo backend error');
+      }
+
+      // Complete the transaction to update investment portfolio
+      const transactionId = response.data.result;
+      console.log(`🔄 [OdooService] Completing sell transaction ${transactionId} to update portfolio...`);
+      
+      const completeResponse = await this.client.post('/web/dataset/call_kw', {
+        jsonrpc: "2.0",
+        method: "call",
+        params: {
+          model: "portfolio.transaction",
+          method: "action_complete",
+          args: [transactionId],
+          kwargs: {}
+        }
+      });
+
+      console.log('✅ [OdooService] Sell transaction completed:', completeResponse.data);
+      
+      // Clear all portfolio-related cache to force refresh
+      this.dataCache.del('investments_data');
+      this.dataCache.del('portfolio_data');
+      this.dataCache.del('overview_data');
+      
+      return transactionId;
+    } catch (error) {
+      console.error('❌ [OdooService] Failed to create direct sell transaction:', error.message);
+      console.error('❌ [OdooService] Error details:', error.response?.data || error);
+      throw error;
+    }
+  }
+
   /**
    * Clear all caches
    */
@@ -342,6 +591,32 @@ class OdooService {
   clearSession() {
     this.sessionCache.del('session_id');
     console.log('🔐 [OdooService] Session cleared');
+  }
+
+  // Test transaction method availability (for debugging)
+  async testTransactionMethods() {
+    try {
+      const session = await this.getValidSession();
+      
+      // Check model fields and methods
+      const response = await this.client.post('/web/dataset/call_kw', {
+        jsonrpc: "2.0",
+        method: "call",
+        params: {
+          model: "portfolio.transaction",
+          method: "fields_get",
+          args: [],
+          kwargs: {}
+        }
+      });
+
+      console.log('🔍 [OdooService] Transaction model fields:', Object.keys(response.data.result || {}));
+      
+      return response.data.result;
+    } catch (error) {
+      console.error('❌ [OdooService] Failed to get transaction fields:', error.response?.data || error.message);
+      return null;
+    }
   }
 }
 

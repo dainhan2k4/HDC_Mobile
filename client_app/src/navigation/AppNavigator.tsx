@@ -30,6 +30,8 @@ import { getInvestments } from '../api/fundApi';
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
+  FundBuy: { fundId: number; fundName: string; currentNav?: number };
+  FundSell: { fundId: number; fundName: string; currentUnits: number; currentNav?: number };
 };
 
 export type AuthStackParamList = {
@@ -322,7 +324,11 @@ export const AppNavigator = () => {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {sessionId ? (
-          <Stack.Screen name="Main" component={MainTabNavigator} />
+          <>
+            <Stack.Screen name="Main" component={MainTabNavigator} />
+            <Stack.Screen name="FundBuy" component={FundBuyScreenComponent} />
+            <Stack.Screen name="FundSell" component={FundSellScreenComponent} />
+          </>
         ) : (
           <Stack.Screen name="Auth" component={AuthNavigator} />
         )}
