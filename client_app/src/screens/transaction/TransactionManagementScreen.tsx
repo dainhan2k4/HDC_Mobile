@@ -150,15 +150,9 @@ const TransactionManagementScreen: React.FC = () => {
     console.log('Order pressed:', transaction);
   };
 
-  const handleCreateBuyOrder = () => {
-    // TODO: Navigate to fund list to select and buy
-    Alert.alert('Tạo lệnh mua', 'Chọn quỹ để tạo lệnh mua');
-  };
+ 
 
-  const handleCreateSellOrder = () => {
-    // TODO: Navigate to portfolio to select holdings and sell
-    Alert.alert('Tạo lệnh bán', 'Chọn quỹ từ danh mục để tạo lệnh bán');
-  };
+ 
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -185,22 +179,6 @@ const TransactionManagementScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Action Button */}
-      <TouchableOpacity
-        style={[styles.actionButton, {
-          backgroundColor: activeTab === 'buy' ? '#28A745' : '#DC3545'
-        }]}
-        onPress={activeTab === 'buy' ? handleCreateBuyOrder : handleCreateSellOrder}
-      >
-        <Ionicons 
-          name={activeTab === 'buy' ? 'add-circle' : 'remove-circle'} 
-          size={20} 
-          color="#FFFFFF" 
-        />
-        <Text style={styles.actionButtonText}>
-          {activeTab === 'buy' ? 'Tạo lệnh mua' : 'Tạo lệnh bán'}
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -365,23 +343,25 @@ const styles = StyleSheet.create({
   orderItem: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
-    marginVertical: 4,
-    padding: 16,
-    borderRadius: 8,
+    marginVertical: 6,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E9ECEF',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
     elevation: 2,
   },
   orderRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   fundInfo: {
     flex: 2,
@@ -392,21 +372,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333333',
     marginBottom: 4,
+    flexWrap: 'wrap',
   },
   orderDate: {
     fontSize: 14,
     color: '#666666',
   },
   orderDetails: {
-    flex: 1,
+    flex: 1.4,
     alignItems: 'flex-end',
-    marginRight: 12,
+    marginRight: 10,
+    minWidth: 110,
   },
   amount: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#333333',
     marginBottom: 4,
+    textAlign: 'right',
+    flexWrap: 'wrap',
   },
   units: {
     fontSize: 14,
@@ -414,11 +398,15 @@ const styles = StyleSheet.create({
   },
   typeContainer: {
     alignItems: 'flex-end',
+    flex: 0.8,
+    minWidth: 60,
   },
   typeBadge: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 10,
+    minWidth: 50,
+    alignItems: 'center',
   },
   typeText: {
     fontSize: 12,

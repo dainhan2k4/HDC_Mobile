@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
+const NodeCache = require('node-cache');
 
 const config = require('./config/config');
 const portfolioRoutes = require('./routes/portfolioRoutes');
@@ -44,18 +45,97 @@ if (config.server.nodeEnv !== 'test') {
   app.use(morgan('combined'));
 }
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: config.security.rateLimitWindow,
-  max: config.security.rateLimitMax,
-  message: {
-    success: false,
-    error: 'Too many requests from this IP, please try again later.',
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
+// Rate limiting (only in production)
+if (config.server.nodeEnv === 'production') {
+  const limiter = rateLimit({
+    windowMs: config.security.rateLimitWindow,
+    max: config.security.rateLimitMax,
+    message: {
+      success: false,
+      error: 'Too many requests from this IP, please try again later.',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/api/', limiter);
+  console.log('🛡️ [Security] Rate limiting enabled for production');
+} else {
+  console.log('🔓 [Development] Rate limiting disabled for development');
+}
+
+// Response caching middleware  
+const responseCache = new NodeCache({ 
+  stdTTL: config.server.nodeEnv === 'production' ? 30 : 10, // 10s for dev, 30s for prod
+  checkperiod: 60 // Check for expired keys every 60 seconds
 });
-app.use('/api/', limiter);
+
+// Helper function to clear portfolio-related cache
+const clearPortfolioCache = () => {
+  const portfolioKeys = responseCache.keys().filter(key => 
+    key.includes('/portfolio/')
+  );
+  portfolioKeys.forEach(key => {
+    responseCache.del(key);
+    console.log(`🗑️ [Cache] Cleared cache for ${key}`);
+  });
+  console.log(`🧹 [Cache] Cleared ${portfolioKeys.length} portfolio cache entries`);
+};
+
+const cacheMiddleware = (duration = 30) => {
+  return (req, res, next) => {
+    // Only cache GET requests
+    if (req.method !== 'GET') {
+      // For non-GET requests (POST/PUT/DELETE), clear related cache after response
+      const originalJson = res.json;
+      res.json = function(body) {
+        const result = originalJson.call(this, body);
+        
+        // Clear portfolio cache after successful transactions
+        if (res.statusCode === 200 && body.success !== false) {
+          if (req.originalUrl.includes('/transaction/')) {
+            console.log(`🔄 [Cache] Transaction completed, clearing portfolio cache`);
+            clearPortfolioCache();
+          }
+          // Also clear for portfolio clear-cache endpoint
+          if (req.originalUrl.includes('/portfolio/clear-cache')) {
+            console.log(`🔄 [Cache] Portfolio cache clear requested, clearing response cache too`);
+            clearPortfolioCache();
+          }
+        }
+        
+        return result;
+      };
+      return next();
+    }
+
+    const key = req.originalUrl;
+    
+    // Check for force-refresh header to bypass cache
+    const forceRefresh = req.headers['x-force-refresh'] === 'true';
+    
+    const cachedResponse = forceRefresh ? null : responseCache.get(key);
+
+    if (cachedResponse && !forceRefresh) {
+      console.log(`📦 [Cache] Cache hit for ${key}`);
+      return res.json(cachedResponse);
+    } else if (forceRefresh) {
+      console.log(`🔄 [Cache] Force refresh requested for ${key}`);
+      responseCache.del(key);
+    }
+
+    // Override res.json to cache the response
+    const originalJson = res.json;
+    res.json = function(body) {
+      if (res.statusCode === 200 && body.success !== false) {
+        console.log(`💾 [Cache] Caching response for ${key}`);
+        responseCache.set(key, body, duration);
+      }
+      return originalJson.call(this, body);
+    };
+
+    next();
+  };
+};
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -69,10 +149,59 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes
-app.use(`${config.server.apiPrefix}/portfolio`, portfolioRoutes);
-app.use(`${config.server.apiPrefix}/profile`, profileRoutes);
-app.use(`${config.server.apiPrefix}/transaction`, transactionRoutes);
+// Clear response cache endpoint
+app.post('/clear-response-cache', (req, res) => {
+  try {
+    const allKeys = responseCache.keys();
+    responseCache.flushAll();
+    console.log(`🧹 [Cache] Manual clear: Removed ${allKeys.length} cache entries`);
+    
+    res.json({
+      success: true,
+      message: 'Response cache cleared successfully',
+      clearedEntries: allKeys.length
+    });
+  } catch (error) {
+    console.error('❌ [Cache] Failed to clear response cache:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear response cache'
+    });
+  }
+});
+
+// Debug cache status endpoint
+app.get('/cache-status', (req, res) => {
+  const keys = responseCache.keys();
+  const stats = responseCache.getStats();
+  const cacheData = {};
+  
+  keys.forEach(key => {
+    const data = responseCache.get(key);
+    cacheData[key] = {
+      hasData: !!data,
+      dataSize: data ? JSON.stringify(data).length : 0,
+      ttl: responseCache.getTtl(key)
+    };
+  });
+  
+  res.json({
+    success: true,
+    cacheStats: stats,
+    totalKeys: keys.length,
+    cacheEntries: cacheData,
+    environment: config.server.nodeEnv
+  });
+});
+
+// API routes with caching (shorter cache in development)
+const portfolioCacheDuration = config.server.nodeEnv === 'production' ? 30 : 5; // 5s for dev
+const profileCacheDuration = config.server.nodeEnv === 'production' ? 60 : 15; // 15s for dev
+const transactionCacheDuration = config.server.nodeEnv === 'production' ? 10 : 3; // 3s for dev
+
+app.use(`${config.server.apiPrefix}/portfolio`, cacheMiddleware(portfolioCacheDuration), portfolioRoutes);
+app.use(`${config.server.apiPrefix}/profile`, cacheMiddleware(profileCacheDuration), profileRoutes);  
+app.use(`${config.server.apiPrefix}/transaction`, cacheMiddleware(transactionCacheDuration), transactionRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

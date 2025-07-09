@@ -115,8 +115,12 @@ export class ApiService {
 
   private async makeRequest<T = any>(
     endpoint: string,
-    config: AxiosRequestConfig = {}
+    config: AxiosRequestConfig = {},
+    retryCount = 0
   ): Promise<ApiResponse<T>> {
+    const maxRetries = 3;
+    const baseDelay = 1000; // 1 second
+
     try {
       // Attach auth header if available
       const headers: Record<string, string> = {};
@@ -150,7 +154,16 @@ export class ApiService {
 
       return { ...(data as ApiResponse<T>), rawResponse: response as any };
     } catch (error: any) {
-      console.error('API Error:', error);
+      // Handle 429 rate limit errors with retry
+      if (error.response?.status === 429 && retryCount < maxRetries) {
+        const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
+        console.warn(`⏰ [ApiService] Rate limited, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.makeRequest<T>(endpoint, config, retryCount + 1);
+      }
+
+      console.error('🔥 [ApiService] Request failed:', error);
       throw error;
     }
   }

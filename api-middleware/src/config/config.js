@@ -26,8 +26,8 @@ const config = {
   // Security Configuration
   security: {
     jwtSecret: process.env.JWT_SECRET || 'fallback-secret-key',
-    rateLimitWindow: parseInt(process.env.API_RATE_LIMIT_WINDOW) || 900000, // 15 minutes
-    rateLimitMax: parseInt(process.env.API_RATE_LIMIT_MAX) || 100
+    rateLimitWindow: parseInt(process.env.API_RATE_LIMIT_WINDOW) || 60000, // 1 minute for development
+    rateLimitMax: parseInt(process.env.API_RATE_LIMIT_MAX) || (process.env.NODE_ENV === 'production' ? 100 : 10000) // 1000 for dev, 100 for prod
   },
 
   // Logging
