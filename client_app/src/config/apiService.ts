@@ -170,8 +170,9 @@ export class ApiService {
 
   /* ------------------------------ HTTP VERBS ----------------------------- */
 
-  async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
-    return this.makeRequest<T>(endpoint, { method: 'GET', params });
+  async get<T>(endpoint: string, params?: Record<string, any>, forceRefresh = false): Promise<ApiResponse<T>> {
+    const headers = forceRefresh ? { 'X-Force-Refresh': 'true' } : {};
+    return this.makeRequest<T>(endpoint, { method: 'GET', params, headers });
   }
 
   async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {

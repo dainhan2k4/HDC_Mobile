@@ -69,7 +69,7 @@ const responseCache = new NodeCache({
   checkperiod: 60 // Check for expired keys every 60 seconds
 });
 
-// Helper function to clear portfolio-related cache
+// Helper function to clear portfolio and transaction related cache
 const clearPortfolioCache = () => {
   const portfolioKeys = responseCache.keys().filter(key => 
     key.includes('/portfolio/')
@@ -81,6 +81,30 @@ const clearPortfolioCache = () => {
   console.log(`🧹 [Cache] Cleared ${portfolioKeys.length} portfolio cache entries`);
 };
 
+const clearTransactionCache = () => {
+  const transactionKeys = responseCache.keys().filter(key => 
+    key.includes('/transaction/')
+  );
+  transactionKeys.forEach(key => {
+    responseCache.del(key);
+    console.log(`🗑️ [Cache] Cleared cache for ${key}`);
+  });
+  console.log(`🧹 [Cache] Cleared ${transactionKeys.length} transaction cache entries`);
+};
+
+// Add cache clearing methods to app for easy access from controllers
+app.clearResponseCache = (type) => {
+  if (type === 'portfolio') {
+    clearPortfolioCache();
+  } else if (type === 'transaction') {
+    clearTransactionCache();
+  } else if (type === 'all') {
+    const allKeys = responseCache.keys();
+    responseCache.flushAll();
+    console.log(`🧹 [Cache] Cleared all ${allKeys.length} cache entries`);
+  }
+};
+
 const cacheMiddleware = (duration = 30) => {
   return (req, res, next) => {
     // Only cache GET requests
@@ -90,17 +114,23 @@ const cacheMiddleware = (duration = 30) => {
       res.json = function(body) {
         const result = originalJson.call(this, body);
         
-        // Clear portfolio cache after successful transactions
+        // Clear portfolio and transaction cache after successful transactions
         if (res.statusCode === 200 && body.success !== false) {
+          console.log(`🔍 [Cache] Checking if need to clear cache for ${req.originalUrl}, method: ${req.method}, status: ${res.statusCode}, success: ${body.success}`);
+          
           if (req.originalUrl.includes('/transaction/')) {
-            console.log(`🔄 [Cache] Transaction completed, clearing portfolio cache`);
+            console.log(`🔄 [Cache] Transaction completed successfully, clearing portfolio and transaction cache`);
             clearPortfolioCache();
+            clearTransactionCache();
           }
           // Also clear for portfolio clear-cache endpoint
           if (req.originalUrl.includes('/portfolio/clear-cache')) {
             console.log(`🔄 [Cache] Portfolio cache clear requested, clearing response cache too`);
             clearPortfolioCache();
+            clearTransactionCache();
           }
+        } else {
+          console.log(`⚠️ [Cache] Not clearing cache - Status: ${res.statusCode}, Success: ${body.success}, URL: ${req.originalUrl}`);
         }
         
         return result;

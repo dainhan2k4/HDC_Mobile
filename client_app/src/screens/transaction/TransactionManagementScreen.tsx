@@ -10,12 +10,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
 import { formatVND } from '../../hooks/formatCurrency';
 import { transactionApi, Transaction } from '../../api/transactionApi';
 
-type TabType = 'buy' | 'sell';
+type TabType = 'buy' | 'sell' | 'history';
 
 interface OrderItemProps {
   transaction: Transaction;
@@ -53,6 +54,43 @@ const OrderItem: React.FC<OrderItemProps> = ({ transaction, onPress }) => {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+      case 'done':
+      case 'success':
+      case 'hoàn thành':
+        return '#28A745';
+      case 'pending':
+      case 'waiting':
+      case 'chờ xử lý':
+        return '#FFC107';
+      case 'failed':
+      case 'error':
+      case 'thất bại':
+        return '#DC3545';
+      default:
+        return '#6C757D';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+      case 'done':
+      case 'success':
+        return 'Hoàn thành';
+      case 'pending':
+      case 'waiting':
+        return 'Chờ xử lý';
+      case 'failed':
+      case 'error':
+        return 'Thất bại';
+      default:
+        return status;
+    }
+  };
+
   return (
     <TouchableOpacity 
       style={styles.orderItem}
@@ -65,6 +103,13 @@ const OrderItem: React.FC<OrderItemProps> = ({ transaction, onPress }) => {
           <Text style={styles.orderDate}>
             {transaction.order_date || transaction.session_date}
           </Text>
+          {transaction.status && (
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(transaction.status) }]}>
+              <Text style={styles.statusText}>
+                {getStatusText(transaction.status)}
+              </Text>
+            </View>
+          )}
         </View>
         
         {/* Order Details */}
@@ -73,7 +118,7 @@ const OrderItem: React.FC<OrderItemProps> = ({ transaction, onPress }) => {
             {formatVND(transaction.amount)}
           </Text>
           <Text style={styles.units}>
-            {transaction.units || 0} chứng chỉ
+            {transaction.units || 0} CCQ
           </Text>
         </View>
         
@@ -94,21 +139,29 @@ const TransactionManagementScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('buy');
   const [buyOrders, setBuyOrders] = useState<Transaction[]>([]);
   const [sellOrders, setSellOrders] = useState<Transaction[]>([]);
+  const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadOrders = useCallback(async (refresh = false) => {
+  const loadOrders = useCallback(async (refresh = false, forceRefresh = false) => {
     try {
       if (refresh) {
         setRefreshing(true);
+        console.log('🔄 [TransactionManagement] Pull-to-refresh triggered');
       } else {
         setLoading(true);
+        console.log('🔄 [TransactionManagement] Loading orders...');
       }
 
-      // Load pending orders (both buy and sell)
-      const pendingOrders = await transactionApi.getPendingTransactions();
+      // Load both pending orders and transaction history with force refresh if needed
+      const [pendingOrders, historyOrders] = await Promise.all([
+        transactionApi.getPendingTransactions(forceRefresh),
+        transactionApi.getTransactionHistory(forceRefresh)
+      ]);
       
-      // Separate buy and sell orders
+      console.log(`📊 [TransactionManagement] Loaded ${pendingOrders.length} pending orders and ${historyOrders.length} history transactions`);
+      
+      // Separate buy and sell orders from pending
       const buyOrdersData = pendingOrders.filter(order => 
         order.transaction_type.toLowerCase() === 'buy' || 
         order.transaction_type.toLowerCase() === 'purchase' ||
@@ -123,13 +176,19 @@ const TransactionManagementScreen: React.FC = () => {
 
       setBuyOrders(buyOrdersData);
       setSellOrders(sellOrdersData);
+      setTransactionHistory(historyOrders);
+      
+      console.log(`✅ [TransactionManagement] Data loaded - Buy: ${buyOrdersData.length}, Sell: ${sellOrdersData.length}, History: ${historyOrders.length}`);
 
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('❌ [TransactionManagement] Error loading orders:', error);
       Alert.alert(
         'Lỗi',
-        'Không thể tải danh sách lệnh. Vui lòng thử lại.',
-        [{ text: 'OK' }]
+        'Không thể tải danh sách giao dịch. Vui lòng thử lại.',
+        [
+          { text: 'Thử lại', onPress: () => loadOrders(false, true) },
+          { text: 'Đóng', style: 'cancel' }
+        ]
       );
     } finally {
       setLoading(false);
@@ -141,8 +200,16 @@ const TransactionManagementScreen: React.FC = () => {
     loadOrders();
   }, [loadOrders]);
 
+  // Auto refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔍 [TransactionManagement] Screen focused, refreshing orders...');
+      loadOrders(false, false);
+    }, [loadOrders])
+  );
+
   const onRefresh = useCallback(() => {
-    loadOrders(true);
+    loadOrders(true, true); // Force refresh on pull-to-refresh
   }, [loadOrders]);
 
   const handleOrderPress = (transaction: Transaction) => {
@@ -156,7 +223,20 @@ const TransactionManagementScreen: React.FC = () => {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <Text style={styles.title}>Quản lý lệnh</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Quản lý lệnh</Text>
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={() => loadOrders(false, true)}
+          disabled={loading || refreshing}
+        >
+          <Ionicons 
+            name="refresh" 
+            size={20} 
+            color={loading || refreshing ? "#CCCCCC" : "#007BFF"} 
+          />
+        </TouchableOpacity>
+      </View>
       
       {/* Tab Navigation */}
       <View style={styles.tabContainer}>
@@ -177,6 +257,15 @@ const TransactionManagementScreen: React.FC = () => {
             Lệnh bán ({sellOrders.length})
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'history' && styles.activeTab]}
+          onPress={() => setActiveTab('history')}
+        >
+          <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
+            Lịch sử ({transactionHistory.length})
+          </Text>
+        </TouchableOpacity>
       </View>
 
     </View>
@@ -185,17 +274,26 @@ const TransactionManagementScreen: React.FC = () => {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Ionicons 
-        name={activeTab === 'buy' ? 'trending-up-outline' : 'trending-down-outline'} 
+        name={
+          activeTab === 'buy' ? 'trending-up-outline' : 
+          activeTab === 'sell' ? 'trending-down-outline' : 
+          'time-outline'
+        } 
         size={64} 
         color="#CCCCCC" 
       />
       <Text style={styles.emptyStateText}>
-        {activeTab === 'buy' ? 'Chưa có lệnh mua nào' : 'Chưa có lệnh bán nào'}
+        {activeTab === 'buy' ? 'Chưa có lệnh mua nào' : 
+         activeTab === 'sell' ? 'Chưa có lệnh bán nào' :
+         'Chưa có lịch sử giao dịch'
+        }
       </Text>
       <Text style={styles.emptyStateSubtext}>
         {activeTab === 'buy' ? 
           'Tạo lệnh mua để đầu tư vào các quỹ' : 
-          'Tạo lệnh bán để chốt lời các quỹ trong danh mục'
+          activeTab === 'sell' ?
+          'Tạo lệnh bán để chốt lời các quỹ trong danh mục' :
+          'Lịch sử giao dịch sẽ hiển thị sau khi bạn thực hiện giao dịch'
         }
       </Text>
     </View>
@@ -208,7 +306,9 @@ const TransactionManagementScreen: React.FC = () => {
     />
   );
 
-  const currentOrders = activeTab === 'buy' ? buyOrders : sellOrders;
+  const currentOrders = activeTab === 'buy' ? buyOrders : 
+                        activeTab === 'sell' ? sellOrders : 
+                        transactionHistory;
 
   if (loading && !refreshing) {
     return (
@@ -258,11 +358,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333333',
-    marginBottom: 16,
+  },
+  refreshButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#F8F9FA',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -409,6 +519,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   typeText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  statusText: {
     fontSize: 12,
     color: '#FFFFFF',
     fontWeight: '600',

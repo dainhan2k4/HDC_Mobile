@@ -70,10 +70,10 @@ export const getTransactionOrders = async (params?: {
 };
 
 // Get pending transactions using middleware endpoint
-export const getPendingTransactions = async (): Promise<Transaction[]> => {
+export const getPendingTransactions = async (forceRefresh = false): Promise<Transaction[]> => {
   try {
-    console.log('🔗 [TransactionApi] Getting pending transactions...');
-    const response = await apiService.get('/transaction/pending');
+    console.log(`🔗 [TransactionApi] Getting pending transactions${forceRefresh ? ' (force refresh)' : ''}...`);
+    const response = await apiService.get('/transaction/pending', undefined, forceRefresh);
     console.log('✅ [TransactionApi] Pending transactions response:', response);
     return (response.data as Transaction[]) || [];
   } catch (error) {
@@ -124,10 +124,10 @@ export const getBalanceHistory = async (params?: {
 };
 
 // Get transaction history using middleware endpoint
-export const getTransactionHistory = async (): Promise<Transaction[]> => {
+export const getTransactionHistory = async (forceRefresh = false): Promise<Transaction[]> => {
   try {
-    console.log('🔗 [TransactionApi] Getting transaction history...');
-    const response = await apiService.get('/transaction/history');
+    console.log(`🔗 [TransactionApi] Getting transaction history${forceRefresh ? ' (force refresh)' : ''}...`);
+    const response = await apiService.get('/transaction/history', undefined, forceRefresh);
     console.log('✅ [TransactionApi] Transaction history response:', response);
     return (response.data as Transaction[]) || [];
   } catch (error) {

@@ -218,7 +218,7 @@ class PersonalProfileController(http.Controller):
             
             # Cập nhật profile
             try:
-                profile.sudo().write(update_data)
+            profile.sudo().write(update_data)
                 _logger.info(f"✅ [PersonalProfile] Profile updated successfully for ID: {profile.id}")
             except Exception as update_error:
                 _logger.error(f"❌ [PersonalProfile] Failed to update profile: {update_error}")
@@ -237,7 +237,7 @@ class PersonalProfileController(http.Controller):
             if partner_update:
                 _logger.info(f"👤 [PersonalProfile] Partner update data: {partner_update}")
                 try:
-                    profile.partner_id.sudo().write(partner_update)
+                profile.partner_id.sudo().write(partner_update)
                     _logger.info(f"✅ [PersonalProfile] Partner synced successfully for ID: {profile.partner_id.id}")
                 except Exception as partner_error:
                     _logger.error(f"❌ [PersonalProfile] Failed to sync partner: {partner_error}")
@@ -356,7 +356,7 @@ class PersonalProfileController(http.Controller):
                 partner = current_user.partner_id
                 vietnam = request.env['res.country'].sudo().search([('code', '=', 'VN')], limit=1)
                 try:
-                    profile = request.env['investor.profile'].sudo().create({
+                profile = request.env['investor.profile'].sudo().create({
                         'partner_id': partner.id,
                         'name': partner.name or current_user.name or 'Chưa cập nhật',
                         'birth_date': '1990-01-01',
@@ -368,7 +368,7 @@ class PersonalProfileController(http.Controller):
                         'id_issue_place': 'Chưa cập nhật',
                         'phone': partner.phone or '',
                         'email': partner.email or '',
-                    })
+                })
                     _logger.info(f"✅ [BankInfo] Profile created successfully with ID: {profile.id}")
                 except Exception as create_error:
                     _logger.error(f"❌ [BankInfo] Failed to create profile: {create_error}")
@@ -501,7 +501,7 @@ class PersonalProfileController(http.Controller):
                 partner = current_user.partner_id
                 vietnam = request.env['res.country'].sudo().search([('code', '=', 'VN')], limit=1)
                 try:
-                    profile = request.env['investor.profile'].sudo().create({
+                profile = request.env['investor.profile'].sudo().create({
                         'partner_id': partner.id,
                         'name': partner.name or current_user.name or 'Chưa cập nhật',
                         'birth_date': '1990-01-01',
@@ -513,7 +513,7 @@ class PersonalProfileController(http.Controller):
                         'id_issue_place': 'Chưa cập nhật',
                         'phone': partner.phone or '',
                         'email': partner.email or '',
-                    })
+                })
                     _logger.info(f"✅ [AddressInfo] Profile created successfully with ID: {profile.id}")
                 except Exception as create_error:
                     _logger.error(f"❌ [AddressInfo] Failed to create profile: {create_error}")

@@ -52,6 +52,13 @@ class TransactionController {
       this.odooService.clearCache();
       console.log('🧹 [TransactionController] Cache cleared after successful purchase');
 
+      // Clear response cache explicitly
+      if (req.app && req.app.clearResponseCache) {
+        req.app.clearResponseCache('transaction');
+        req.app.clearResponseCache('portfolio');
+        console.log('🧹 [TransactionController] Response cache cleared for transaction and portfolio');
+      }
+
       res.json({
         success: true,
         message: 'Fund purchase completed successfully',
@@ -116,6 +123,13 @@ class TransactionController {
       // Clear cache to ensure fresh data on next request
       this.odooService.clearCache();
       console.log('🧹 [TransactionController] Cache cleared after successful sale');
+
+      // Clear response cache explicitly
+      if (req.app && req.app.clearResponseCache) {
+        req.app.clearResponseCache('transaction');
+        req.app.clearResponseCache('portfolio');
+        console.log('🧹 [TransactionController] Response cache cleared for transaction and portfolio');
+      }
 
       res.json({
         success: true,
