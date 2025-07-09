@@ -30,7 +30,7 @@ timeout /t 30 /nobreak >nul
 
 :: Start API Middleware in new window
 echo 🌐 Starting API Middleware...
-start "API Middleware" cmd /k "cd api-middleware && npm start"
+start "API Middleware" cmd /k "cd api-middleware && nodemon start-dev.js"
 
 :: Start Mobile App in new window
 echo 📱 Starting Mobile App...

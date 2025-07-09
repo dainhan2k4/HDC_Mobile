@@ -16,7 +16,7 @@ const ENVIRONMENTS = {
 const USE_MIDDLEWARE = true; // Re-enabled to avoid direct Odoo connection issues
 
 // Environment configuration
-const IS_PRODUCTION = false; // Change to true for production
+const IS_PRODUCTION = false; // Change to true for producti on
 
 export const API_CONFIG = {
   // Base URL configuration

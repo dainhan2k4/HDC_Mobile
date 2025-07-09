@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -33,6 +33,13 @@ export const PortfolioScreen: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Cache và rate limiting
+  const lastLoadTime = useRef<number>(0);
+  const loadingTimeoutRef = useRef<number | null>(null);
+  const isRateLimited = useRef<boolean>(false);
+  const rateLimitResetTime = useRef<number>(0);
+  const MIN_REFRESH_INTERVAL = 5000; // 5 giây giữa các lần gọi API
+  
   // Performance metrics
   const [performanceData, setPerformanceData] = useState({
     todayChange: 0,
@@ -47,6 +54,44 @@ export const PortfolioScreen: React.FC = () => {
   const activeInvestments = investments.filter(investment => 
     investment.units > 0 && investment.amount > 0
   );
+
+  // Kiểm tra rate limit
+  const checkRateLimit = () => {
+    const now = Date.now();
+    if (isRateLimited.current && now < rateLimitResetTime.current) {
+      const remainingTime = Math.ceil((rateLimitResetTime.current - now) / 1000);
+      setError(`Đang bị giới hạn tần suất. Vui lòng thử lại sau ${remainingTime} giây.`);
+      return false;
+    }
+    isRateLimited.current = false;
+    return true;
+  };
+
+  // Debounced load function
+  const debouncedLoadPortfolioData = useCallback(async (forceRefresh: boolean = false) => {
+    const now = Date.now();
+    
+    // Kiểm tra cache time nếu không force refresh
+    if (!forceRefresh && (now - lastLoadTime.current) < MIN_REFRESH_INTERVAL) {
+      console.log('⏳ [Portfolio] Skipping load - too soon since last refresh');
+      return;
+    }
+
+    // Kiểm tra rate limit
+    if (!checkRateLimit()) {
+      return;
+    }
+
+    // Clear existing timeout
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+    }
+
+    // Debounce với 300ms
+    loadingTimeoutRef.current = setTimeout(async () => {
+      await loadPortfolioData();
+    }, 300);
+  }, []);
 
   const loadPortfolioData = async () => {
     try {
@@ -211,10 +256,20 @@ export const PortfolioScreen: React.FC = () => {
       }
 
       console.log('🏁 [Portfolio] Real data loaded successfully');
+      lastLoadTime.current = Date.now();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [Portfolio] Critical error loading portfolio:', error);
-      setError('Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại.');
+      
+      // Xử lý rate limiting error
+      if (error?.message?.includes('Too many requests') || error?.status === 429) {
+        console.log('🚫 [Portfolio] Rate limited - setting cooldown');
+        isRateLimited.current = true;
+        rateLimitResetTime.current = Date.now() + 60000; // 1 phút cooldown
+        setError('Đang bị giới hạn tần suất. Vui lòng đợi 1 phút và thử lại.');
+      } else {
+        setError('Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -228,20 +283,29 @@ export const PortfolioScreen: React.FC = () => {
       }
       
       console.log('▶️ [Portfolio] Auth loaded, initializing portfolio data...');
-      await loadPortfolioData();
+      await debouncedLoadPortfolioData(true); // Force initial load
     };
 
     initializeData();
-  }, [authLoading, sessionId, user]);
+  }, [authLoading, sessionId, user, debouncedLoadPortfolioData]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Refresh portfolio when screen comes into focus (after buy/sell operations)
   useFocusEffect(
     React.useCallback(() => {
       if (!authLoading && (sessionId || user)) {
         console.log('🔍 [Portfolio] Screen focused, refreshing portfolio data...');
-        loadPortfolioData();
+        debouncedLoadPortfolioData(false); // Normal debounced load
       }
-    }, [authLoading, sessionId, user])
+    }, [authLoading, sessionId, user, debouncedLoadPortfolioData])
   );
 
   const prepareChartData = () => {
@@ -249,7 +313,7 @@ export const PortfolioScreen: React.FC = () => {
     
     return activeInvestments.map((investment, index) => ({
       name: investment.fund_ticker,
-      value: ((investment.current_nav * investment.units) / portfolio!.total_current_value) * 100,
+      value: investment.current_nav * investment.units, // Giá trị tiền thực, không phải %
       color: generateColor(index),
     }));
   };
@@ -261,7 +325,7 @@ export const PortfolioScreen: React.FC = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadPortfolioData();
+    await debouncedLoadPortfolioData(true); // Force refresh
     setIsRefreshing(false);
   };
 
@@ -279,7 +343,7 @@ export const PortfolioScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#2B4BFF" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
       
       {/* Modern Header with Gradient Effect */}
       <View style={styles.modernHeader}>
@@ -313,10 +377,28 @@ export const PortfolioScreen: React.FC = () => {
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle-outline" size={64} color="#DC3545" />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
-              <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Ionicons 
+              name={error.includes('giới hạn tần suất') ? "time-outline" : "alert-circle-outline"} 
+              size={64} 
+              color={error.includes('giới hạn tần suất') ? "#FFA500" : "#DC3545"} 
+            />
+            <Text style={[
+              styles.errorText,
+              { color: error.includes('giới hạn tần suất') ? "#FFA500" : "#DC3545" }
+            ]}>
+              {error}
+            </Text>
+            <TouchableOpacity 
+              style={[
+                styles.retryButton,
+                { backgroundColor: error.includes('giới hạn tần suất') ? "#FFA500" : "#2B4BFF" }
+              ]} 
+              onPress={handleRefresh}
+              disabled={isRateLimited.current}
+            >
+              <Text style={styles.retryButtonText}>
+                {error.includes('giới hạn tần suất') ? 'Đợi một chút...' : 'Thử lại'}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : !portfolio ? (
@@ -413,14 +495,13 @@ export const PortfolioScreen: React.FC = () => {
 
             {/* Portfolio Allocation Chart */}
             {chartData.length > 0 && (
-              <View style={styles.modernChartCard}>
-                <Text style={styles.chartTitle}>Phân bổ danh mục đầu tư</Text>
+              
                 <PieChartCustom
                   data={chartData}
                   sliceColor={chartData.map(item => item.color)}
                   title="Phân bổ theo quỹ (%)"
                 />
-              </View>
+              
             )}
 
             {/* Investment Holdings */}
