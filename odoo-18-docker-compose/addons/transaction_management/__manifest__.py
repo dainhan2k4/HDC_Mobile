@@ -11,7 +11,8 @@
     'depends': [
         'base',
         'web',
-        'mail'
+        'mail',
+        'fund_management'
     ],
     'data': [
         # Website Templates - Trang web frontend

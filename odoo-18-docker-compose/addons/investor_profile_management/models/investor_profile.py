@@ -9,21 +9,21 @@ class InvestorProfile(models.Model):
 
     name = fields.Char(string='Họ và tên', required=True)
     partner_id = fields.Many2one('res.partner', string='Partner', required=True, ondelete='cascade')
-    birth_date = fields.Date(string='Ngày sinh', required=True)
+    birth_date = fields.Date(string='Ngày sinh', required=False)  # Tạm thời không bắt buộc
     gender = fields.Selection([
         ('male', 'Nam'),
         ('female', 'Nữ'),
         ('other', 'Khác')
-    ], string='Giới tính', required=True)
-    nationality = fields.Many2one('res.country', string='Quốc tịch', required=True)
+    ], string='Giới tính', required=False, default='other')  # Default value
+    nationality = fields.Many2one('res.country', string='Quốc tịch', required=False, default=lambda self: self._get_default_country())  # Default Vietnam
     id_type = fields.Selection([
         ('id_card', 'CMND/CCCD'),
         ('passport', 'Hộ chiếu'),
         ('other', 'Khác')
-    ], string='Loại giấy tờ', required=True)
-    id_number = fields.Char(string='Số giấy tờ', required=True)
-    id_issue_date = fields.Date(string='Ngày cấp', required=True)
-    id_issue_place = fields.Char(string='Nơi cấp', required=True)
+    ], string='Loại giấy tờ', required=False, default='id_card')  # Default CCCD
+    id_number = fields.Char(string='Số giấy tờ', required=False)  # Tạm thời không bắt buộc
+    id_issue_date = fields.Date(string='Ngày cấp', required=False)  # Tạm thời không bắt buộc
+    id_issue_place = fields.Char(string='Nơi cấp', required=False)  # Tạm thời không bắt buộc
     id_front = fields.Binary(string='ID Front:', attachment=True)
     id_front_filename = fields.Char(string='ID Mặt Trước Filename')
     id_back = fields.Binary(string='ID Back:', attachment=True)
@@ -39,6 +39,11 @@ class InvestorProfile(models.Model):
 
     # Status information
     status_info_ids = fields.One2many('status.info', 'partner_id', string='Thông tin trạng thái')
+
+    def _get_default_country(self):
+        """Lấy Vietnam làm quốc tịch mặc định"""
+        vietnam = self.env['res.country'].search([('code', '=', 'VN')], limit=1)
+        return vietnam.id if vietnam else False
 
     @api.onchange('partner_id')
     def _onchange_partner_id(self):

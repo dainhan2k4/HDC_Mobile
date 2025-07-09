@@ -313,7 +313,7 @@ export const PortfolioScreen: React.FC = () => {
     
     return activeInvestments.map((investment, index) => ({
       name: investment.fund_ticker,
-      value: investment.current_nav * investment.units, // Giá trị tiền thực, không phải %
+      value: investment.current_nav * investment.units, 
       color: generateColor(index),
     }));
   };

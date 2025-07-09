@@ -1,6 +1,9 @@
 from odoo import http
 from odoo.http import request, Response
 import json
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class PersonalProfileController(http.Controller):
@@ -146,22 +149,49 @@ class PersonalProfileController(http.Controller):
         """API endpoint để lưu dữ liệu personal profile"""
         try:
             current_user = request.env.user
+            _logger.info(f"🔍 [PersonalProfile] Starting save for user: {current_user.name} (ID: {current_user.id})")
             
             # Parse JSON data
             data = json.loads(request.httprequest.data.decode('utf-8'))
+            _logger.info(f"📊 [PersonalProfile] Received data keys: {list(data.keys())}")
             
             # Tìm profile hiện tại hoặc tạo mới
             profile = request.env['investor.profile'].sudo().search([
                 ('partner_id', '=', current_user.partner_id.id)
             ], limit=1)
+            _logger.info(f"🔍 [PersonalProfile] Existing profile found: {bool(profile)}")
             
             if not profile:
-                # Tạo profile mới
-                profile = request.env['investor.profile'].sudo().create({
-                    'partner_id': current_user.partner_id.id,
-                })
+                # Tạo profile mới với default values để tránh constraint error
+                _logger.info("🆕 [PersonalProfile] Creating new profile with default values")
+                partner = current_user.partner_id
+                vietnam = request.env['res.country'].sudo().search([('code', '=', 'VN')], limit=1)
+                
+                profile_data = {
+                    'partner_id': partner.id,
+                    'name': partner.name or current_user.name or 'Chưa cập nhật',
+                    'birth_date': '1990-01-01',
+                    'gender': 'other',
+                    'nationality': vietnam.id if vietnam else False,
+                    'id_type': 'id_card',
+                    'id_number': '000000000',  # Placeholder
+                    'id_issue_date': '2020-01-01',
+                    'id_issue_place': 'Chưa cập nhật',
+                    'phone': partner.phone or '',
+                    'email': partner.email or '',
+                }
+                
+                _logger.info(f"📋 [PersonalProfile] Profile creation data: {profile_data}")
+                
+                try:
+                    profile = request.env['investor.profile'].sudo().create(profile_data)
+                    _logger.info(f"✅ [PersonalProfile] Profile created successfully with ID: {profile.id}")
+                except Exception as create_error:
+                    _logger.error(f"❌ [PersonalProfile] Failed to create profile: {create_error}")
+                    raise
             
             # Cập nhật dữ liệu
+            _logger.info("🔄 [PersonalProfile] Preparing update data")
             update_data = {}
             if 'name' in data:
                 update_data['name'] = data['name']
@@ -184,10 +214,18 @@ class PersonalProfileController(http.Controller):
             if 'id_issue_place' in data:
                 update_data['id_issue_place'] = data['id_issue_place']
             
+            _logger.info(f"📝 [PersonalProfile] Update data: {update_data}")
+            
             # Cập nhật profile
-            profile.sudo().write(update_data)
+            try:
+                profile.sudo().write(update_data)
+                _logger.info(f"✅ [PersonalProfile] Profile updated successfully for ID: {profile.id}")
+            except Exception as update_error:
+                _logger.error(f"❌ [PersonalProfile] Failed to update profile: {update_error}")
+                raise
 
             # Đồng bộ lên contact/customer (res.partner)
+            _logger.info("🔗 [PersonalProfile] Syncing with res.partner")
             partner_update = {}
             if 'name' in data:
                 partner_update['name'] = data['name']
@@ -195,12 +233,24 @@ class PersonalProfileController(http.Controller):
                 partner_update['email'] = data['email']
             if 'phone' in data:
                 partner_update['phone'] = data['phone']
+                
             if partner_update:
-                profile.partner_id.sudo().write(partner_update)
+                _logger.info(f"👤 [PersonalProfile] Partner update data: {partner_update}")
+                try:
+                    profile.partner_id.sudo().write(partner_update)
+                    _logger.info(f"✅ [PersonalProfile] Partner synced successfully for ID: {profile.partner_id.id}")
+                except Exception as partner_error:
+                    _logger.error(f"❌ [PersonalProfile] Failed to sync partner: {partner_error}")
+                    # Don't raise here - partner sync is not critical
             
+            _logger.info("🎉 [PersonalProfile] Save operation completed successfully")
             return Response(json.dumps({'success': True, 'message': 'Profile updated successfully'}), 
                           content_type='application/json')
+                          
         except Exception as e:
+            _logger.error(f"💥 [PersonalProfile] Critical error in save operation: {str(e)}")
+            _logger.error(f"💥 [PersonalProfile] Exception type: {type(e).__name__}")
+            _logger.error(f"💥 [PersonalProfile] User: {request.env.user.name if request.env.user else 'Unknown'}")
             return Response(json.dumps({'error': str(e)}), content_type='application/json', status=500)
 
     @http.route('/upload_id_image', type='http', auth='user', methods=['POST'], csrf=False)
@@ -292,7 +342,9 @@ class PersonalProfileController(http.Controller):
         """API endpoint để lưu dữ liệu bank information"""
         try:
             current_user = request.env.user
+            _logger.info(f"🏦 [BankInfo] Starting save for user: {current_user.name} (ID: {current_user.id})")
             data = json.loads(request.httprequest.data.decode('utf-8'))
+            _logger.info(f"📊 [BankInfo] Received data keys: {list(data.keys())}")
 
             # Tìm hoặc tạo investor profile trước
             profile = request.env['investor.profile'].sudo().search([
@@ -300,9 +352,27 @@ class PersonalProfileController(http.Controller):
             ], limit=1)
 
             if not profile:
-                profile = request.env['investor.profile'].sudo().create({
-                    'partner_id': current_user.partner_id.id,
-                })
+                _logger.info("🆕 [BankInfo] Creating new investor profile")
+                partner = current_user.partner_id
+                vietnam = request.env['res.country'].sudo().search([('code', '=', 'VN')], limit=1)
+                try:
+                    profile = request.env['investor.profile'].sudo().create({
+                        'partner_id': partner.id,
+                        'name': partner.name or current_user.name or 'Chưa cập nhật',
+                        'birth_date': '1990-01-01',
+                        'gender': 'other',
+                        'nationality': vietnam.id if vietnam else False,
+                        'id_type': 'id_card',
+                        'id_number': '000000000',
+                        'id_issue_date': '2020-01-01',
+                        'id_issue_place': 'Chưa cập nhật',
+                        'phone': partner.phone or '',
+                        'email': partner.email or '',
+                    })
+                    _logger.info(f"✅ [BankInfo] Profile created successfully with ID: {profile.id}")
+                except Exception as create_error:
+                    _logger.error(f"❌ [BankInfo] Failed to create profile: {create_error}")
+                    raise
 
             # Tìm bank account hiện tại hoặc tạo mới
             bank_account = request.env['investor.bank.account'].sudo().search([
@@ -337,9 +407,13 @@ class PersonalProfileController(http.Controller):
             
             bank_account.sudo().write(update_data)
 
+            _logger.info("🎉 [BankInfo] Bank info save operation completed successfully")
             return Response(json.dumps({'success': True, 'message': 'Bank info updated successfully'}),
                           content_type='application/json')
         except Exception as e:
+            _logger.error(f"💥 [BankInfo] Critical error in save operation: {str(e)}")
+            _logger.error(f"💥 [BankInfo] Exception type: {type(e).__name__}")
+            _logger.error(f"💥 [BankInfo] User: {request.env.user.name if request.env.user else 'Unknown'}")
             return Response(json.dumps({'error': str(e)}), content_type='application/json', status=500)
 
     @http.route('/data_address_info', type='http', auth='user', methods=['GET'], csrf=False)
@@ -354,9 +428,21 @@ class PersonalProfileController(http.Controller):
             ], limit=1)
             
             if not profile:
-                # Tạo profile mới nếu chưa có
+                # Tạo profile mới nếu chưa có với default values
+                partner = current_user.partner_id
+                vietnam = request.env['res.country'].sudo().search([('code', '=', 'VN')], limit=1)
                 profile = request.env['investor.profile'].sudo().create({
-                    'partner_id': current_user.partner_id.id,
+                    'partner_id': partner.id,
+                    'name': partner.name or current_user.name or 'Chưa cập nhật',
+                    'birth_date': '1990-01-01',
+                    'gender': 'other',
+                    'nationality': vietnam.id if vietnam else False,
+                    'id_type': 'id_card',
+                    'id_number': '000000000',
+                    'id_issue_date': '2020-01-01',
+                    'id_issue_place': 'Chưa cập nhật',
+                    'phone': partner.phone or '',
+                    'email': partner.email or '',
                 })
             
             # Lấy dữ liệu từ model investor.address của user hiện tại
@@ -401,7 +487,9 @@ class PersonalProfileController(http.Controller):
         """API endpoint để lưu dữ liệu address information"""
         try:
             current_user = request.env.user
+            _logger.info(f"🏠 [AddressInfo] Starting save for user: {current_user.name} (ID: {current_user.id})")
             data = json.loads(request.httprequest.data.decode('utf-8'))
+            _logger.info(f"📊 [AddressInfo] Received data keys: {list(data.keys())}")
 
             # Tìm hoặc tạo investor profile trước
             profile = request.env['investor.profile'].sudo().search([
@@ -409,9 +497,27 @@ class PersonalProfileController(http.Controller):
             ], limit=1)
 
             if not profile:
-                profile = request.env['investor.profile'].sudo().create({
-                    'partner_id': current_user.partner_id.id,
-                })
+                _logger.info("🆕 [AddressInfo] Creating new investor profile")
+                partner = current_user.partner_id
+                vietnam = request.env['res.country'].sudo().search([('code', '=', 'VN')], limit=1)
+                try:
+                    profile = request.env['investor.profile'].sudo().create({
+                        'partner_id': partner.id,
+                        'name': partner.name or current_user.name or 'Chưa cập nhật',
+                        'birth_date': '1990-01-01',
+                        'gender': 'other',
+                        'nationality': vietnam.id if vietnam else False,
+                        'id_type': 'id_card',
+                        'id_number': '000000000',
+                        'id_issue_date': '2020-01-01',
+                        'id_issue_place': 'Chưa cập nhật',
+                        'phone': partner.phone or '',
+                        'email': partner.email or '',
+                    })
+                    _logger.info(f"✅ [AddressInfo] Profile created successfully with ID: {profile.id}")
+                except Exception as create_error:
+                    _logger.error(f"❌ [AddressInfo] Failed to create profile: {create_error}")
+                    raise
 
             # Tìm address hiện tại hoặc tạo mới
             address = request.env['investor.address'].sudo().search([
@@ -437,9 +543,13 @@ class PersonalProfileController(http.Controller):
 
             address.sudo().write(address_vals)
             
+            _logger.info("🎉 [AddressInfo] Address info save operation completed successfully")
             return Response(json.dumps({'success': True, 'message': 'Address information updated successfully'}), 
                           content_type='application/json')
         except Exception as e:
+            _logger.error(f"💥 [AddressInfo] Critical error in save operation: {str(e)}")
+            _logger.error(f"💥 [AddressInfo] Exception type: {type(e).__name__}")
+            _logger.error(f"💥 [AddressInfo] User: {request.env.user.name if request.env.user else 'Unknown'}")
             return Response(json.dumps({'error': str(e)}), content_type='application/json', status=500)
 
     @http.route('/data_verification', type='http', auth='user', methods=['GET'], csrf=False)
@@ -480,7 +590,9 @@ class PersonalProfileController(http.Controller):
         """API endpoint to save all collected profile data"""
         try:
             current_user = request.env.user
+            _logger.info(f"📋 [AllProfileData] Starting bulk save for user: {current_user.name} (ID: {current_user.id})")
             all_data = json.loads(request.httprequest.data.decode('utf-8'))
+            _logger.info(f"📊 [AllProfileData] Data sections: {list(all_data.keys())}")
 
             # --- 1. Personal Profile Data ---
             personal_data = all_data.get('personalProfileData', {})
@@ -489,8 +601,20 @@ class PersonalProfileController(http.Controller):
             ], limit=1)
 
             if not profile:
+                partner = current_user.partner_id
+                vietnam = request.env['res.country'].sudo().search([('code', '=', 'VN')], limit=1)
                 profile = request.env['investor.profile'].sudo().create({
-                    'partner_id': current_user.partner_id.id,
+                    'partner_id': partner.id,
+                    'name': partner.name or current_user.name or 'Chưa cập nhật',
+                    'birth_date': '1990-01-01',
+                    'gender': 'other',
+                    'nationality': vietnam.id if vietnam else False,
+                    'id_type': 'id_card',
+                    'id_number': '000000000',
+                    'id_issue_date': '2020-01-01',
+                    'id_issue_place': 'Chưa cập nhật',
+                    'phone': partner.phone or '',
+                    'email': partner.email or '',
                 })
             
             personal_update_data = {}
@@ -529,6 +653,7 @@ class PersonalProfileController(http.Controller):
                 profile.partner_id.sudo().write(partner_update)
 
             # --- 2. Bank Account Data ---
+            
             bank_data = all_data.get('bankInfoData', {})
             if bank_data:
                 bank_account_vals = {
@@ -566,7 +691,11 @@ class PersonalProfileController(http.Controller):
                     address_vals['investor_id'] = profile.id
                     request.env['investor.address'].sudo().create(address_vals)
 
+            _logger.info("🎉 [AllProfileData] Bulk save operation completed successfully")
             return Response(json.dumps({'success': True, 'message': 'All profile data saved successfully'}), 
                           content_type='application/json')
         except Exception as e:
+            _logger.error(f"💥 [AllProfileData] Critical error in bulk save operation: {str(e)}")
+            _logger.error(f"💥 [AllProfileData] Exception type: {type(e).__name__}")
+            _logger.error(f"💥 [AllProfileData] User: {request.env.user.name if request.env.user else 'Unknown'}")
             return Response(json.dumps({'error': str(e)}), content_type='application/json', status=500) 

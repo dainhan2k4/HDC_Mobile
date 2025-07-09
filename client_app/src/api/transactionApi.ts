@@ -5,14 +5,24 @@ import { ApiResponse } from '../types/api';
 
 export interface Transaction {
   id: number;
-  type: string;
+  name: string;
+  account_number: string;
   fund_name: string;
+  fund_id: number;
+  order_date: string;
+  order_code: string;
   amount: number;
-  units?: number;
+  session_date: string;
   status: string;
-  date: string;
-  transaction_type: 'buy' | 'sell';
-  fund_id?: number;
+  status_detail: string;
+  transaction_type: string;
+  units: number;
+  currency: string;
+  raw_status: string;
+  raw_transaction_type: string;
+  // Optional legacy fields
+  type?: string;
+  date?: string;
 }
 
 export interface BalanceInfo {
@@ -38,7 +48,7 @@ export interface Currency {
 
 // Transaction methods
 
-// Get transaction orders using /transaction_management/order
+// Get transaction orders - all transactions with filters
 export const getTransactionOrders = async (params?: {
   page?: number;
   limit?: number;
@@ -49,32 +59,37 @@ export const getTransactionOrders = async (params?: {
   end_date?: string;
 }): Promise<Transaction[]> => {
   try {
+    console.log('🔗 [TransactionApi] Getting all transactions with params:', params);
     const response = await apiService.getTransactions(params);
+    console.log('✅ [TransactionApi] Transactions response:', response);
     return (response.data as Transaction[]) || [];
   } catch (error) {
-    console.error('Error fetching transaction orders:', error);
+    console.error('❌ [TransactionApi] Error fetching transaction orders:', error);
     throw error;
   }
 };
 
-// Get pending transactions using /transaction_management/pending
+// Get pending transactions using middleware endpoint
 export const getPendingTransactions = async (): Promise<Transaction[]> => {
   try {
-    const response = await apiService.getPendingTransactions();
+    console.log('🔗 [TransactionApi] Getting pending transactions...');
+    const response = await apiService.get('/transaction/pending');
+    console.log('✅ [TransactionApi] Pending transactions response:', response);
     return (response.data as Transaction[]) || [];
   } catch (error) {
-    console.error('Error fetching pending transactions:', error);
+    console.error('❌ [TransactionApi] Error fetching pending transactions:', error);
     throw error;
   }
 };
 
-// Get periodic transactions using /transaction_management/periodic
+// Get periodic transactions - placeholder for now  
 export const getPeriodicTransactions = async (): Promise<Transaction[]> => {
   try {
-    const response = await apiService.get('/transaction_management/periodic');
-    return (response.data as Transaction[]) || [];
+    console.log('🔗 [TransactionApi] Getting periodic transactions (placeholder)...');
+    // TODO: Implement when periodic endpoint is available
+    return [];
   } catch (error) {
-    console.error('Error fetching periodic transactions:', error);
+    console.error('❌ [TransactionApi] Error fetching periodic transactions:', error);
     throw error;
   }
 };
@@ -104,6 +119,19 @@ export const getBalanceHistory = async (params?: {
     return (response.data as any[]) || [];
   } catch (error) {
     console.error('Error fetching balance history:', error);
+    throw error;
+  }
+};
+
+// Get transaction history using middleware endpoint
+export const getTransactionHistory = async (): Promise<Transaction[]> => {
+  try {
+    console.log('🔗 [TransactionApi] Getting transaction history...');
+    const response = await apiService.get('/transaction/history');
+    console.log('✅ [TransactionApi] Transaction history response:', response);
+    return (response.data as Transaction[]) || [];
+  } catch (error) {
+    console.error('❌ [TransactionApi] Error fetching transaction history:', error);
     throw error;
   }
 };
@@ -154,4 +182,18 @@ export const getAssetManagement = async (): Promise<any> => {
     console.error('Error fetching asset management:', error);
     throw error;
   }
+};
+
+// Transaction API object for easier importing
+export const transactionApi = {
+  getTransactionOrders,
+  getPendingTransactions,
+  getPeriodicTransactions,
+  getTransactionHistory,
+  getAccountBalance,
+  getBalanceHistory,
+  getCountries,
+  getCurrencies,
+  getStatusInfo,
+  getAssetManagement,
 }; 

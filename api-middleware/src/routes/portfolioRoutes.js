@@ -39,11 +39,8 @@ router.post('/clear-cache', async (req, res) => {
   try {
     console.log('🗑️ [Portfolio] Clearing all portfolio cache...');
     
-    // Clear all portfolio-related cache
-    portfolioController.odooService.dataCache.del('investments_data');
-    portfolioController.odooService.dataCache.del('portfolio_data');
-    portfolioController.odooService.dataCache.del('overview_data');
-    portfolioController.odooService.dataCache.del('funds_data');
+    // Clear all portfolio-related cache using the proper method
+    portfolioController.odooService.clearCache();
     
     console.log('✅ [Portfolio] Cache cleared successfully');
     

@@ -99,7 +99,10 @@ app.get('/', (req, res) => {
       },
       transaction: {
         buy: `${config.server.apiPrefix}/transaction/buy`,
-        sell: `${config.server.apiPrefix}/transaction/sell`
+        sell: `${config.server.apiPrefix}/transaction/sell`,
+        pending: `${config.server.apiPrefix}/transaction/pending`,
+        history: `${config.server.apiPrefix}/transaction/history`,
+        stats: `${config.server.apiPrefix}/transaction/stats`
       }
     }
   });
@@ -127,7 +130,10 @@ app.use('*', (req, res) => {
       `${config.server.apiPrefix}/profile/data_address_info`,
       
       `${config.server.apiPrefix}/transaction/buy`,
-      `${config.server.apiPrefix}/transaction/sell`
+      `${config.server.apiPrefix}/transaction/sell`,
+      `${config.server.apiPrefix}/transaction/pending`,
+      `${config.server.apiPrefix}/transaction/history`,
+      `${config.server.apiPrefix}/transaction/stats`
     ]
   });
 });

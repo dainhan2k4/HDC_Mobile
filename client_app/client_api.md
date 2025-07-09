@@ -197,24 +197,93 @@ diff --git a/odoo-18-docker-compose/CLIENT_API_DOCUMENTATION_VI.md b/odoo-18-doc
 +* `TOKEN_EXPIRED`
 +* `NOT_FOUND`
 +* `VALIDATION_ERROR`
++EOF
++)
 +
-+---
++# ===== TRANSACTION MANAGEMENT API =====
 +
-+## 11. Mẹo gọi API từ JavaScript
++## API Middleware Endpoints
 +
-+```ts
-+// Fetch list of funds
-+fetch('http://localhost:10018/data_fund')
-+  .then(res => res.json())
-+  .then(console.log);
++API middleware chạy trên port 3001 cung cấp các endpoints RESTful để lấy data transaction_management:
 +
-+// Authenticated request using ApiService wrapper
-+apiService.setTokens(accessToken, refreshToken);
-+const funds = await apiService.getFunds({ page: 1, limit: 20 });
++**Base URL:** `http://localhost:3001/api/v1`
++
++### 1. Lấy danh sách giao dịch pending
++```
++GET /api/v1/transaction/pending
 +```
 +
-+---
++**Query Parameters:**
++- `userId` (optional): ID của user để filter
++- `page` (optional): Trang hiện tại (mặc định: 1)
++- `limit` (optional): Số lượng items mỗi trang (mặc định: 20)
 +
-+> Mọi thắc mắc/vấn đề vui lòng liên hệ nhóm Backend để được hỗ trợ. 😀
-EOF
-)
++**Response:**
++```json
++{
++  "success": true,
++  "message": "Pending transactions retrieved successfully",
++  "data": [
++    {
++      "id": 1,
++      "name": "TX000001",
++      "account_number": "Pham Toan",
++      "fund_name": "VCBF-BCF",
++      "fund_id": 1,
++      "order_date": "09/07/2025, 15:30:45",
++      "order_code": "TX000001",
++      "amount": 1000000,
++      "session_date": "09/07/2025",
++      "status": "Chờ khớp lệnh",
++      "status_detail": "Chờ xác nhận tiền",
++      "transaction_type": "Mua",
++      "units": 100,
++      "currency": "VND"
++    }
++  ],
++  "pagination": {
++    "page": 1,
++    "limit": 20,
++    "total": 5
++  }
++}
++```
++
++### 2. Lấy lịch sử giao dịch
++```
++GET /api/v1/transaction/history
++```
++
++**Query Parameters:**
++- `userId`, `status`, `page`, `limit`, `startDate`, `endDate`
++
++### 3. Lấy thông tin giao dịch cụ thể
++```
++GET /api/v1/transaction/:id
++```
++
++### 4. Lấy thống kê giao dịch
++```
++GET /api/v1/transaction/stats
++```
++
++### 5. Tạo giao dịch mua/bán
++```
++POST /api/v1/transaction/buy
++POST /api/v1/transaction/sell
++```
++
++## Sử dụng trong React Native
++
++```typescript
++// services/transactionApi.ts
++import { apiService } from '../config/apiService';
++
++export const transactionApi = {
++  getPendingTransactions: async (params = {}) => {
++    const response = await apiService.get('/transaction/pending', { params });
++    return response.data;
++  },
++  // ... các methods khác
++};
++```

@@ -138,6 +138,161 @@ class TransactionController {
       });
     }
   }
+
+  // ===== TRANSACTION DATA RETRIEVAL METHODS =====
+
+  async getPendingTransactions(req, res) {
+    console.log('📋 [TransactionController] Getting pending transactions...');
+    
+    try {
+      const { userId, page = 1, limit = 20 } = req.query;
+      
+      // Get pending transactions
+      const transactions = await this.odooService.getTransactions({
+        status: 'pending',
+        userId: userId ? parseInt(userId) : undefined,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      });
+
+      console.log(`✅ [TransactionController] Found ${transactions.length} pending transactions`);
+
+      res.json({
+        success: true,
+        message: 'Pending transactions retrieved successfully',
+        data: transactions,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: transactions.length
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ [TransactionController] Get pending transactions failed:', error.message);
+      
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve pending transactions',
+        error: error.message
+      });
+    }
+  }
+
+  async getTransactionHistory(req, res) {
+    console.log('📜 [TransactionController] Getting transaction history...');
+    
+    try {
+      const { userId, status, page = 1, limit = 20, startDate, endDate } = req.query;
+      
+      const filters = {
+        userId: userId ? parseInt(userId) : undefined,
+        status: status,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        startDate: startDate,
+        endDate: endDate
+      };
+
+      // Get transaction history
+      const transactions = await this.odooService.getTransactions(filters);
+
+      console.log(`✅ [TransactionController] Found ${transactions.length} transactions in history`);
+
+      res.json({
+        success: true,
+        message: 'Transaction history retrieved successfully',
+        data: transactions,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: transactions.length
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ [TransactionController] Get transaction history failed:', error.message);
+      
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve transaction history',
+        error: error.message
+      });
+    }
+  }
+
+  async getTransactionById(req, res) {
+    console.log('🔍 [TransactionController] Getting transaction by ID...');
+    
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Transaction ID is required'
+        });
+      }
+
+      // Get specific transaction
+      const transaction = await this.odooService.getTransactionById(parseInt(id));
+
+      if (!transaction) {
+        return res.status(404).json({
+          success: false,
+          message: 'Transaction not found'
+        });
+      }
+
+      console.log('✅ [TransactionController] Transaction found:', transaction.name);
+
+      res.json({
+        success: true,
+        message: 'Transaction retrieved successfully',
+        data: transaction
+      });
+
+    } catch (error) {
+      console.error('❌ [TransactionController] Get transaction by ID failed:', error.message);
+      
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve transaction',
+        error: error.message
+      });
+    }
+  }
+
+  async getTransactionStats(req, res) {
+    console.log('📊 [TransactionController] Getting transaction statistics...');
+    
+    try {
+      const { userId, period = 'month' } = req.query;
+      
+      // Get transaction statistics
+      const stats = await this.odooService.getTransactionStats({
+        userId: userId ? parseInt(userId) : undefined,
+        period: period
+      });
+
+      console.log('✅ [TransactionController] Transaction stats retrieved');
+
+      res.json({
+        success: true,
+        message: 'Transaction statistics retrieved successfully',
+        data: stats
+      });
+
+    } catch (error) {
+      console.error('❌ [TransactionController] Get transaction stats failed:', error.message);
+      
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve transaction statistics',
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = TransactionController; 
