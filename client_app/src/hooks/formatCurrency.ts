@@ -4,6 +4,8 @@
  * @returns The formatted currency string (e.g., "100.000 ₫").
  */
 export const formatVND = (amount: number): string => {
+  try{
+
     if (amount === undefined || amount === null) {
         return '0 ₫';
     }
@@ -16,5 +18,9 @@ export const formatVND = (amount: number): string => {
       style: 'currency',
       currency: 'VND',
     }).format(amount);
+  } catch (error) {
+    console.error('Error formatting currency:', error);
+    return '0 ₫';
+  }
   }; 
 export default formatVND;

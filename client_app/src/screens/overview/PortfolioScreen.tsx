@@ -24,6 +24,61 @@ import formatVND from '../../hooks/formatCurrency';
 
 const { width: screenWidth } = Dimensions.get('window');
 
+// Safe calculation helpers to prevent crashes
+const safeNumber = (value: any): number => {
+  try {
+    if (value === null || value === undefined || isNaN(value)) {
+      return 0;
+    }
+    return typeof value === 'number' ? value : parseFloat(value) || 0;
+  } catch (error) {
+    console.error('Error in safeNumber:', error);
+    return 0;
+  }
+};
+
+const safeMultiply = (a: any, b: any): number => {
+  try {
+    const numA = safeNumber(a);
+    const numB = safeNumber(b);
+    return numA * numB;
+  } catch (error) {
+    console.error('Error in safeMultiply:', error);
+    return 0;
+  }
+};
+
+const safeSubtract = (a: any, b: any): number => {
+  try {
+    const numA = safeNumber(a);
+    const numB = safeNumber(b);
+    return numA - numB;
+  } catch (error) {
+    console.error('Error in safeSubtract:', error);
+    return 0;
+  }
+};
+
+const safePercentage = (value: any): string => {
+  try {
+    const num = safeNumber(value);
+    return num.toFixed(2);
+  } catch (error) {
+    console.error('Error in safePercentage:', error);
+    return '0.00';
+  }
+};
+
+const safeFormatVND = (value: any): string => {
+  try {
+    const num = safeNumber(value);
+    return formatVND(num);
+  } catch (error) {
+    console.error('Error in safeFormatVND:', error);
+    return '0 ₫';
+  }
+};
+
 export const PortfolioScreen: React.FC = () => {
   const navigation = useNavigation();
   const { sessionId, user, isLoading: authLoading } = useAuth();
@@ -50,10 +105,17 @@ export const PortfolioScreen: React.FC = () => {
     worstPerformer: ''
   });
 
-  // Filter out investments with zero values
-  const activeInvestments = investments.filter(investment => 
-    investment.units > 0 && investment.amount > 0
-  );
+  // Filter out investments with zero values - with safe checks
+  const activeInvestments = investments.filter(investment => {
+    try {
+      return investment && 
+             safeNumber(investment.units) > 0 && 
+             safeNumber(investment.amount) > 0;
+    } catch (error) {
+      console.error('Error filtering investments:', error);
+      return false;
+    }
+  });
 
   // Kiểm tra rate limit
   const checkRateLimit = () => {
@@ -158,9 +220,9 @@ export const PortfolioScreen: React.FC = () => {
               fund_id: record.fund_id || record.id,
               fund_name: record.fund_name || record.name || `Fund ${record.id}`,
               fund_ticker: record.fund_ticker || record.ticker || `F${record.id}`,
-              units: record.units || 100,
-              amount: record.amount || 1000000,
-              current_nav: record.current_nav || 10000,
+              units: safeNumber(record.units || 100),
+              amount: safeNumber(record.amount || 1000000),
+              current_nav: safeNumber(record.current_nav || 10000),
               investment_type: record.investment_type || 'equity',
             }));
             console.log('✅ [Portfolio] Got real investment data from backend:', realInvestments.length, 'items');
@@ -180,12 +242,36 @@ export const PortfolioScreen: React.FC = () => {
 
       // Fallback to calculation if we have some data
       if (realInvestments.length > 0) {
-        const activeRealInvestments = realInvestments.filter(inv => inv.units > 0 && inv.amount > 0);
+        const activeRealInvestments = realInvestments.filter(inv => {
+          try {
+            return inv && safeNumber(inv.units) > 0 && safeNumber(inv.amount) > 0;
+          } catch (error) {
+            console.error('Error filtering real investments:', error);
+            return false;
+          }
+        });
         
-        const totalInvestment = activeRealInvestments.reduce((sum, inv) => sum + inv.amount, 0);
-        const totalCurrentValue = activeRealInvestments.reduce((sum, inv) => sum + (inv.current_nav * inv.units), 0);
-        const totalProfitLoss = totalCurrentValue - totalInvestment;
-        const totalProfitLossPercentage = totalInvestment > 0 ? (totalProfitLoss / totalInvestment) * 100 : 0;
+        const totalInvestment = activeRealInvestments.reduce((sum, inv) => {
+          try {
+            return sum + safeNumber(inv.amount);
+          } catch (error) {
+            console.error('Error calculating totalInvestment:', error);
+            return sum;
+          }
+        }, 0);
+        
+        const totalCurrentValue = activeRealInvestments.reduce((sum, inv) => {
+          try {
+            return sum + safeMultiply(inv.current_nav, inv.units);
+          } catch (error) {
+            console.error('Error calculating totalCurrentValue:', error);
+            return sum;
+          }
+        }, 0);
+        
+        const totalProfitLoss = safeSubtract(totalCurrentValue, totalInvestment);
+        const totalProfitLossPercentage = totalInvestment > 0 ? 
+          (totalProfitLoss / totalInvestment) * 100 : 0;
 
         realPortfolio = {
           total_investment: totalInvestment,
@@ -309,13 +395,18 @@ export const PortfolioScreen: React.FC = () => {
   );
 
   const prepareChartData = () => {
-    if (!activeInvestments || activeInvestments.length === 0) return [];
-    
-    return activeInvestments.map((investment, index) => ({
-      name: investment.fund_ticker,
-      value: investment.current_nav * investment.units, 
-      color: generateColor(index),
-    }));
+    try {
+      if (!activeInvestments || activeInvestments.length === 0) return [];
+      
+      return activeInvestments.map((investment, index) => ({
+        name: investment.fund_ticker || `Fund ${index}`,
+        value: safeMultiply(investment.current_nav, investment.units), 
+        color: generateColor(index),
+      }));
+    } catch (error) {
+      console.error('Error preparing chart data:', error);
+      return [];
+    }
   };
 
   const generateColor = (index: number) => {
@@ -415,19 +506,19 @@ export const PortfolioScreen: React.FC = () => {
                 <View style={styles.portfolioValueSection}>
                   <Text style={styles.portfolioLabel}>Tổng giá trị danh mục</Text>
                   <Text style={styles.portfolioMainValue}>
-                    {formatVND(portfolio.total_current_value)}
+                    {safeFormatVND(portfolio.total_current_value)}
                   </Text>
                   <View style={styles.portfolioChangeRow}>
                     <Ionicons 
-                      name={portfolio.total_profit_loss >= 0 ? "trending-up" : "trending-down"} 
+                      name={safeNumber(portfolio.total_profit_loss) >= 0 ? "trending-up" : "trending-down"} 
                       size={16} 
-                      color={portfolio.total_profit_loss >= 0 ? "#28A745" : "#DC3545"} 
+                      color={safeNumber(portfolio.total_profit_loss) >= 0 ? "#28A745" : "#DC3545"} 
                     />
                     <Text style={[
                       styles.portfolioChange,
-                      { color: portfolio.total_profit_loss >= 0 ? "#28A745" : "#DC3545" }
+                      { color: safeNumber(portfolio.total_profit_loss) >= 0 ? "#28A745" : "#DC3545" }
                     ]}>
-                      {formatVND(portfolio.total_profit_loss)} ({portfolio.total_profit_loss_percentage.toFixed(2)}%)
+                      {safeFormatVND(portfolio.total_profit_loss)} ({safePercentage(portfolio.total_profit_loss_percentage)}%)
                     </Text>
                   </View>
                 </View>
@@ -440,7 +531,7 @@ export const PortfolioScreen: React.FC = () => {
                     <Ionicons name="wallet-outline" size={20} color="#2B4BFF" />
                   </View>
                   <Text style={styles.statLabel}>Đã đầu tư</Text>
-                  <Text style={styles.statValue}>{formatVND(portfolio.total_investment)}</Text>
+                  <Text style={styles.statValue}>{safeFormatVND(portfolio.total_investment)}</Text>
                 </View>
                 
                 <View style={styles.quickStatCard}>
@@ -458,9 +549,9 @@ export const PortfolioScreen: React.FC = () => {
                   <Text style={styles.statLabel}>Hiệu suất</Text>
                   <Text style={[
                     styles.statValue,
-                    { color: portfolio.total_profit_loss_percentage >= 0 ? "#28A745" : "#DC3545" }
+                    { color: safeNumber(portfolio.total_profit_loss_percentage) >= 0 ? "#28A745" : "#DC3545" }
                   ]}>
-                    {portfolio.total_profit_loss_percentage >= 0 ? "+" : ""}{portfolio.total_profit_loss_percentage.toFixed(1)}%
+                    {safeNumber(portfolio.total_profit_loss_percentage) >= 0 ? "+" : ""}{safePercentage(portfolio.total_profit_loss_percentage)}%
                   </Text>
                 </View>
               </View>
@@ -526,28 +617,28 @@ export const PortfolioScreen: React.FC = () => {
                       </View>
                       <View style={styles.investmentValues}>
                         <Text style={styles.investmentCurrentValue}>
-                          {formatVND(investment.current_nav * investment.units)}
+                          {safeFormatVND(investment.current_nav * investment.units)}
                         </Text>
-                        <Text style={styles.investmentUnits}>{investment.units} đơn vị</Text>
+                        <Text style={styles.investmentUnits}>{safeNumber(investment.units)} đơn vị</Text>
                       </View>
                     </View>
                     
                     <View style={styles.investmentMetrics}>
                       <View style={styles.metricItem}>
                         <Text style={styles.metricLabel}>Giá NAV</Text>
-                        <Text style={styles.metricText}>{formatVND(investment.current_nav)}</Text>
+                        <Text style={styles.metricText}>{safeFormatVND(investment.current_nav)}</Text>
                       </View>
                       <View style={styles.metricItem}>
                         <Text style={styles.metricLabel}>Đầu tư</Text>
-                        <Text style={styles.metricText}>{formatVND(investment.amount)}</Text>
+                        <Text style={styles.metricText}>{safeFormatVND(investment.amount)}</Text>
                       </View>
                       <View style={styles.metricItem}>
                         <Text style={styles.metricLabel}>Lãi/Lỗ</Text>
                         <Text style={[
                           styles.metricText,
-                          { color: (investment.current_nav * investment.units - investment.amount) >= 0 ? "#28A745" : "#DC3545" }
+                          { color: safeSubtract(safeMultiply(investment.current_nav, investment.units), investment.amount) >= 0 ? "#28A745" : "#DC3545" }
                         ]}>
-                          {formatVND(investment.current_nav * investment.units - investment.amount)}
+                          {safeFormatVND(safeSubtract(safeMultiply(investment.current_nav, investment.units), investment.amount))}
                         </Text>
                       </View>
                     </View>

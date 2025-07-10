@@ -29,7 +29,7 @@ export const PieChartCustom: React.FC<PieChartCustomProps> = ({ data, sliceColor
     label: { 
       text: `${((item.value / data.reduce((sum, item) => sum + item.value, 0)) * 100).toFixed(0)}%`,
       fontSize: 12,
-      fontWeight: 'semibold',
+      fontWeight: '600', // Changed from 'semibold' to '600' for Android compatibility
       fill: '#fff',
       stroke: '#000',
       strokeWidth: 0.5
