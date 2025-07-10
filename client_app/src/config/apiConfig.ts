@@ -8,7 +8,7 @@ const ENVIRONMENTS = {
   
   // API Middleware (new approach - recommended)
   // ipconfig | findstr IPv4
-  MIDDLEWARE_LOCAL: 'http://192.168.50.104:3001/api/v1', 
+  MIDDLEWARE_LOCAL: 'http://10.10.2.41:3001/api/v1', 
   MIDDLEWARE_PRODUCTION: '',
 };
 
