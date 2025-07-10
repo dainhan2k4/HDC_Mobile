@@ -5,14 +5,18 @@ const config = require('../config/config');
 const router = express.Router();
 const profileController = new ProfileController();
 
-// Legacy route (compatibility)
+// Personal profile routes
 router.get('/personal', async (req, res) => {
-    await profileController.getProfile(req, res);
+    await profileController.getPersonalProfile(req, res);
 });
 
-// New routes for mobile app profile APIs
 router.get('/data_personal_profile', async (req, res) => {
     await profileController.getPersonalProfile(req, res);
+});
+
+// Legacy route (compatibility) 
+router.get('/profile', async (req, res) => {
+    await profileController.getProfile(req, res);
 });
 
 router.get('/data_bank_info', async (req, res) => {

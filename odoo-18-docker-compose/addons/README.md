@@ -1,8 +1,8 @@
-# Hệ Thống Quản Lý Đầu Tư P2P Lending
+# Hệ Thống Quản Lý Đầu Tư p2p Lending
 
 ## 📋 Tổng Quan
 
-Hệ thống quản lý đầu tư P2P Lending là một nền tảng toàn diện được xây dựng trên Odoo để quản lý các hoạt động đầu tư, quản lý quỹ, và quản lý hồ sơ nhà đầu tư. Hệ thống bao gồm 6 module chính, mỗi module đảm nhiệm một chức năng cụ thể trong quy trình đầu tư.
+Hệ thống quản lý đầu tư p2p Lending là một nền tảng toàn diện được xây dựng trên Odoo để quản lý các hoạt động đầu tư, quản lý quỹ, và quản lý hồ sơ nhà đầu tư. Hệ thống bao gồm 6 module chính, mỗi module đảm nhiệm một chức năng cụ thể trong quy trình đầu tư.
 
 ## 🏗️ Kiến Trúc Hệ Thống
 

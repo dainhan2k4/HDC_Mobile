@@ -16,8 +16,45 @@ import { apiService } from '../../config/apiService';
 import { useAuth } from '../../context/AuthContext';
 import { FundListItem, FundDetails, TimeRangeSelector } from '../../components/fund';
 
-const { width: screenWidth } = Dimensions.get('window');
-const isTablet = screenWidth >= 768;
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// Enhanced responsive breakpoints
+const getLayoutConfig = () => {
+  if (screenWidth >= 1024) {
+    return { 
+      type: 'desktop',
+      leftPanelFlex: 0.35,
+      rightPanelFlex: 0.65,
+      gap: 24,
+      padding: 24
+    };
+  }
+  if (screenWidth >= 768) {
+    return { 
+      type: 'tablet',
+      leftPanelFlex: 0.4,
+      rightPanelFlex: 0.6,
+      gap: 20,
+      padding: 16
+    };
+  }
+  if (screenWidth >= 400) {
+    return { 
+      type: 'mobile-large',
+      leftPanelFlex: 0.42,
+      rightPanelFlex: 0.58,
+      gap: 12,
+      padding: 12
+    };
+  }
+  return { 
+    type: 'mobile-small',
+    leftPanelFlex: 0.45,
+    rightPanelFlex: 0.55,
+    gap: 8,
+    padding: 8
+  };
+};
 
 type TimeRange = '1M' | '3M' | '6M' | '1Y';
 
@@ -29,6 +66,7 @@ export const FundScreen: React.FC = () => {
   const [selectedFund, setSelectedFund] = useState<Fund | null>(null);
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('1M');
   const [isLoading, setIsLoading] = useState(true);
+  const [layoutConfig] = useState(getLayoutConfig());
 
   
 
@@ -268,144 +306,278 @@ export const FundScreen: React.FC = () => {
     );
   }
 
-  if (isTablet) {
-    // Tablet layout: two columns
-    return (
-      <View style={styles.container}>
-        <View style={styles.tabletContainer}>
-          {/* Left Panel: Fund List */}
-          <View style={styles.leftPanel}>
-            <Text style={styles.panelTitle}>Danh mục đầu tư</Text>
-            <ScrollView style={styles.fundList} showsVerticalScrollIndicator={false}>
-              {funds.map((fund) => (
-                <FundListItem
-                  key={fund.id}
-                  fund={fund}
-                  isSelected={selectedFund?.id === fund.id}
-                  onPress={() => handleFundSelect(fund)}
-                />
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Right Panel: Fund Details */}
-          <View style={styles.rightPanel}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <FundDetails
-                fund={selectedFund}
-                selectedTimeRange={selectedTimeRange}
-                onTimeRangeChange={handleTimeRangeChange}
-                onBuyFund={handleBuyFund}
-                onSellFund={handleSellFund}
-              />
-            </ScrollView>
-          </View>
-        </View>
-      </View>
-    );
-  }
-
-  // Mobile layout: stacked
+  // Universal two-column layout for all screen sizes
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Fund List */}
-      <View style={styles.mobileSection}>
-        <Text style={styles.sectionTitle}>Danh sách quỹ đầu tư</Text>
-        {funds.map((fund) => (
-          <FundListItem
-            key={fund.id}
-            fund={fund}
-            isSelected={selectedFund?.id === fund.id}
-            onPress={() => handleFundSelect(fund)}
-          />
-        ))}
+    <View style={styles.container}>
+      {/* Responsive header */}
+      <View style={[
+        styles.responsiveHeader,
+        layoutConfig.type.startsWith('mobile') && styles.mobileHeader
+      ]}>
+        <Text style={[
+          styles.headerTitle,
+          layoutConfig.type.startsWith('mobile') && styles.mobileHeaderTitle
+        ]}>
+          Quỹ đầu tư
+        </Text>
+        <View style={styles.headerSubtitle}>
+          <Text style={[
+            styles.headerSubtitleText,
+            layoutConfig.type.startsWith('mobile') && styles.mobileHeaderSubtitleText
+          ]}>
+            {funds.length} quỹ có sẵn
+          </Text>
+        </View>
       </View>
 
-      {/* Fund Details */}
-      {selectedFund && (
-        <View style={styles.mobileSection}>
-          <FundDetails
-            fund={selectedFund}
-            selectedTimeRange={selectedTimeRange}
-            onTimeRangeChange={handleTimeRangeChange}
-            onBuyFund={handleBuyFund}
-            onSellFund={handleSellFund}
-          />
+      <View style={[
+        styles.twoColumnContainer,
+        {
+          padding: layoutConfig.padding,
+          gap: layoutConfig.gap,
+        }
+      ]}>
+        {/* Left Panel: Fund List */}
+        <View style={[
+          styles.leftPanel,
+          { flex: layoutConfig.leftPanelFlex },
+          layoutConfig.type.startsWith('mobile') && styles.mobileLeftPanel
+        ]}>
+          {/* Panel Header */}
+          <View style={[
+            styles.panelHeader,
+            layoutConfig.type.startsWith('mobile') && styles.mobilePanelHeader
+          ]}>
+            <Text style={[
+              styles.panelTitle,
+              layoutConfig.type.startsWith('mobile') && styles.mobilePanelTitle
+            ]}>
+              {layoutConfig.type.startsWith('mobile') ? 'Quỹ' : 'Danh sách quỹ đầu tư'}
+            </Text>
+            <View style={styles.fundCount}>
+              <Text style={[
+                styles.fundCountText,
+                layoutConfig.type.startsWith('mobile') && styles.mobileFundCountText
+              ]}>
+                {funds.length}
+              </Text>
+            </View>
+          </View>
+          
+          {/* Fund List */}
+          <ScrollView 
+            style={styles.fundListScrollView} 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.fundListContent,
+              layoutConfig.type.startsWith('mobile') && styles.mobileFundListContent
+            ]}
+          >
+            {funds.map((fund) => (
+              <FundListItem
+                key={fund.id}
+                fund={fund}
+                isSelected={selectedFund?.id === fund.id}
+                onPress={() => handleFundSelect(fund)}
+              />
+            ))}
+          </ScrollView>
         </View>
-      )}
-    </ScrollView>
+
+        {/* Right Panel: Fund Details */}
+        <View style={[
+          styles.rightPanel,
+          { flex: layoutConfig.rightPanelFlex },
+          layoutConfig.type.startsWith('mobile') && styles.mobileRightPanel
+        ]}>
+          <ScrollView 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.rightPanelContent,
+              layoutConfig.type.startsWith('mobile') && styles.mobileRightPanelContent
+            ]}
+          >
+            <FundDetails
+              fund={selectedFund}
+              selectedTimeRange={selectedTimeRange}
+              onTimeRangeChange={handleTimeRangeChange}
+              onBuyFund={handleBuyFund}
+              onSellFund={handleSellFund}
+            />
+          </ScrollView>
+        </View>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 10,
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F5F7FA',
   },
+  
+  // Loading States
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F5F7FA',
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: 16,
     fontSize: 16,
-    color: '#6C757D',
+    color: '#64748B',
+    fontWeight: '500',
   },
-  tabletContainer: {
+
+  // Responsive Header
+  responsiveHeader: {
+    backgroundColor: '#2B4BFF',
+    paddingTop: 50,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  mobileHeader: {
+    paddingTop: 45,
+    paddingBottom: 12,
+    paddingHorizontal: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  mobileHeaderTitle: {
+    fontSize: 18,
+    letterSpacing: 0.3,
+  },
+  headerSubtitle: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  headerSubtitleText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#FFFFFF',
+  },
+  mobileHeaderSubtitleText: {
+    fontSize: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+
+  // Two Column Layout
+  twoColumnContainer: {
     flex: 1,
     flexDirection: 'row',
-    padding: 16,
-    gap: 16,
+    maxWidth: 1400,
+    alignSelf: 'center',
+    width: '100%',
   },
+
+  // Left Panel Styles
   leftPanel: {
-    width: 300,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  rightPanel: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
+  mobileLeftPanel: {
     borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+
+  panelHeader: {
+    backgroundColor: '#2B4BFF',
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  mobilePanelHeader: {
+    padding: 12,
   },
   panelTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#212529',
-    marginBottom: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
-  fundList: {
+  mobilePanelTitle: {
+    fontSize: 14,
+    letterSpacing: 0.2,
+  },
+  fundCount: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    minWidth: 28,
+    alignItems: 'center',
+  },
+  fundCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  mobileFundCountText: {
+    fontSize: 10,
+  },
+
+  fundListScrollView: {
     flex: 1,
   },
-  mobileSection: {
-    backgroundColor: '#FFFFFF',
-    margin: 16,
-    borderRadius: 12,
+  fundListContent: {
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingBottom: 24,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#212529',
-    marginBottom: 16,
+  mobileFundListContent: {
+    padding: 8,
+    paddingBottom: 16,
+  },
+
+  // Right Panel Styles
+  rightPanel: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  mobileRightPanel: {
+    borderRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  rightPanelContent: {
+    padding: 20,
+    minHeight: screenHeight * 0.7,
+  },
+  mobileRightPanelContent: {
+    padding: 12,
+    minHeight: screenHeight * 0.6,
   },
 }); 
