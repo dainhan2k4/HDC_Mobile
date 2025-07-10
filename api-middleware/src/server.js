@@ -11,6 +11,49 @@ const portfolioRoutes = require('./routes/portfolioRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 
+// Function to kill process using port
+const killPort = (port) => {
+  const { execSync } = require('child_process');
+  
+  try {
+    // Kill any process using the port on Windows
+    const command = `netstat -ano | findstr :${port}`;
+    const result = execSync(command, { encoding: 'utf8', stdio: 'pipe' });
+    
+    if (result) {
+      console.log(`🔍 [Server] Found processes using port ${port}:`);
+      const lines = result.split('\n').filter(line => line.trim());
+      
+      const pids = new Set();
+      lines.forEach(line => {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 5) {
+          const pid = parts[parts.length - 1];
+          if (pid && pid !== '0' && !isNaN(pid)) {
+            pids.add(pid);
+          }
+        }
+      });
+      
+      pids.forEach(pid => {
+        try {
+          execSync(`taskkill /F /PID ${pid}`, { stdio: 'pipe' });
+          console.log(`💀 [Server] Killed process ${pid} using port ${port}`);
+        } catch (killError) {
+          console.log(`⚠️ [Server] Could not kill process ${pid}: ${killError.message}`);
+        }
+      });
+    }
+  } catch (error) {
+    // Port is not in use, which is good
+    console.log(`✅ [Server] Port ${port} is available`);
+  }
+};
+
+// Kill any existing process on our port before starting
+console.log(`🔄 [Server] Checking and clearing port ${config.server.port}...`);
+killPort(config.server.port);
+
 const app = express();
 
 // Security middleware
@@ -308,21 +351,50 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('🔄 [Server] SIGTERM received, shutting down gracefully...');
-  server.close(() => {
-    console.log('✅ [Server] Process terminated');
+// Enhanced graceful shutdown
+const gracefulShutdown = (signal) => {
+  console.log(`🔄 [Server] ${signal} received, shutting down gracefully...`);
+  
+  if (server) {
+    server.close((err) => {
+      if (err) {
+        console.error('❌ [Server] Error during server shutdown:', err);
+        process.exit(1);
+      }
+      console.log('✅ [Server] HTTP server closed');
+      console.log('✅ [Server] Process terminated gracefully');
+      process.exit(0);
+    });
+    
+    // Force close after 10 seconds
+    setTimeout(() => {
+      console.log('⚠️ [Server] Forcing shutdown after timeout');
+      process.exit(1);
+    }, 10000);
+  } else {
+    console.log('✅ [Server] No server to close, exiting...');
     process.exit(0);
-  });
+  }
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle nodemon restart
+process.on('SIGUSR2', () => {
+  console.log('🔄 [Server] SIGUSR2 received (nodemon restart), shutting down gracefully...');
+  gracefulShutdown('SIGUSR2');
 });
 
-process.on('SIGINT', () => {
-  console.log('🔄 [Server] SIGINT received, shutting down gracefully...');
-  server.close(() => {
-    console.log('✅ [Server] Process terminated');
-    process.exit(0);
-  });
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('💥 [Server] Uncaught Exception:', err);
+  gracefulShutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 [Server] Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown('unhandledRejection');
 });
 
 // Start server - bind to all interfaces to accept external connections

@@ -2,6 +2,9 @@ const axios = require('axios');
 const NodeCache = require('node-cache');
 const config = require('../config/config');
 
+// Global session cache - shared across all instances
+const GLOBAL_SESSION_CACHE = new NodeCache({ stdTTL: 36000 }); // 10 hours
+
 class BaseOdooService {
   constructor(authService = null) {
     this.baseUrl = config.odoo.baseUrl;
@@ -13,8 +16,8 @@ class BaseOdooService {
     // Reference to AuthService for authentication
     this.authService = authService;
     
-    // Session cache - store session_id for reuse
-    this.sessionCache = new NodeCache({ stdTTL: 3600 }); // 1 hour
+    // Use global session cache instead of instance cache
+    this.sessionCache = GLOBAL_SESSION_CACHE;
     
     // Data cache - cache API responses
     this.dataCache = new NodeCache({ 
@@ -53,17 +56,18 @@ class BaseOdooService {
   }
 
   /**
-   * Get session_id from cache
+   * Get session_id from global cache
    */
   getSessionId() {
-    return this.sessionCache.get('session_id');
+    return GLOBAL_SESSION_CACHE.get('session_id');
   }
 
   /**
-   * Set session_id in cache
+   * Set session_id in global cache
    */
   setSessionId(sessionId) {
-    this.sessionCache.set('session_id', sessionId);
+    GLOBAL_SESSION_CACHE.set('session_id', sessionId);
+    console.log(`🔧 [BaseOdooService] Session saved to global cache: ${sessionId.substring(0, 20)}...`);
     // Also update AuthService if available
     if (this.authService && this.authService.setSessionId) {
       this.authService.setSessionId(sessionId);
@@ -87,6 +91,10 @@ class BaseOdooService {
       console.log(`🔗 [BaseOdooService] Session ID:`, this.getSessionId());
 
       const response = await this.client.request({
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+          'Cookie': `session_id=${this.getSessionId()}`
+        },
         url: endpoint,
         method,
         data,
@@ -241,11 +249,15 @@ class BaseOdooService {
   }
 
   /**
-   * Clear session cache (force re-authentication)
+   * Clear session from global cache
    */
   clearSession() {
-    this.sessionCache.del('session_id');
-    console.log('🔐 [BaseOdooService] Session cleared');
+    GLOBAL_SESSION_CACHE.del('session_id');
+    console.log('🧹 [BaseOdooService] Session cleared from global cache');
+    // Also clear from AuthService if available
+    if (this.authService && this.authService.clearSession) {
+      this.authService.clearSession();
+    }
   }
 
   /**

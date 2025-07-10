@@ -202,7 +202,7 @@ export class ApiService {
         success: true, 
         data: { 
           result: { 
-            db: 'p2p2', 
+            db: 'p2p', 
             uid: 1, 
             session_id: 'middleware-session',
             username: email 
@@ -218,7 +218,7 @@ export class ApiService {
   // Direct Odoo authentication method
   private async loginDirectOdoo(email: string, password: string, database?: string): Promise<ApiResponse<any>> {
     // Try different databases if not specified
-    const databasesToTry = ['p2p', 'odoo18', 'postgres', 'odoo'];
+    const databasesToTry = ['p2p'];
     
     for (const db of databasesToTry) {
       try {

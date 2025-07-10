@@ -32,8 +32,8 @@ class AuthService extends BaseOdooService {
       // Check for session_id in response result first
       if (data.result && data.result.session_id) {
         this.setSessionId(data.result.session_id);
-        console.log(`✅ [AuthService] Authentication successful via result, session: ${data.result.session_id}`);
-        console.log(`🔧 [AuthService] Session saved to cache, can retrieve: ${this.getSessionId()}`);
+        console.log(`✅ [AuthService] Authentication successful via result, session: ${data.result.session_id.substring(0, 20)}...`);
+        console.log(`🔧 [AuthService] Session saved to global cache, can retrieve: ${this.getSessionId()?.substring(0, 20)}...`);
         return { success: true, sessionId: data.result.session_id, uid: data.result.uid };
       }
 
@@ -46,8 +46,8 @@ class AuthService extends BaseOdooService {
           const sessionId = sessionMatch.match(/session_id=([^;]+)/)?.[1];
           if (sessionId) {
             this.setSessionId(sessionId);
-            console.log(`✅ [AuthService] Authentication successful via cookies, session: ${sessionId}`);
-            console.log(`🔧 [AuthService] Session saved to cache, can retrieve: ${this.getSessionId()}`);
+            console.log(`✅ [AuthService] Authentication successful via cookies, session: ${sessionId.substring(0, 20)}...`);
+            console.log(`🔧 [AuthService] Session saved to global cache, can retrieve: ${this.getSessionId()?.substring(0, 20)}...`);
             return { success: true, sessionId, uid: data.result?.uid };
           }
         }

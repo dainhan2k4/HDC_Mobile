@@ -11,10 +11,10 @@ const config = {
   // Odoo Backend Configuration
   odoo: {
     baseUrl: 'http://localhost:11018', // Force localhost, ignore env vars
-    database: 'p2p2', // Try different database to avoid rate limiting
-    username: 'huy@gmail.com',
-    password: '123456',
-    timeout: 15000
+    database: 'p2p', 
+    username: 'pnttmtr15@gmail.com', // Use admin username instead of email
+    password: '123',  // Try admin/admin first
+    timeout: 30000 // Increase timeout for auth issues
   },
 
   // Cache Configuration
