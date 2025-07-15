@@ -19,15 +19,21 @@ import { ProfileContainer } from '../screens/profile/ProfileContainer';
 import { AssetManagementContainer } from '../screens/asset/AssetManagementContainer';
 import { TransactionManagementContainer } from '../screens/transaction/TransactionManagementContainer';
 import { useAuth } from '../context/AuthContext';
+import SignatureScene from '../screens/Signature/SignatureScene';
+import ContractViewer from '../screens/contract/ContractViewer';
+import { useRoute } from '@react-navigation/native';
 
 // Import types
 import { PortfolioOverview } from '../types/portfolio';
 import { Fund, Investment } from '../types/fund';
 import { Transaction } from '../types/transaction';
 import { getInvestments } from '../api/fundApi';
+import { FundContractProps } from '../types/fundcontract';
 
 // Types
 export type RootStackParamList = {
+  SignatureScene: FundContractProps;
+  ContractViewer: FundContractProps;
   Auth: undefined;
   Main: undefined;
   FundBuy: { fundId: number; fundName: string; currentNav?: number };
@@ -71,6 +77,13 @@ const FundSellScreenComponent = FundSellScreen as unknown as React.ComponentType
 const ProfileContainerComponent = ProfileContainer as unknown as React.ComponentType<any>;
 const AssetManagementContainerComponent = AssetManagementContainer as unknown as React.ComponentType<any>;
 const TransactionManagementContainerComponent = TransactionManagementContainer as unknown as React.ComponentType<any>;
+
+// Wrapper component để đảm bảo props được truyền đúng cho ContractViewer
+const ContractViewerWrapper = () => {
+  const route = useRoute();
+  // route.params is FundContractProps with signature
+  return <ContractViewer {...(route.params as any)} />; // Pass all route params
+};
 
 // Dummy portfolio data
 const dummyFunds: Fund[] = [
@@ -328,6 +341,8 @@ export const AppNavigator = () => {
             <Stack.Screen name="Main" component={MainTabNavigator} />
             <Stack.Screen name="FundBuy" component={FundBuyScreenComponent} />
             <Stack.Screen name="FundSell" component={FundSellScreenComponent} />
+            <Stack.Screen name="SignatureScene" component={SignatureScene} />
+            <Stack.Screen name="ContractViewer" component={ContractViewerWrapper} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthNavigator} />

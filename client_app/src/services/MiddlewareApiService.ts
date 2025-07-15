@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
 import { API_CONFIG, API_ENDPOINTS } from '../config/apiConfig';
 import { PortfolioOverview } from '../types/portfolio';
 import { Fund, Investment } from '../types/fund';

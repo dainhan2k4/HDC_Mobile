@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import formatVND from '../../hooks/formatCurrency';
 import { fundApi } from '../../api/fundApi';
+import { FundContractProps } from '../../types/fundcontract';
 
 interface BuyRouteParams {
   fundId: number;
@@ -30,6 +31,20 @@ export const FundBuyScreen: React.FC = () => {
   const [units, setUnits] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [calculationMode, setCalculationMode] = useState<'amount' | 'units'>('amount');
+
+  const fundContract: FundContractProps = {
+    fundName: fundName ,
+    fundCode: fundId.toString(),
+    quantity: parseFloat(units),
+    value: parseFloat(amount),
+    nav: currentNav,
+    investorName: null,
+    investorId: null, 
+    investorAddress: null,
+    transactionDate: new Date().toLocaleDateString('vi-VN'),
+    signature: null, 
+  };
+
 
   // Calculate units from amount or vice versa
   const handleAmountChange = (value: string) => {
@@ -71,7 +86,8 @@ export const FundBuyScreen: React.FC = () => {
       Alert.alert('Lỗi', 'Số tiền đầu tư tối thiểu là 100,000 VNĐ');
       return;
     }
-
+    console.log('fundContract:', fundContract);
+    (navigation as any).navigate('SignatureScene', fundContract);    
     Alert.alert(
       'Xác nhận mua quỹ',
       `Bạn muốn mua ${numericUnits.toFixed(4)} đơn vị quỹ ${fundName} với tổng giá trị ${formatVND(numericAmount)}?`,

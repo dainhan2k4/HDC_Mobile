@@ -65,6 +65,11 @@ export class ApiService {
     this.sessionId = sessionId;
   }
 
+  // Get session ID
+  getSessionId(): string | null {
+    return this.sessionId;
+  }
+
   // Clear tokens and session
   clearTokens() {
     this.accessToken = null;
@@ -83,14 +88,13 @@ export class ApiService {
 
   // Test if current session is valid by calling a simple authenticated endpoint
   async testSessionValidity(): Promise<boolean> {
-    if (!this.sessionId) {
-      console.log('🔐 [ApiService] No session ID to test');
+    const sessionId = this.getSessionId();
+    if (!sessionId) {
       return false;
     }
 
     try {
-      console.log('🔐 [ApiService] Testing session validity...');
-      const response = await this.post('/web/session/get_session_info', {
+      const response = await this.axiosInstance.post(API_ENDPOINTS.LEGACY_ODOO.AUTH.SESSION_INFO, {
         jsonrpc: "2.0",
         method: "call",
         params: {}
@@ -108,6 +112,14 @@ export class ApiService {
     } catch (error) {
       console.log('❌ [ApiService] Session test failed:', error);
       return false;
+    }
+  }
+
+  private addSessionCookie(config: AxiosRequestConfig): void {
+    const sessionId = this.getSessionId();
+    if (sessionId) {
+      config.headers = config.headers || {};
+      config.headers.Cookie = `session_id=${sessionId}`;
     }
   }
 
@@ -488,7 +500,7 @@ export class ApiService {
     start_date?: string;
     end_date?: string;
   }) {
-    return this.get(API_ENDPOINTS.ACCOUNT.BALANCE_HISTORY, params);
+    return this.get(API_ENDPOINTS.ACCOUNT.HISTORY, params);
   }
 
   // Reference Data methods
@@ -506,7 +518,7 @@ export class ApiService {
 
   // Asset Management methods
   async getAssetManagement() {
-    return this.get(API_ENDPOINTS.ASSET.MANAGEMENT);
+    return this.get(API_ENDPOINTS.REFERENCE.COUNTRIES);
   }
 
   // Odoo Dataset API methods for direct model access
