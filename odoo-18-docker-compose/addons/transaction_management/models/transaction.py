@@ -235,23 +235,3 @@ class Transaction(models.Model):
                     record.name = f"{record.transaction_type.upper()} - {record.fund_id.name} - {record.units} units - {record.transaction_date}"
             else:
                 record.name = "New Transaction"
-
-    @api.model
-    def create_transaction(self, user_id, fund_id, transaction_type, units, amount):
-        """Create a new transaction and auto-complete it"""
-        transaction = self.sudo().create({
-            'user_id': user_id,
-            'fund_id': fund_id,
-            'transaction_type': transaction_type,
-            'units': units,
-            'amount': amount,
-            'status': 'pending',
-            'investment_type': 'fund_certificate',
-            'created_at': fields.Datetime.now(),
-            'transaction_date': fields.Date.today(),
-        })
-        
-        # Auto-complete the transaction to update investments
-        transaction.action_complete()
-        
-        return transaction

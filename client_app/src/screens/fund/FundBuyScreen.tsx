@@ -88,17 +88,7 @@ export const FundBuyScreen: React.FC = () => {
     }
     console.log('fundContract:', fundContract);
     (navigation as any).navigate('SignatureScene', fundContract);    
-    Alert.alert(
-      'Xác nhận mua quỹ',
-      `Bạn muốn mua ${numericUnits.toFixed(4)} đơn vị quỹ ${fundName} với tổng giá trị ${formatVND(numericAmount)}?`,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        { 
-          text: 'Xác nhận', 
-          onPress: () => executeBuyOrder(numericAmount, numericUnits)
-        }
-      ]
-    );
+    
   };
 
   const executeBuyOrder = async (amount: number, units: number) => {

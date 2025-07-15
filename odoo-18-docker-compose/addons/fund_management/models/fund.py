@@ -17,11 +17,6 @@ class Fund(models.Model):
         ('Capital Growth', 'Capital Growth')
     ], string="Investment Type", required=True)
     is_shariah = fields.Boolean(string="Is Shariah")
-    status = fields.Selection([
-        ('active', 'Active'),
-        ('inactive', 'Inactive'),
-        ('closed', 'Closed'),
-    ], string="Status", default='active', required=True)
     ytd_history = fields.Text(string="YTD History (JSON)")
     nav_history = fields.Text(string="NAV History (JSON)")
     launch_price = fields.Float(string="Launch Price", required=True)

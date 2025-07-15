@@ -5,59 +5,69 @@ class AuthService extends BaseOdooService {
     super();
   }
 
+  setSessionId(sessionId) {
+    global.sessionId = sessionId;
+  }
+
+  getSessionId() {
+    return global.sessionId;
+  }
+
+  clearSession() {
+    global.sessionId = null;
+  }
+
+  extractSessionFromCookies(setCookie) {
+    if (Array.isArray(setCookie)) {
+      const sessionMatch = setCookie.find(cookie => cookie.includes('session_id='));
+      if (sessionMatch) {
+        return sessionMatch.match(/session_id=([^;]+)/)?.[1];
+      }
+    } else if (typeof setCookie === 'string') {
+      const match = setCookie.match(/session_id=([^;]+)/);
+      return match ? match[1] : null;
+    }
+    return null;
+  }
+
   /**
    * Authenticate with Odoo and get session_id
    * Inspired by Simpos's authentication approach
    */
   async authenticate() {
     try {
-      console.log(`🔐 [AuthService] Authenticating with database: ${this.database}`);
-      
       const response = await this.client.post('/web/session/authenticate', {
-        jsonrpc: "2.0",
-        method: "call",
+        jsonrpc: '2.0',
+        method: 'call',
         params: {
           db: this.database,
           login: this.username,
-          password: this.password
-        }
+          password: this.password,
+        },
       });
 
-      console.log('🔐 [AuthService] Auth response status:', response.status);
-      console.log('🔐 [AuthService] Auth response data:', response.data);
-      console.log('🔐 [AuthService] Auth response headers:', response.headers);
-
       const data = response.data;
+      const setCookie = response.headers['set-cookie'];
       
-      // Check for session_id in response result first
+      // Try to get session from result first
       if (data.result && data.result.session_id) {
-        this.setSessionId(data.result.session_id);
-        console.log(`✅ [AuthService] Authentication successful via result, session: ${data.result.session_id.substring(0, 20)}...`);
-        console.log(`🔧 [AuthService] Session saved to global cache, can retrieve: ${this.getSessionId()?.substring(0, 20)}...`);
-        return { success: true, sessionId: data.result.session_id, uid: data.result.uid };
+        const sessionId = data.result.session_id;
+        this.setSessionId(sessionId);
+        return { success: true, sessionId };
       }
 
-      // Extract session_id from cookies as fallback
-      const setCookie = response.headers['set-cookie'];
+      // Try to get session from cookies
       if (setCookie) {
-        console.log('🍪 [AuthService] Checking cookies:', setCookie);
-        const sessionMatch = setCookie.find(cookie => cookie.includes('session_id='));
-        if (sessionMatch) {
-          const sessionId = sessionMatch.match(/session_id=([^;]+)/)?.[1];
+        const sessionId = this.extractSessionFromCookies(setCookie);
           if (sessionId) {
             this.setSessionId(sessionId);
-            console.log(`✅ [AuthService] Authentication successful via cookies, session: ${sessionId.substring(0, 20)}...`);
-            console.log(`🔧 [AuthService] Session saved to global cache, can retrieve: ${this.getSessionId()?.substring(0, 20)}...`);
-            return { success: true, sessionId, uid: data.result?.uid };
-          }
+          return { success: true, sessionId };
         }
       }
 
-      throw new Error('No session_id found in response or cookies');
+      return { success: false, error: 'Authentication failed' };
     } catch (error) {
-      console.error('❌ [AuthService] Authentication failed:', error.message);
-      console.error('❌ [AuthService] Full error:', error);
-      throw error;
+      return { success: false, error: error.message };
     }
   }
 
@@ -65,24 +75,31 @@ class AuthService extends BaseOdooService {
    * Get cached session_id or authenticate if needed
    */
   async getValidSession() {
-    let sessionId = this.getSessionId();
-    console.log(`🔍 [AuthService] getValidSession - current session: ${sessionId || 'undefined'}`);
+    const sessionId = this.getSessionId();
     
     if (!sessionId) {
-      console.log(`🔄 [AuthService] No session found, authenticating...`);
-      const result = await this.authenticate();
-      return { sessionId: result.sessionId, uid: result.uid };
+      return await this.authenticate();
     }
 
-    // Test session validity
+    // Test if session is still valid
     try {
-      const sessionInfo = await this.testSession();
-      return { sessionId, uid: sessionInfo.uid };
-    } catch (error) {
+      const response = await this.client.post('/web/session/get_session_info', {
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {},
+      }, {
+        headers: { Cookie: `session_id=${sessionId}` }
+      });
+
+      const sessionInfo = response.data.result;
+      if (sessionInfo && sessionInfo.uid && sessionInfo.uid !== false) {
+        return { success: true, sessionId, sessionInfo };
+      }
+
       // Session invalid, re-authenticate
-      console.log('🔄 [AuthService] Session invalid, re-authenticating...');
-      const result = await this.authenticate();
-      return { sessionId: result.sessionId, uid: result.uid };
+      return await this.authenticate();
+    } catch (error) {
+      return await this.authenticate();
     }
   }
 

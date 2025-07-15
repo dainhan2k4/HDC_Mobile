@@ -11,7 +11,7 @@ class MyController(http.Controller):
 
         result = [
             {
-                "id": h.id, 
+                "id": h.id,  # ✅ Thêm dòng này
                 "ticker" : h.ticker,
                 'name': h.name,
                 'description': h.description,

@@ -1,5 +1,4 @@
 // Verification Completion Widget Component
-console.log('Loading VerificationWidget component...');
 
 const { Component, xml, useState, onMounted } = owl;
 
@@ -77,34 +76,25 @@ class VerificationWidget extends Component {
     `;
 
     setup() {
-        console.log("🎯 VerificationWidget - setup called!");
-
-        this.state = useState({
-            loading: true,
-            profile: {},
-            statusInfo: {},
-            agreedToTerms: false,
-            contractEmail: 'nhaltp7397@gmail.com', // Hardcoded for now, will fetch dynamically later
-            companyAddress: '123 Fincorp St, Financial City, Country' // Hardcoded for now
-        });
-
-        onMounted(async () => {
-            // Hide loading spinner
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            const widgetContainer = document.getElementById('verificationWidget');
+        // Load data from sessionStorage
+        const storedPersonalData = sessionStorage.getItem('personalProfileData');
+        const storedBankData = sessionStorage.getItem('bankInfoData');
+        const storedAddressData = sessionStorage.getItem('addressInfoData');
             
-            if (loadingSpinner && widgetContainer) {
-                loadingSpinner.style.display = 'none';
-                widgetContainer.style.display = 'block';
+        if (storedPersonalData) {
+            this.state.personalProfileData = JSON.parse(storedPersonalData);
             }
 
-            // Load profile data and status info
-            await this.loadProfileData();
-            this.loadInitialFormData(); // Load form data from sessionStorage
-            await this.loadStatusInfo();
-            
-            this.state.loading = false;
-        });
+        if (storedBankData) {
+            this.state.bankInfoData = JSON.parse(storedBankData);
+        }
+
+        if (storedAddressData) {
+            this.state.addressInfoData = JSON.parse(storedAddressData);
+        }
+
+        // Load status info
+        this.loadStatusInfo();
     }
 
     loadInitialFormData() {
@@ -114,19 +104,13 @@ class VerificationWidget extends Component {
         const storedAddressData = sessionStorage.getItem('addressInfoData');
 
         if (storedPersonalData) {
-            console.log("✅ Loaded personalProfileData from sessionStorage:", JSON.parse(storedPersonalData));
-        } else {
-            console.log("ℹ️ No personal profile data in sessionStorage");
+            this.state.personalProfileData = JSON.parse(storedPersonalData);
         }
         if (storedBankData) {
-            console.log("✅ Loaded bankInfoData from sessionStorage:", JSON.parse(storedBankData));
-        } else {
-            console.log("ℹ️ No bank info data in sessionStorage");
+            this.state.bankInfoData = JSON.parse(storedBankData);
         }
         if (storedAddressData) {
-            console.log("✅ Loaded addressInfoData from sessionStorage:", JSON.parse(storedAddressData));
-        } else {
-            console.log("ℹ️ No address info data in sessionStorage");
+            this.state.addressInfoData = JSON.parse(storedAddressData);
         }
     }
 
@@ -134,16 +118,12 @@ class VerificationWidget extends Component {
         try {
             const response = await fetch('/get_status_info');
             const data = await response.json();
-            console.log("📥 Status info data:", data);
             
             if (data && data.length > 0) {
                 this.state.statusInfo = data[0];
-                console.log("✅ Status info loaded:", this.state.statusInfo);
-            } else {
-                console.log("ℹ️ No status info found");
             }
         } catch (error) {
-            console.error("❌ Error fetching status info:", error);
+            // Handle error silently
         }
     }
 
@@ -154,21 +134,13 @@ class VerificationWidget extends Component {
         }
 
         try {
-            console.log("🔄 Attempting to complete verification and save all data...");
-            const personalData = JSON.parse(sessionStorage.getItem('personalProfileData') || '{}');
-            const bankData = JSON.parse(sessionStorage.getItem('bankInfoData') || '{}');
-            const addressData = JSON.parse(sessionStorage.getItem('addressInfoData') || '{}');
-            
-            // Combine all data into a single object for submission
             const allData = {
-                ...personalData,
-                bank_accounts: [bankData], // Assuming a single bank account for now
-                addresses: [addressData] // Assuming a single address for now
+                personal_profile: this.state.personalProfileData,
+                bank_info: this.state.bankInfoData,
+                address_info: this.state.addressInfoData
             };
-            
-            console.log("📤 Combined data for submission:", allData);
 
-            const response = await fetch('/save_all_profile_data', { // New endpoint to be created
+            const response = await fetch('/profile/save-all', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -176,21 +148,19 @@ class VerificationWidget extends Component {
                 body: JSON.stringify(allData)
             });
             
-            const result = await response.json();
-            
-            if (result.success) {
-                console.log("✅ Verification completed successfully!");
-                alert('Chúc mừng! Hồ sơ của bạn đã được hoàn tất và gửi đi thành công!');
-                sessionStorage.clear(); // Clear all stored data
-                // Optionally, redirect to a success page or home
-                window.location.href = '/my/home';
+            if (response.ok) {
+                // Clear sessionStorage after successful save
+                sessionStorage.removeItem('personalProfileData');
+                sessionStorage.removeItem('bankInfoData');
+                sessionStorage.removeItem('addressInfoData');
+                
+                // Show success message
+                this.showMessage('Verification completed successfully!', 'success');
             } else {
-                console.error("❌ Verification failed:", result.error);
-                alert('Lỗi khi hoàn tất hồ sơ: ' + (result.error || 'Unknown error'));
+                throw new Error('Failed to save verification data');
             }
         } catch (error) {
-            console.error('❌ Error completing verification:', error);
-            alert('Lỗi khi hoàn tất hồ sơ: ' + error.message);
+            this.showMessage('Error completing verification: ' + error.message, 'error');
         }
     }
 
@@ -200,20 +170,15 @@ class VerificationWidget extends Component {
 
     async loadProfileData() {
         try {
-            console.log("🔄 Loading verification profile data from server...");
             const response = await fetch('/data_verification');
             const data = await response.json();
-            console.log("📥 Verification profile data received:", data);
             
             if (data && data.length > 0) {
                 this.state.profile = data[0];
-                console.log("✅ Verification profile data loaded successfully:", this.state.profile);
             } else {
-                console.log("ℹ️ No existing verification profile data found on server");
                 this.state.profile = {};
             }
         } catch (error) {
-            console.error("❌ Error fetching verification profiles:", error);
             this.state.profile = {};
         }
     }

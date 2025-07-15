@@ -1,11 +1,16 @@
 import React from 'react';
 import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../navigation/AppNavigator';
 import * as Print from 'expo-print';
 import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system';
 import { FundContractProps } from '../../types/fundcontract';
 import { apiService } from '../../config/apiService';
+import { Alert } from 'react-native';
+import { fundApi } from '../../api/fundApi';
+
 
 const ContractViewer = ({
   investorName,
@@ -23,7 +28,7 @@ const ContractViewer = ({
   const [personalInfo, setPersonalInfo] = React.useState<any | null>(null);
 
   // Navigation instance
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // Handlers
   const handlePrint = async () => {
@@ -42,8 +47,46 @@ const ContractViewer = ({
   };
 
   const handleNext = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
+    const numericAmount = value;
+    const numericUnits = quantity;
+    Alert.alert(
+          'Xác nhận mua quỹ',
+          `Bạn muốn mua ${numericUnits?.toFixed(4)} đơn vị quỹ ${fundName} với tổng giá trị ${numericAmount} VNĐ?`,
+          [
+            { text: 'Hủy', style: 'cancel' },
+            { 
+              text: 'Xác nhận', 
+              onPress: () => executeBuyOrder(numericAmount!, numericUnits!)
+            }
+          ]
+        );
+  };
+  const executeBuyOrder = async (amount: number, units: number) => {
+    try {
+      console.log(`🔄 [BuyFund] Executing buy order for fund ${fundName}:`, { amount, units });
+      
+      // Call real API to execute buy order
+      const response = await fundApi.buyFund(parseInt(fundCode!), amount, units);
+      console.log('✅ [BuyFund] Buy order response:', response);
+      
+      Alert.alert(
+        'Thành công!',
+        `Đã đặt lệnh mua ${units.toFixed(4)} đơn vị quỹ ${fundName} thành công. Portfolio sẽ được cập nhật ngay lập tức.`,
+        [
+          { 
+            text: 'OK', 
+            onPress: () => {
+              navigation.navigate('Main');
+            
+              
+            }
+          }
+        ]
+      );
+
+    } catch (error: any) {
+      console.error('❌ [BuyFund] Buy order failed:', error);
+      Alert.alert('Lỗi', error.message || 'Có lỗi xảy ra khi đặt lệnh mua. Vui lòng thử lại.');
     }
   };
 

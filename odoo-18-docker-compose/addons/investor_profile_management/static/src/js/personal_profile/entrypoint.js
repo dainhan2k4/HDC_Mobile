@@ -1,27 +1,11 @@
-// Personal Profile Entrypoint
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Personal Profile Entrypoint loaded');
+// Personal Profile Widget Entrypoint
+import { PersonalProfileWidget } from './personal_profile_widget.js';
     
-    // Check if OWL is available
-    if (typeof owl === 'undefined') {
-        console.error('OWL is not available');
-        return;
-    }
-    
-    const widgetContainer = document.getElementById('personalProfileWidget');
-    if (!widgetContainer) {
-        console.error('Widget container not found');
-        return;
-    }
-    
-    // Wait a bit for the component to be loaded
-    setTimeout(() => {
-        if (typeof window.PersonalProfileWidget !== 'undefined') {
-            console.log('Mounting PersonalProfileWidget');
-            owl.mount(window.PersonalProfileWidget, widgetContainer);
-        } else {
-            console.error('PersonalProfileWidget not found in window object');
-            console.log('Available globals:', Object.keys(window).filter(key => key.includes('Profile')));
+// Mount the widget when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  const profileContainer = document.getElementById('personalProfileWidget');
+  if (profileContainer) {
+    const profileWidget = new PersonalProfileWidget();
+    profileWidget.mount(profileContainer);
         }
-    }, 500);
 }); 

@@ -12,35 +12,20 @@ class FundService extends BaseOdooService {
    */
   async getFunds() {
     const cacheKey = 'funds_data';
-    let cached = this.getCachedData(cacheKey);
+    const cachedData = this.getCachedData(cacheKey);
     
-    if (cached) {
-      console.log('📦 [FundService] Returning cached funds data');
-      return cached;
+    if (cachedData) {
+      return cachedData;
     }
 
     try {
-      console.log('🔗 [FundService] Calling /data_fund endpoint...');
-      const data = await this.apiCall('/data_fund');
-      console.log('📊 [FundService] Raw funds response:', data);
-      
-      // Transform data to consistent format
-      const funds = Array.isArray(data) ? data.map(fund => ({
-        id: fund.id,
-        name: fund.name,
-        ticker: fund.ticker,
-        description: fund.description,
-        current_nav: parseFloat(fund.current_nav) || 0,
-        current_ytd: parseFloat(fund.current_ytd) || 0,
-        investment_type: fund.investment_type || 'equity'
-      })) : [];
+      const data = await this.apiCall('/data_fund', { requireAuth: true });
+      const funds = Array.isArray(data) ? data : [];
 
       this.setCachedData(cacheKey, funds);
-      console.log(`✅ [FundService] Funds data cached: ${funds.length} items`);
       return funds;
     } catch (error) {
-      console.error('❌ [FundService] Failed to get funds:', error.message);
-      return [];
+      throw error;
     }
   }
 
@@ -49,8 +34,6 @@ class FundService extends BaseOdooService {
    */
   async getFundById(fundId) {
     try {
-      console.log(`🔍 [FundService] Getting fund details for ID: ${fundId}`);
-      
       const funds = await this.getFunds();
       const fund = funds.find(f => f.id === fundId);
       
@@ -60,7 +43,6 @@ class FundService extends BaseOdooService {
 
       return fund;
     } catch (error) {
-      console.error('❌ [FundService] Failed to get fund by ID:', error.message);
       throw error;
     }
   }
@@ -70,26 +52,22 @@ class FundService extends BaseOdooService {
    */
   async buyFund(fundId, amount, units) {
     try {
-      console.log(`🔄 [FundService] Creating buy transaction for fund ${fundId}:`, { amount, units });
-      
-      // Ensure valid session and get user ID
-      const session = await this.authService.getValidSession();
-      const userId = session.uid || 2;
+      const transactionData = {
+        fund_id: fundId,
+        amount: amount,
+        units: units,
+        transaction_type: 'purchase'
+      };
 
-      const transactionId = await this.callModelMethod(
-        "portfolio.transaction",
-        "create_transaction",
-        [userId, fundId, 'purchase', units, amount]
-      );
-
-      console.log('✅ [FundService] Buy transaction created:', transactionId);
+      const transactionId = await this.callModelMethod('transaction.order', 'create_buy_transaction', [transactionData]);
       
-      // Clear portfolio-related cache to force refresh
-      this.clearPortfolioCache();
+      if (transactionId) {
+        await this.callModelMethod('transaction.order', 'complete_transaction', [transactionId]);
+        this.clearCache();
+      }
       
-      return transactionId;
+      return { success: true, transactionId };
     } catch (error) {
-      console.error('❌ [FundService] Failed to create buy transaction:', error.message);
       throw error;
     }
   }

@@ -1,21 +1,11 @@
-// entrypoint.js for VerificationWidget
-console.log('Verification entrypoint.js loaded');
+// Verification Widget Entrypoint
+import { VerificationWidget } from './verification_widget.js';
 
-// Wait for OWL to be available and then mount the component
-function mountVerificationWidget() {
-    if (typeof owl !== 'undefined' && typeof VerificationWidget !== 'undefined') {
-        const widgetContainer = document.getElementById('verificationWidget');
-        if (widgetContainer) {
-            console.log('Mounting VerificationWidget from entrypoint.js');
-            owl.mount(VerificationWidget, widgetContainer);
-        } else {
-            console.warn('VerificationWidget container not found. Retrying in 100ms...');
-            setTimeout(mountVerificationWidget, 100);
-        }
-    } else {
-        console.warn('OWL or VerificationWidget not yet defined. Retrying in 100ms...');
-        setTimeout(mountVerificationWidget, 100);
+// Mount the widget when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  const verificationContainer = document.getElementById('verificationWidget');
+  if (verificationContainer) {
+    const verificationWidget = new VerificationWidget();
+    verificationWidget.mount(verificationContainer);
     }
-}
-
-mountVerificationWidget(); 
+}); 

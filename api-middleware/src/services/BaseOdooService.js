@@ -46,9 +46,6 @@ class BaseOdooService {
       
       if (sessionId) {
         config.headers.Cookie = `session_id=${sessionId}`;
-        console.log(`🍪 [BaseOdooService] Adding Cookie header: session_id=${sessionId.substring(0, 20)}...`);
-      } else {
-        console.log(`⚠️ [BaseOdooService] No session ID available for request to ${config.url}`);
       }
       
       return config;
@@ -67,7 +64,6 @@ class BaseOdooService {
    */
   setSessionId(sessionId) {
     GLOBAL_SESSION_CACHE.set('session_id', sessionId);
-    console.log(`🔧 [BaseOdooService] Session saved to global cache: ${sessionId.substring(0, 20)}...`);
     // Also update AuthService if available
     if (this.authService && this.authService.setSessionId) {
       this.authService.setSessionId(sessionId);
@@ -86,10 +82,6 @@ class BaseOdooService {
         await this.authService.getValidSession();
       }
 
-      console.log(`🔗 [BaseOdooService] Making ${method} request to: ${this.baseUrl}${endpoint}`);
-      console.log(`🔗 [BaseOdooService] Headers:`, this.client.defaults.headers);
-      console.log(`🔗 [BaseOdooService] Session ID:`, this.getSessionId());
-
       const response = await this.client.request({
         headers: {
           'ngrok-skip-browser-warning': 'true',
@@ -100,8 +92,6 @@ class BaseOdooService {
         data,
         params
       });
-
-      console.log(`✅ [BaseOdooService] Success response from ${endpoint}:`, response.status);
       return response.data;
     } catch (error) {
       console.error(`❌ [BaseOdooService] API call failed: ${endpoint}`, error.message);
