@@ -72,6 +72,15 @@ class ProfileController {
         }
     }
 
+    async updatePersonalProfile(req, res) {
+
+        try {
+            const data = await this.odooService.updatePersonalProfile(req.body);
+            res.json({ success: true, data: data });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    }
 }
 
 module.exports = ProfileController;

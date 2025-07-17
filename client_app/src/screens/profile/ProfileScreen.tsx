@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { PersonalInfo, BankInfo, AddressInfo } from '../../types/profile';
 import { apiService } from '../../config/apiService';
+import { useNavigation } from '@react-navigation/native';
 
 export const ProfileScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState('personal');
@@ -14,7 +15,7 @@ export const ProfileScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingTab, setIsLoadingTab] = useState(false);
   const { signOut } = useAuth();
-
+  const navigation = useNavigation();
   // API fetch functions
   const fetchPersonalInfo = async () => {
     try {
@@ -228,7 +229,7 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
         
-        <TouchableOpacity style={styles.editButton}>
+        <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile' as never)}>
           <Text style={styles.editButtonText}>Chỉnh sửa thông tin</Text>
         </TouchableOpacity>
       </View>

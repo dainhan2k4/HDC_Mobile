@@ -21,6 +21,11 @@ import { TransactionManagementContainer } from '../screens/transaction/Transacti
 import { useAuth } from '../context/AuthContext';
 import SignatureScene from '../screens/Signature/SignatureScene';
 import ContractViewer from '../screens/contract/ContractViewer';
+import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
+
+
+
+
 import { useRoute } from '@react-navigation/native';
 
 // Import types
@@ -53,6 +58,7 @@ export type MainTabParamList = {
   transaction_management: undefined;
   assetmanagement: undefined;
   personal_profile: undefined;
+  EditProfile: undefined;
 };
 
 export type FundStackParamList = {
@@ -343,6 +349,7 @@ export const AppNavigator = () => {
             <Stack.Screen name="FundSell" component={FundSellScreenComponent} />
             <Stack.Screen name="SignatureScene" component={SignatureScene} />
             <Stack.Screen name="ContractViewer" component={ContractViewerWrapper} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthNavigator} />

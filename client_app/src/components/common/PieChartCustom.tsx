@@ -46,7 +46,7 @@ export const PieChartCustom: React.FC<PieChartCustomProps> = ({ data, sliceColor
         <PieChart
           widthAndHeight={200}
           series={series}
-          cover={0.3} // Tạo lỗ ở giữa (dạng donut)
+          cover={0.25 } // Tạo lỗ ở giữa (dạng donut)
           style={styles.chart}
         />
       </View>
