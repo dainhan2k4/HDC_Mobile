@@ -224,7 +224,6 @@ class MiddlewareApiService {
       comparisons: [], // Có thể extend sau
     };
     
-    console.log('✅ [MiddlewareAPI] Transformed result:', result);
     return result;
   }
 
@@ -266,6 +265,11 @@ class MiddlewareApiService {
       console.error('❌ [MiddlewareAPI] Failed to load profile data:', error);
       throw error;
     }
+  }
+
+  // Get asset management data
+  async getAssetManagement(): Promise<any> {
+    return this.call<any>(API_ENDPOINTS.ASSET.MANAGEMENT);
   }
 }
 

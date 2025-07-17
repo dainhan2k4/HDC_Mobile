@@ -8,7 +8,7 @@ export class ApiService {
   private static instance: ApiService;
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
-  private sessionId: string | null = null; // We still expose this for AuthContext logic
+  private sessionId: string | null = null;
 
   private axiosInstance: AxiosInstance;
 
@@ -512,13 +512,9 @@ export class ApiService {
     return this.get(API_ENDPOINTS.REFERENCE.CURRENCIES);
   }
 
-  async getStatusInfo() {
-    return this.get(API_ENDPOINTS.REFERENCE.STATUS_INFO);
-  }
-
   // Asset Management methods
   async getAssetManagement() {
-    return this.get(API_ENDPOINTS.REFERENCE.COUNTRIES);
+    return this.get(API_ENDPOINTS.ASSET.MANAGEMENT);
   }
 
   // Odoo Dataset API methods for direct model access

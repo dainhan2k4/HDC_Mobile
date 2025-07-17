@@ -3,7 +3,7 @@ const FundService = require('./FundService');
 const TransactionService = require('./TransactionService');
 const ProfileService = require('./ProfileService');
 const InvestmentService = require('./InvestmentService');
-
+const AssetService = require('./AssetService');
 /**
  * Main OdooService class that combines all service modules
  * This is the primary interface for interacting with Odoo
@@ -18,7 +18,7 @@ class OdooService {
     this.transactionService = new TransactionService(this.authService);
     this.profileService = new ProfileService(this.authService);
     this.investmentService = new InvestmentService(this.authService);
-
+    this.assetService = new AssetService(this.authService);
     console.log('🚀 [OdooService] Initialized with modular architecture');
   }
 
@@ -286,7 +286,19 @@ class OdooService {
   async completeTransaction(transactionId) {
     return this.transactionService.completeTransaction(transactionId);
   }
-    // ==================
+
+  // ==================
+  // Asset Methods
+  // ==================
+  
+  /**
+   * Get asset management data
+   */
+  async getAssetManagementData() {
+    return this.assetService.getAssetManagementData();
+  }
+  
+  // ==================
   // Utility Methods
   // ==================
 

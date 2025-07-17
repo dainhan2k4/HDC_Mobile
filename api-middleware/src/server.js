@@ -10,6 +10,7 @@ const config = require('./config/config');
 const portfolioRoutes = require('./routes/portfolioRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
+const assetRoutes = require('./routes/assetRoutes');
 
 // Function to kill process using port
 const killPort = (port) => {
@@ -271,10 +272,12 @@ app.get('/cache-status', (req, res) => {
 const portfolioCacheDuration = config.server.nodeEnv === 'production' ? 30 : 5; // 5s for dev
 const profileCacheDuration = config.server.nodeEnv === 'production' ? 60 : 15; // 15s for dev
 const transactionCacheDuration = config.server.nodeEnv === 'production' ? 10 : 3; // 3s for dev
+const assetCacheDuration = config.server.nodeEnv === 'production' ? 30 : 5; // 5s for dev
 
 app.use(`${config.server.apiPrefix}/portfolio`, cacheMiddleware(portfolioCacheDuration), portfolioRoutes);
 app.use(`${config.server.apiPrefix}/profile`, cacheMiddleware(profileCacheDuration), profileRoutes);  
 app.use(`${config.server.apiPrefix}/transaction`, cacheMiddleware(transactionCacheDuration), transactionRoutes);
+app.use(`${config.server.apiPrefix}/asset`, cacheMiddleware(assetCacheDuration), assetRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -305,6 +308,9 @@ app.get('/', (req, res) => {
         pending: `${config.server.apiPrefix}/transaction/pending`,
         history: `${config.server.apiPrefix}/transaction/history`,
         stats: `${config.server.apiPrefix}/transaction/stats`
+      },
+      asset: {
+        management: `${config.server.apiPrefix}/asset/management`
       }
     }
   });
@@ -335,7 +341,9 @@ app.use('*', (req, res) => {
       `${config.server.apiPrefix}/transaction/sell`,
       `${config.server.apiPrefix}/transaction/pending`,
       `${config.server.apiPrefix}/transaction/history`,
-      `${config.server.apiPrefix}/transaction/stats`
+      `${config.server.apiPrefix}/transaction/stats`,
+
+      `${config.server.apiPrefix}/asset/management`
     ]
   });
 });
@@ -350,6 +358,7 @@ app.use((error, req, res, next) => {
     ...(config.server.nodeEnv !== 'production' && { stack: error.stack })
   });
 });
+
 
 // Enhanced graceful shutdown
 const gracefulShutdown = (signal) => {

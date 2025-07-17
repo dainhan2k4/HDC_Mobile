@@ -93,6 +93,11 @@ export const API_ENDPOINTS = {
     BALANCE: '/account/balance',
     HISTORY: '/account/history',
   },
+
+  // Asset endpoints
+  ASSET: {
+    MANAGEMENT: '/asset/management',
+  },
   
   // Reference data endpoints
   REFERENCE: {
