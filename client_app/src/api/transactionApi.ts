@@ -128,7 +128,6 @@ export const getTransactionHistory = async (forceRefresh = false): Promise<Trans
   try {
     console.log(`🔗 [TransactionApi] Getting transaction history${forceRefresh ? ' (force refresh)' : ''}...`);
     const response = await apiService.get('/transaction/history', undefined, forceRefresh);
-    console.log('✅ [TransactionApi] Transaction history response:', response);
     return (response.data as Transaction[]) || [];
   } catch (error) {
     console.error('❌ [TransactionApi] Error fetching transaction history:', error);

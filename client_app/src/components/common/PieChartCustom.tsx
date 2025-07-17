@@ -22,21 +22,19 @@ export const PieChartCustom: React.FC<PieChartCustomProps> = ({ data, sliceColor
     );
   }
   
-  // Chuyển đổi dữ liệu sang định dạng mới của react-native-pie-chart v4
   const series = data.map((item, index) => ({
     value: item.value,
     color: sliceColor[index % sliceColor.length],
     label: { 
       text: `${((item.value / data.reduce((sum, item) => sum + item.value, 0)) * 100).toFixed(0)}%`,
       fontSize: 12,
-      fontWeight: '600', // Changed from 'semibold' to '600' for Android compatibility
+      fontWeight: '20', 
       fill: '#fff',
-      stroke: '#000',
+      stroke: '#fff',
       strokeWidth: 0.5
     }
   }));
   
-  // Tính tổng giá trị
   const totalValue = data.reduce((sum, item) => sum + item.value, 0);
   
   return (

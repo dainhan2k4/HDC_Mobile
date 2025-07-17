@@ -184,8 +184,6 @@ class MiddlewareApiService {
     const overview = middlewareData.overview || middlewareData;
     const funds = middlewareData.funds || [];
     
-    console.log('🔄 [MiddlewareAPI] Overview extracted:', overview);
-    console.log('🔄 [MiddlewareAPI] Funds extracted:', funds);
     
     const result = {
       total_investment: overview.totalInvestment || overview.total_investment,

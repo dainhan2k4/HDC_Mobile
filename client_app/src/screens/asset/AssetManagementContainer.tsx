@@ -1,19 +1,26 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-// Icons handled in child components
 import { useFocusEffect } from '@react-navigation/native';
 import { getAssetManagement } from '../../api/assetApi';
-// Nếu có PieChartCustom thì import, nếu không thì để placeholder
-import { AssetSummary } from '../../components/asset/AssetSummary';
 import { FundHoldingsList } from '../../components/asset/FundHoldingsList';
 import { SwapOrdersList } from '../../components/asset/SwapOrdersList';
+import { PieChartCustom } from '../../components/common/PieChartCustom';
+
+// Bộ màu cố định
+const FIXED_COLORS = [
+  '#2B4BFF', // Xanh dương đậm
+  '#36A2EB', // Xanh dương nhạt
+  '#4BC0C0', // Xanh ngọc
+  '#FFCE56', // Vàng
+  '#FF6384', // Hồng
+  '#9966FF', // Tím
+];
 
 export const AssetManagementContainer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [assetData, setAssetData] = useState<any>(null);
 
-  // Fetch data helper so we can reuse in focus effect
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -26,7 +33,6 @@ export const AssetManagementContainer: React.FC = () => {
     }
   }, []);
 
-  // Refetch whenever the screen comes into focus
   useFocusEffect(
     useCallback(() => {
       fetchData();
@@ -54,38 +60,55 @@ export const AssetManagementContainer: React.FC = () => {
     );
   }
 
-  
+  // Chuẩn bị dữ liệu cho PieChartCustom với màu cố định
+  const pieChartData = assetData.holdings?.map((holding: any, index: number) => ({
+    label: holding.fund,
+    value: holding.currentValue || 0,
+    color: FIXED_COLORS[index % FIXED_COLORS.length], // Sử dụng màu cố định
+  })) || [];
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Quản lý tài sản</Text>
+        <View style={styles.headerSummary}>
+          <Text style={styles.headerSummaryLabel}>Tổng tài sản</Text>
+          <Text style={styles.headerSummaryValue}>
+            {assetData.totalAssets?.toLocaleString('vi-VN')} VND
+          </Text>
+        </View>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchData} />}
       >
-        <AssetSummary 
-          totalAssets={assetData.totalAssets} 
-          fundCertificates={assetData.fundCertificates || []} 
+        {/* Hiển thị biểu đồ tròn với màu cố định */}
+        <PieChartCustom
+          data={pieChartData}
+          sliceColor={FIXED_COLORS}
         />
-        
-        {/* Holdings with fund switching */}
+
         {assetData.fundCertificates && assetData.fundCertificates.length > 0 && (
-          <FundHoldingsList 
+          <FundHoldingsList
             funds={assetData.fundCertificates.map((fund: any) => ({
               code: fund.code,
               name: fund.name,
-              holdings: assetData.holdings?.filter((holding: any) => 
+              holdings: assetData.holdings?.filter((holding: any) =>
                 holding.fund === fund.code || holding.fund === fund.name
               ) || []
             }))}
             initialFund={assetData.fundCertificates[0]?.code}
           />
         )}
-        
-        <SwapOrdersList 
-            funds={assetData.fundCertificates || []}
-            orders={assetData.swapOrders?.items || []}
-            initialFund={assetData.fundCertificates?.[0]?.code}
-          />
+
+        <SwapOrdersList
+          funds={assetData.fundCertificates || []}
+          orders={assetData.swapOrders?.items || []}
+          initialFund={assetData.fundCertificates?.[0]?.code}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -109,5 +132,32 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 20,
+  },
+  header: {
+    backgroundColor: '#2B4BFF',
+    padding: 16,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    marginBottom: 16,
+  },
+  headerTitle: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  headerSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerSummaryLabel: {
+    color: 'white',
+    fontSize: 16,
+  },
+  headerSummaryValue: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 }); 
