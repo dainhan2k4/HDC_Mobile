@@ -21,6 +21,9 @@ import { apiService } from '../../config/apiService';
 import { useAuth } from '../../context/AuthContext';
 import { PieChartCustom } from '../../components/common/PieChartCustom';
 import formatVND from '../../hooks/formatCurrency';
+import GradientButton from '../../components/common/GradientButton';
+import GradientView from '@/components/common/GradientView';
+import { AppColors } from '../../styles/GlobalTheme';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -409,9 +412,24 @@ export const PortfolioScreen: React.FC = () => {
     }
   };
 
-  const generateColor = (index: number) => {
-    const colors = ['#2B4BFF', '#28A745', '#FFC107', '#DC3545', '#6F42C1', '#17A2B8'];
-    return colors[index % colors.length];
+  const FIXED_CHART_COLORS = [
+    AppColors.primary.main,     // Orange primary
+    AppColors.secondary.main,   // Blue secondary  
+    AppColors.status.success,   // Green
+    AppColors.status.warning,   // Yellow
+    AppColors.status.error,     // Red
+    AppColors.status.info,      // Light blue
+    '#9C27B0',                  // Purple
+    '#795548',                  // Brown
+    '#607D8B',                  // Blue grey
+    '#FF5722',                  // Deep orange
+  ];
+
+  const generateColor = (index = -1) => {
+    if (index === -1) {
+      return FIXED_CHART_COLORS[Math.floor(Math.random() * FIXED_CHART_COLORS.length)];
+    }
+    return FIXED_CHART_COLORS[index % FIXED_CHART_COLORS.length];
   };
 
   const handleRefresh = async () => {
@@ -437,7 +455,7 @@ export const PortfolioScreen: React.FC = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
       
       {/* Modern Header with Gradient Effect */}
-      <View style={styles.modernHeader}>
+      <GradientView style={styles.modernHeader}>
         <View style={styles.headerContent}>
           <View>
             <Text style={styles.headerGreeting}>Xin chào, {user?.name || 'Nhà đầu tư'}!</Text>
@@ -447,7 +465,7 @@ export const PortfolioScreen: React.FC = () => {
             <Ionicons name="refresh-outline" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
-      </View>
+      </GradientView>
 
       <ScrollView 
         style={styles.scrollContainer}
@@ -589,7 +607,6 @@ export const PortfolioScreen: React.FC = () => {
               
                 <PieChartCustom
                   data={chartData}
-                  sliceColor={chartData.map(item => item.color)}
                   title="Phân bổ theo quỹ (%)"
                 />
               
@@ -643,13 +660,7 @@ export const PortfolioScreen: React.FC = () => {
                       </View>
                     </View>
 
-                    <TouchableOpacity 
-                      style={styles.manageButton}
-                      onPress={handleNavigateToFunds}
-                    >
-                      <Ionicons name="settings-outline" size={16} color="#FFFFFF" />
-                      <Text style={styles.manageButtonText}>Quản lý</Text>
-                    </TouchableOpacity>
+                    <GradientButton title="Quản lý" onPress={() => {}} gradientType="button" />
                   </View>
                 ))
               ) : (

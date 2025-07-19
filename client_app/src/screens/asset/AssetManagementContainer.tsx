@@ -6,6 +6,7 @@ import { getAssetManagement } from '../../api/assetApi';
 import { FundHoldingsList } from '../../components/asset/FundHoldingsList';
 import { SwapOrdersList } from '../../components/asset/SwapOrdersList';
 import { PieChartCustom } from '../../components/common/PieChartCustom';
+import { AppColors } from '@/styles/GlobalTheme';
 
 // Bộ màu cố định
 const FIXED_COLORS = [
@@ -43,7 +44,7 @@ export const AssetManagementContainer: React.FC = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2B4BFF" />
+          <ActivityIndicator size="large" color={AppColors.secondary.main} />
           <Text style={styles.loadingText}>Đang tải dữ liệu tài sản...</Text>
         </View>
       </SafeAreaView>
@@ -68,10 +69,15 @@ export const AssetManagementContainer: React.FC = () => {
   })) || [];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={{backgroundColor: AppColors.background.primary}}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Quản lý tài sản</Text>
+        <Text style={styles.headerTitle} 
+          
+        >
+          Quản lý tài sản
+          </Text>
         <View style={styles.headerSummary}>
           <Text style={styles.headerSummaryLabel}>Tổng tài sản</Text>
           <Text style={styles.headerSummaryValue}>
@@ -88,7 +94,6 @@ export const AssetManagementContainer: React.FC = () => {
         {/* Hiển thị biểu đồ tròn với màu cố định */}
         <PieChartCustom
           data={pieChartData}
-          sliceColor={FIXED_COLORS}
         />
 
         {assetData.fundCertificates && assetData.fundCertificates.length > 0 && (
@@ -117,7 +122,7 @@ export const AssetManagementContainer: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: AppColors.background.secondary,
   },
   loadingContainer: {
     flex: 1,
@@ -127,21 +132,21 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6C757D',
+    color: AppColors.text.secondary,
   },
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 20,
   },
   header: {
-    backgroundColor: '#2B4BFF',
+    backgroundColor: AppColors.primary.main,
     padding: 16,
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
     marginBottom: 16,
   },
   headerTitle: {
-    color: 'white',
+    color: AppColors.text.inverse,
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 8,
@@ -152,11 +157,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerSummaryLabel: {
-    color: 'white',
+    color: AppColors.text.inverse,
     fontSize: 16,
   },
   headerSummaryValue: {
-    color: 'white',
+    color: AppColors.text.inverse,
     fontSize: 18,
     fontWeight: 'bold',
   },

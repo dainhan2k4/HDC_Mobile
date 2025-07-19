@@ -15,6 +15,8 @@ import { middlewareApiService } from '../../services/MiddlewareApiService';
 import { apiService } from '../../config/apiService';
 import { useAuth } from '../../context/AuthContext';
 import { FundListItem, FundDetails, TimeRangeSelector } from '../../components/fund';
+import { AppColors } from '../../styles/GlobalTheme';
+import { GradientView } from '../../components/common/GradientView';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -300,7 +302,7 @@ export const FundScreen: React.FC = () => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2B4BFF" />
+        <ActivityIndicator size="large" color={AppColors.secondary.main} />
         <Text style={styles.loadingText}>Đang tải danh sách quỹ...</Text>
       </View>
     );
@@ -310,25 +312,17 @@ export const FundScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Responsive header */}
-      <View style={[
+      <GradientView gradientType="header" style={[
         styles.responsiveHeader,
         layoutConfig.type.startsWith('mobile') && styles.mobileHeader
       ]}>
         <Text style={[
-          styles.headerTitle,
+          styles.headerTitle, 
           layoutConfig.type.startsWith('mobile') && styles.mobileHeaderTitle
         ]}>
           Quỹ đầu tư
         </Text>
-        <View style={styles.headerSubtitle}>
-          <Text style={[
-            styles.headerSubtitleText,
-            layoutConfig.type.startsWith('mobile') && styles.mobileHeaderSubtitleText
-          ]}>
-            {funds.length} quỹ có sẵn
-          </Text>
-        </View>
-      </View>
+      </GradientView>
 
       <View style={[
         styles.twoColumnContainer,
@@ -346,6 +340,7 @@ export const FundScreen: React.FC = () => {
           {/* Panel Header */}
           <View style={[
             styles.panelHeader,
+            { backgroundColor: AppColors.background.primary },
             layoutConfig.type.startsWith('mobile') && styles.mobilePanelHeader
           ]}>
             <Text style={[
@@ -414,7 +409,7 @@ export const FundScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: AppColors.background.main,
   },
   
   // Loading States
@@ -422,18 +417,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
+    backgroundColor: AppColors.background.main,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#64748B',
+    color: AppColors.text.secondary,
     fontWeight: '500',
   },
 
   // Responsive Header
   responsiveHeader: {
-    backgroundColor: '#2B4BFF',
+    backgroundColor: AppColors.primary.main,
     paddingTop: 50,
     paddingBottom: 16,
     paddingHorizontal: 20,
@@ -453,7 +448,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: AppColors.text.inverse,
     letterSpacing: 0.5,
   },
   mobileHeaderTitle: {
@@ -469,7 +464,7 @@ const styles = StyleSheet.create({
   headerSubtitleText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#FFFFFF',
+    color: AppColors.text.inverse,
   },
   mobileHeaderSubtitleText: {
     fontSize: 10,
@@ -488,12 +483,12 @@ const styles = StyleSheet.create({
 
   // Left Panel Styles
   leftPanel: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.background.card,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: AppColors.shadow.dark,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 8,
   },
@@ -506,7 +501,7 @@ const styles = StyleSheet.create({
   },
 
   panelHeader: {
-    backgroundColor: '#2B4BFF',
+    backgroundColor: AppColors.background.secondary,
     padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -518,7 +513,7 @@ const styles = StyleSheet.create({
   panelTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: AppColors.text.primary,
     letterSpacing: 0.3,
   },
   mobilePanelTitle: {
@@ -536,7 +531,7 @@ const styles = StyleSheet.create({
   fundCountText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: AppColors.text.inverse,
   },
   mobileFundCountText: {
     fontSize: 10,
@@ -556,12 +551,12 @@ const styles = StyleSheet.create({
 
   // Right Panel Styles
   rightPanel: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.background.card,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: AppColors.shadow.dark,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 8,
   },

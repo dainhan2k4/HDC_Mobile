@@ -2,18 +2,32 @@ import formatVND from '../../hooks/formatCurrency';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import PieChart from 'react-native-pie-chart';
+import { AppColors } from '../../styles/GlobalTheme';
+
+// Fixed colors for pie chart slices using theme colors
+const FIXED_CHART_COLORS = [
+  AppColors.primary.main,     // Orange primary
+  AppColors.secondary.main,   // Blue secondary  
+  AppColors.status.success,   // Green
+  AppColors.status.warning,   // Yellow
+  AppColors.status.error,     // Red
+  AppColors.status.info,      // Light blue
+  '#9C27B0',                  // Purple
+  '#795548',                  // Brown
+  '#607D8B',                  // Blue grey
+  '#FF5722',                  // Deep orange
+];
 
 interface PieChartCustomProps {
   data: { name: string; value: number }[];
-  sliceColor: string[];
   title?: string;
 }
 
-export const PieChartCustom: React.FC<PieChartCustomProps> = ({ data, sliceColor, title }) => {
+export const PieChartCustom: React.FC<PieChartCustomProps> = ({ data, title }) => {
   // Kiểm tra nếu không có dữ liệu hoặc tất cả giá trị đều là 0
   if (!data || data.length === 0 || data.every(item => item.value === 0)) {
     return (
-      <View style={styles.container}>
+      <View style={styles.container}> 
         {title && <Text style={styles.title}>{title}</Text>}
         <View style={styles.noDataContainer}>
           <Text style={styles.noDataText}>Không có dữ liệu</Text>
@@ -24,7 +38,7 @@ export const PieChartCustom: React.FC<PieChartCustomProps> = ({ data, sliceColor
   
   const series = data.map((item, index) => ({
     value: item.value,
-    color: sliceColor[index % sliceColor.length],
+    color: FIXED_CHART_COLORS[index % FIXED_CHART_COLORS.length],
     label: { 
       text: `${((item.value / data.reduce((sum, item) => sum + item.value, 0)) * 100).toFixed(0)}%`,
       fontSize: 12,
@@ -55,7 +69,7 @@ export const PieChartCustom: React.FC<PieChartCustomProps> = ({ data, sliceColor
       <View style={styles.legendContainer}>
         {data.map((item, index) => (
           <View key={index} style={styles.legendItem}>
-            <View style={[styles.colorIndicator, { backgroundColor: sliceColor[index % sliceColor.length] }]} />
+            <View style={[styles.colorIndicator, { backgroundColor: FIXED_CHART_COLORS[index % FIXED_CHART_COLORS.length] }]} />
             <Text style={styles.legendText}>
               {item.name}: {formatVND(item.value)} ({((item.value / totalValue) * 100).toFixed(1)}%)
             </Text>
