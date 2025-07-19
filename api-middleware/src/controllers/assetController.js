@@ -1,14 +1,18 @@
-const AssetService = require('../services/AssetService');
-const AuthService = require('../services/AuthService');
+const OdooService = require('../services/OdooService');
 
-const authService = new AuthService();
-const assetService = new AssetService(authService);
-
-exports.getAssetManagementData = async (req, res) => {
-  try {
-    const data = await assetService.getAssetManagementData();
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to retrieve asset management data.' });
+class AssetController {
+  constructor(odooService) {
+    this.odooService = odooService;
   }
-};
+  
+  async getAssetManagementData(req, res) {
+    try {
+      const assetData = await this.odooService.getAssetManagementData();
+      res.json(assetData);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch asset management data' });
+    }
+  }
+}   
+
+module.exports = AssetController;
