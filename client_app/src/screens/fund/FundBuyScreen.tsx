@@ -34,15 +34,16 @@ export const FundBuyScreen: React.FC = () => {
 
   const fundContract: FundContractProps = {
     fundName: fundName ,
-    fundCode: fundId.toString(),
+    fundCode: fundId,
     quantity: parseFloat(units),
     value: parseFloat(amount),
     nav: currentNav,
-    investorName: null,
-    investorId: null, 
-    investorAddress: null,
+    investorName: '',
+    investorId: '', 
+    investorAddress: '',
     transactionDate: new Date().toLocaleDateString('vi-VN'),
-    signature: null, 
+    signature: '', 
+    investorPhone: '',
   };
 
 
@@ -86,8 +87,8 @@ export const FundBuyScreen: React.FC = () => {
       Alert.alert('Lỗi', 'Số tiền đầu tư tối thiểu là 100,000 VNĐ');
       return;
     }
-    console.log('fundContract:', fundContract);
-    (navigation as any).navigate('SignatureScene', fundContract);    
+    console.log(' fundContract in FundBuyScreen :', fundContract);
+    (navigation as any).navigate('SignatureScene', { fundContract });    
     
   };
 

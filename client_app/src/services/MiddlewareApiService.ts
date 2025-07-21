@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
 import { API_CONFIG, API_ENDPOINTS } from '../config/apiConfig';
 import { PortfolioOverview } from '../types/portfolio';
 import { Fund, Investment } from '../types/fund';
-import { profile } from '../types/profile';
+import { PersonalInfo } from '../types/profile';
 
 export interface MiddlewareApiResponse<T = any> {
   success: boolean;
@@ -253,10 +253,10 @@ class MiddlewareApiService {
   }
 
   // Get profile data
-  async getProfile(): Promise<profile> {
+  async getProfile(): Promise<PersonalInfo> {
     console.log('🔄 [MiddlewareAPI] Getting profile data via middleware...');
     try {
-      const response = await this.call<profile>(API_ENDPOINTS.PROFILE.PERSONAL_DATA);
+      const response = await this.call<PersonalInfo>(API_ENDPOINTS.PROFILE.PERSONAL_DATA);
       console.log('✅ [MiddlewareAPI] Profile data loaded successfully');
       return response;
     } catch (error: any) {

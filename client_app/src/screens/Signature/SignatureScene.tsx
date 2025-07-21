@@ -1,42 +1,97 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Alert, StatusBar, TouchableOpacity } from 'react-native';
 import SignatureComponent, { SignatureComponentRef } from '../../components/common/Signature';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { usePdfService } from '../../hooks/usePdfService';
 
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { RootStackParamList } from '../../navigation/AppNavigator';
+import { RootStackParamList } from '../../types/navigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
+import { apiService } from '@/config/api';
+import { FundContractProps } from '@/types/fundcontract';
+  
 
 type SignatureSceneRouteProp = RouteProp<RootStackParamList, 'SignatureScene'>;
 
 const SignatureScene = () => {
   const route = useRoute<SignatureSceneRouteProp>();
-  const fundContract = route.params;  
   const signatureRef = useRef<SignatureComponentRef>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { appendSignatureToPdf, loading, error } = usePdfService();
+  const [profileInfo, setProfileInfo] = useState<any>(null);
+  const { fundContract } = route.params as unknown as { fundContract: FundContractProps };
+  console.log('fundContract in SignatureScene :', fundContract);
+  const fetchPersonalInfo = async () => {
+    const response = await apiService.getProfile();
+    const rawData = response?.data?.[0] ?? response?.data?.data?.[0];
+
+    if (response.success && rawData) {
+      const data = {
+        name: rawData.name,
+        birth_date: rawData.birth_date,
+        id_card: rawData.id_number,
+        email: rawData.email,
+        phone: rawData.phone,
+        
+      };
+      setProfileInfo(data);
+    } else {
+      console.error('Failed to fetch profile info');
+    }
+    };
+    
+  useEffect(() => {
+    fetchPersonalInfo();
+  }, []);
+
+
 
   const handleConfirm = async () => {
-    // Tự động đọc chữ ký từ canvas
-    signatureRef.current?.readSignature();
-    
-    // Đợi một chút để canvas xử lý xong
-    setTimeout(() => {
-      const signature = signatureRef.current?.getSignature();
-      const hasSignature = signatureRef.current?.hasSignature();
+    try {
+      // Tự động đọc chữ ký từ canvas
+      signatureRef.current?.readSignature();
       
-      console.log('fundContract:', fundContract);
-      
-      if (hasSignature && signature) {
-        Alert.alert('Thành công', 'Giao dịch đã được ký xác nhận!');
-          setSignature(signature);
-          console.log('signature:', signature.substring(0, 100) + '...');
-          (navigation as any).navigate('ContractViewer', { ...fundContract, signature });
+      // Đợi một chút để canvas xử lý xong
+      setTimeout(async () => {
+        const signature = signatureRef.current?.getSignature();
+        const hasSignature = signatureRef.current?.hasSignature();
+        
+        
+        if (hasSignature && signature) {
+          try {
+            // Sử dụng hook để thêm chữ ký vào tài liệu
+            const signedHtml = await appendSignatureToPdf({
+              signatureImage: signature,
+              investorName: profileInfo.name || '',
+              investorBirthday: profileInfo.birth_date || '',
+              investorIdCard: profileInfo.id_card || '',
+              investorEmail: profileInfo.email || '',
+              investorPhone: profileInfo.phone || '',
+            });
+
+            Alert.alert('Thành công', 'Giao dịch đã được ký xác nhận!');
+            setSignature(signature);
+            console.log('signature:', signature.substring(0, 100) + '...');
+            console.log('signedHtml length:', signedHtml.length);
+            // Chuyển sang màn hình xem hợp đồng với HTML đã ký
+            (navigation as any).navigate('ContractViewer', { 
+            fundContract, 
+              signature : signature ? String(signature) : "",
+              signedHtml: signedHtml ? String(signedHtml) : ''
+            });
+          } catch (error) {
+            console.error('❌ [SignatureScene] PDF signing error:', error);
+            Alert.alert('Lỗi', 'Không thể ký tài liệu. Vui lòng thử lại.');
+          }
         } else {
-        Alert.alert('Thông báo', 'Vui lòng ký trước khi xác nhận!');  
-      }
-    }, 100);
+          Alert.alert('Thông báo', 'Vui lòng ký trước khi xác nhận!');  
+        }
+      }, 100);
+    } catch (error) {
+      console.error('❌ [SignatureScene] Handle confirm error:', error);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+    }
   };
 
   const handleCancel = () => {

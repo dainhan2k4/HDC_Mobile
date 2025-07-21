@@ -312,15 +312,12 @@ export const FundScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Responsive header */}
-      <GradientView gradientType="header" style={[
-        styles.responsiveHeader,
-        layoutConfig.type.startsWith('mobile') && styles.mobileHeader
-      ]}>
+      <GradientView gradientType="header" style={styles.responsiveHeader}>
         <Text style={[
           styles.headerTitle, 
           layoutConfig.type.startsWith('mobile') && styles.mobileHeaderTitle
         ]}>
-          Quỹ đầu tư
+          Quỹ đầu tư  
         </Text>
       </GradientView>
 
@@ -409,7 +406,7 @@ export const FundScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background.main,
+    backgroundColor: AppColors.background.primary,
   },
   
   // Loading States
@@ -417,7 +414,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: AppColors.background.main,
+    backgroundColor: AppColors.background.primary,
   },
   loadingText: {
     marginTop: 16,
@@ -428,7 +425,7 @@ const styles = StyleSheet.create({
 
   // Responsive Header
   responsiveHeader: {
-    backgroundColor: AppColors.primary.main,
+    backgroundColor: AppColors.background.primary,
     paddingTop: 50,
     paddingBottom: 16,
     paddingHorizontal: 20,

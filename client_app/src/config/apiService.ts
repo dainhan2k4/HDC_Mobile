@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 import { ApiResponse } from '../types/api';
 import { API_CONFIG, API_ENDPOINTS } from './apiConfig';
+import { PersonalInfo } from '../types/profile';
 
 // API Service Class
 export class ApiService {
@@ -438,8 +439,8 @@ export class ApiService {
   }
 
   // Profile methods
-  async getProfile() {
-    return this.get(API_ENDPOINTS.PROFILE.PERSONAL_DATA);
+  async getProfile(): Promise<ApiResponse<any>> {
+    return this.get<any>(API_ENDPOINTS.PROFILE.PERSONAL_DATA);
   }
 
   async updateProfile(data: {

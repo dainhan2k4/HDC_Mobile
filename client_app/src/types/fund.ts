@@ -53,3 +53,9 @@ export interface Investment {
     current_nav: number;
     investment_type: string;
 }
+
+export interface FundContractProps {
+  fund: Fund;
+  contract: string;
+}
+

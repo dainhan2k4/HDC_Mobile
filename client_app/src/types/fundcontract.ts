@@ -1,12 +1,14 @@
 export interface FundContractProps {
-    investorName: string | null;
-    investorId: string | null;
-    investorAddress: string | null;
+    investorName: string;
+    investorId: string;
+    investorPhone: string;
+    investorAddress: string;
     fundName: string | null;
-    fundCode: string | null;
-    quantity: number | null;
-    value: number | null;
-    nav: number | null;
-    transactionDate: string | null; // ISO string hoặc dd/MM/yyyy
-    signature: string | null;
+    fundCode: number;
+    quantity: number;
+    value: number;
+    nav: number;
+    transactionDate: string; // ISO string hoặc dd/MM/yyyy
+    signature: string;
+    signedPdfBase64?: string; // PDF đã ký từ server
   }
