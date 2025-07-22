@@ -21,14 +21,10 @@ function renderConfirmInfo() {
   const totalAmount = sessionStorage.getItem('selectedTotalAmount') || '0';
   const units = sessionStorage.getItem('selectedUnits') || '0';
 
-  const confirmFundName = document.getElementById('confirm-fund-name');
-  if (confirmFundName) confirmFundName.textContent = fundName;
-  const confirmAmount = document.getElementById('confirm-amount');
-  if (confirmAmount) confirmAmount.textContent = Number(amount).toLocaleString('vi-VN') + 'đ';
-  const confirmTotalAmount = document.getElementById('confirm-total-amount');
-  if (confirmTotalAmount) confirmTotalAmount.textContent = Number(totalAmount).toLocaleString('vi-VN') + 'đ';
-  const confirmUnits = document.getElementById('confirm-units');
-  if (confirmUnits) confirmUnits.textContent = units;
+  document.getElementById('confirm-fund-name').textContent = fundName;
+  document.getElementById('confirm-amount').textContent = Number(amount).toLocaleString('vi-VN') + 'đ';
+  document.getElementById('confirm-total-amount').textContent = Number(totalAmount).toLocaleString('vi-VN') + 'đ';
+  document.getElementById('confirm-units').textContent = units;
 }
 
 // ===== Hàm: Gán ngày giờ vào các thẻ cần hiển thị =====

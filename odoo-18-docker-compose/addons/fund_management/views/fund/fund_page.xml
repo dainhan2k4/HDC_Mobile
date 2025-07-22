@@ -16,10 +16,12 @@
           }
         </style>
       </t>
-        <t t-call="fund_management.fund_header_template"/>
+<!--        <t t-call="fund_management.fund_header_template"/>-->
+        <!-- Header Container -->
+      <div id="header-container"></div>
 
       <div class="profile-container">
-          <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4">
+          <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4 mt-4">
             <div id="fund-widget-root"></div>
           </div>
       </div>

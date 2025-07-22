@@ -4,11 +4,11 @@ import { ApiConfig, ApiEndpoints } from '../types/api';
 // API Configuration for different environments
 const ENVIRONMENTS = {
   // Direct Odoo (old approach) 
-  ODOO_DIRECT: 'http://localhost:11018', // Fixed to localhost instead of ngrok
+  ODOO_DIRECT: 'http://10.10.3.191:11018', // Fixed to localhost instead of ngrok 10.10.3.191192.168.115.1
   
   // API Middleware (new approach - recommended)
   // ipconfig | findstr IPv4
-  MIDDLEWARE_LOCAL: 'http://192.168.50.104:3001/api/v1',  
+  MIDDLEWARE_LOCAL: 'http://10.10.3.191:3001/api/v1',  
   MIDDLEWARE_PRODUCTION: '', 
 };
 

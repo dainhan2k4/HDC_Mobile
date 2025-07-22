@@ -11,6 +11,6 @@
 }
 
 .step-circle.active {
-  background-color: #0d6efd;
+  background-color: #dc3545; /* đỏ đậm */
   color: white;
 }

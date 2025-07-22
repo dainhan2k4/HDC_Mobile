@@ -9,7 +9,7 @@ class Transaction(models.Model):
     fund_id = fields.Many2one("portfolio.fund", string="Fund", required=True)
     transaction_type = fields.Selection([
         ('purchase', 'Purchase'),
-        ('sale', 'Sale')
+        ('sell', 'Sell')
     ], string="Transaction Type", required=True)
     units = fields.Float(string="Units", required=True)
     amount = fields.Float(string="Amount", required=True)

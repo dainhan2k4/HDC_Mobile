@@ -1,0 +1,51 @@
+<odoo>
+  <template id="signature_modal_template" name="Signature Modal Template">
+    <div class="modal fade" id="signatureModal" tabindex="-1" aria-labelledby="signatureModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow">
+          <div class="modal-header">
+            <h5 class="modal-title" id="signatureModalLabel">Xác nhận ký tên</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+          </div>
+          <div class="modal-body">
+            <p>Bạn có thể chọn 1 trong 2 hình thức ký:</p>
+
+            <!-- Tabs để chọn phương thức ký -->
+            <ul class="nav nav-tabs mb-3" id="signatureTab" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-hand" data-bs-toggle="tab" data-bs-target="#hand-sign" type="button" role="tab">✍️ Ký tay</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-digital" data-bs-toggle="tab" data-bs-target="#digital-sign" type="button" role="tab">🔐 Ký số</button>
+              </li>
+            </ul>
+
+            <div class="tab-content">
+              <!-- TAB KÝ TAY -->
+              <div class="tab-pane fade show active" id="hand-sign" role="tabpanel">
+                <canvas id="signature-pad"
+                        width="800" height="300"
+                        style="border: 1px solid #ccc; width: 100%; height: auto;"
+                        class="rounded-3 mb-3">
+                </canvas>
+                <div class="d-flex justify-content-between">
+                  <button type="button" class="btn btn-outline-secondary" id="clear-signature">Xóa</button>
+                  <button type="button" class="btn btn-primary" id="submit-signature-hand">✅ Xác nhận ký tay</button>
+                </div>
+              </div>
+
+              <!-- TAB KÝ SỐ -->
+              <div class="tab-pane fade" id="digital-sign" role="tabpanel">
+                <p>Hệ thống sẽ thực hiện ký số tài liệu bằng chứng thư số của bạn.</p>
+                <div class="d-flex justify-content-end">
+                  <button type="button" class="btn btn-success" id="submit-signature-digital">🔐 Ký số ngay</button>
+                </div>
+                <div id="digital-sign-status" class="text-success fw-bold mt-3"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+</odoo>

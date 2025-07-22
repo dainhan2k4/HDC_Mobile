@@ -67,7 +67,7 @@
               </a>
             </li>
             <li>
-              <a class="inline-flex items-center text-gray-700 hover:text-[#3B5BDB] font-normal py-3 text-sm" href="/transaction_management/pending">
+              <a class="inline-flex items-center text-gray-700 hover:text-[#3B5BDB] font-normal py-3 text-sm" href="/transactions">
                 <i class="fas fa-exchange-alt mr-2"></i>
                 <span class="font-bold uppercase">Quản lý giao dịch</span>
               </a>

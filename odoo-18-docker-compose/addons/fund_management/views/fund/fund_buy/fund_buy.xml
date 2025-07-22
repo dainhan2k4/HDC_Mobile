@@ -5,6 +5,8 @@
 
       <t t-call-assets="web.assets_frontend" t-js="true" />
       <t t-set="head">
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
         <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
@@ -16,22 +18,26 @@
         </style>
       </t>
 
-      <t t-call="fund_management.fund_header_template"/>
+<!--      <t t-call="fund_management.fund_header_template"/>-->
+
+      <div id="header-container"></div>
 
       <div class="profile-container">
-        <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4">
+        <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4 mt-4">
           <div class="bg-white rounded-4 px-3 py-3">
-            <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 border py-1 " >
+
+
+            <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 border py-2 " >
               <div class="collapse navbar-collapse justify-content-center">
                 <ul class="navbar-nav d-flex w-100 justify-content-center fs-5">
                   <li class="nav-item flex-fill text-center">
-                    <a class="fw-bold px-2" href="fund_buy">Mua</a>
+                    <a class="fw-bold px-2 nav-link-blue nav-link-active" href="fund_buy">Mua</a>
                   </li>
-                  <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
-                    <a class="px-2" href="fund_sell">Bán</a>
+                  <li class="nav-item flex-fill text-center">
+                    <a class="px-2 nav-link-blue" href="fund_sell">Bán</a>
                   </li>
-                  <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
-                    <a class="px-2" href="#">Chuyển đổi</a>
+                  <li class="nav-item flex-fill text-center">
+                    <a class="px-2 nav-link-blue" href="#">Chuyển đổi</a>
                   </li>
                 </ul>
               </div>
@@ -83,7 +89,7 @@
                       </select>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-3" style="display: none;">
                       <label class="form-label">ID</label>
                       <div id="current-id" class="form-control bg-light">...</div>
                     </div>
@@ -93,17 +99,54 @@
                       <div id="current-nav" class="form-control bg-light">...</div>
                     </div>
 
+<!--                    <div class="mb-3">-->
+<!--                      <label class="form-label">Chọn chương trình <span class="text-danger">*</span></label>-->
+<!--                      <select class="form-select">-->
+<!--                        <option>FFC1 - Flex</option>-->
+<!--                      </select>-->
+<!--                    </div>-->
+
                     <div class="mb-3">
-                      <label class="form-label">Chọn chương trình <span class="text-danger">*</span></label>
-                      <select class="form-select">
-                        <option>FFC1 - Flex</option>
-                      </select>
+                      <label for="share-quantity-input" class="form-label">Nhập số cổ phiếu <span class="text-danger">*</span></label>
+                      <input type="number" id="share-quantity-input" class="form-control" placeholder="Nhập số cổ phiếu"/>
                     </div>
 
                     <div class="mb-3">
-                      <label class="form-label">Nhập số tiền mua <span class="text-danger">*</span></label>
-                      <input id="amount-input" type="text" class="form-control" placeholder="Vui lòng nhập số tiền"/>
-                      <div class="form-text text-warning">Số tiền đầu tư tối thiểu 100,000đ</div>
+                      <label class="form-label">Số tiền mua <span class="text-danger">*</span></label>
+                      <input id="amount-input" type="text" class="form-control bg-light" placeholder="0"/>
+                      <div class="form-text text-warning">Số tiền đầu tư tối thiểu 1,000,000đ</div>
+                    </div>
+
+                    <!-- Chọn kỳ hạn -->
+                    <div class="mb-3">
+                      <label class="form-label">Chọn kỳ hạn <span class="text-danger">*</span></label>
+                      <select id="term-select" class="form-select" onchange="handleTermChange(this.value)">
+                        <option value="30">30 ngày</option>
+                        <option value="60">60 ngày</option>
+                        <option value="90">90 ngày</option>
+                        <option value="custom">Tùy chỉnh</option>
+                      </select>
+                    </div>
+
+                    <!-- Ngày bắt đầu và kết thúc, mặc định ẩn -->
+                    <div id="custom-date-range" class="mb-3" style="display: none;">
+                      <label class="form-label">Chọn khoảng ngày</label>
+                      <div class="d-flex gap-3">
+                        <div class="flex-fill">
+                          <label for="start-date" class="form-label">Ngày bắt đầu</label>
+                          <input type="date" id="start-date" class="form-control"/>
+                        </div>
+                        <div class="flex-fill">
+                          <label for="end-date" class="form-label">Ngày kết thúc</label>
+                          <input type="date" id="end-date" class="form-control"/>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Lãi suất -->
+                    <div class="mb-3">
+                      <label class="form-label">Lãi suất</label>
+                      <div id="interest-rate" class="form-control bg-light">...</div>
                     </div>
 
                     <div class="mb-3">
@@ -129,7 +172,11 @@
               <!-- Investment Summary -->
               <div class="col-md-5">
                 <div class="card p-4 shadow-sm rounded-4">
-                  <h5 class="mb-3">Thông tin đầu tư</h5>
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Thông tin đầu tư</h5>
+                    <a href="#" class="form-text" data-bs-toggle="modal" data-bs-target="#signatureModal">Xem điều khoản</a>
+                  </div>
+
                   <ul class="list-group list-group-flush">
                     <li class="list-group-item d-flex justify-content-between">
                       <span>Quỹ đầu tư</span>
@@ -168,8 +215,8 @@
                   </ul>
 
                   <div class="d-flex justify-content-between mt-4">
-                    <button type="button" class="btn btn-outline-secondary" id="back-btn">Quay lại</button>
-                    <button type="button" class="btn btn-primary" id="payment-btn">Thanh toán</button>
+                    <button type="button" class="btn btn-pill btn-sell" id="back-btn">Quay lại</button>
+                    <button type="button" class="btn btn-pill btn-buy" id="payment-btn">Thanh toán</button>
                   </div>
                 </div>
               </div>
@@ -180,7 +227,8 @@
 
       <!-- ✅ Modal biểu phí -->
       <t t-call="fund_management.fee_template"/>
-
+      <t t-call="fund_management.terms_modal_template"/>
+      <t t-call="fund_management.signature_modal_template"/>
     </t>
   </template>
 </odoo>

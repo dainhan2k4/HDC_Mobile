@@ -41,7 +41,7 @@ class PortfolioController {
       
       // Return mock data as fallback
       const mockData = this.getMockPortfolioData();
-      console.log('🎭 [Portfolio] Returning mock data as fallback');
+      console.log('[Portfolio] Returning mock data as fallback');
       
       res.json({
         success: true,

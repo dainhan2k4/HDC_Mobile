@@ -1,9 +1,8 @@
-
-
 document.addEventListener('DOMContentLoaded', async () => {
   await initFundSellPage();
   initFundSellConfirmPage();
   initFinalSellSubmit();
+  initBackButton();
 });
 
 // ================================
@@ -222,3 +221,18 @@ function initFinalSellSubmit() {
     }
   });
 }
+
+function initBackButton() {
+  const backBtn = document.getElementById('back-btn-sell');
+  if (!backBtn) {
+    console.warn("⚠️ Nút 'Quay lại' (id='back-btn-sell') không tồn tại trong DOM.");
+    return;
+  }
+
+  backBtn.addEventListener('click', () => {
+    // ✅ Điều hướng về trang chính hoặc widget
+    window.location.href = '/fund_widget';
+  });
+}
+
+

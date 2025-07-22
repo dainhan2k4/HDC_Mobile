@@ -17,8 +17,8 @@ class MyController(http.Controller):
                 'description': h.description,
                 'current_ytd':h.current_ytd,
                 'current_nav':h.current_nav,
-                'investment_type':h.investment_type
-
+                'investment_type':h.investment_type,
+                'nav_history_json':h.nav_history_json
             }
             for h in holdings
         ]

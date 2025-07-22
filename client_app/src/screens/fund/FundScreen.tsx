@@ -315,7 +315,7 @@ export const FundScreen: React.FC = () => {
       <GradientView gradientType="header" style={styles.responsiveHeader}>
         <Text style={[
           styles.headerTitle, 
-          layoutConfig.type.startsWith('mobile') && styles.mobileHeaderTitle
+          
         ]}>
           Quỹ đầu tư  
         </Text>
@@ -337,7 +337,7 @@ export const FundScreen: React.FC = () => {
           {/* Panel Header */}
           <View style={[
             styles.panelHeader,
-            { backgroundColor: AppColors.background.primary },
+            { backgroundColor: AppColors.background.secondary },
             layoutConfig.type.startsWith('mobile') && styles.mobilePanelHeader
           ]}>
             <Text style={[
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: AppColors.text.inverse,
+    color: AppColors.text.primary,
     letterSpacing: 0.5,
   },
   mobileHeaderTitle: {
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   fundCount: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#6C757D',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   },
   fundCountText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: AppColors.text.inverse,
   },
   mobileFundCountText: {

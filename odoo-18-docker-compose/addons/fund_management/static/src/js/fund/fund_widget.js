@@ -37,27 +37,72 @@ export class FundWidget extends Component {
                   <p class="text-muted"><t t-esc="state.selectedFund?.description || 'Vui lòng chọn quỹ để xem thông tin chi tiết.'" /></p>
                 </div>
 
-                <!-- Fund Detail Values -->
+                <!-- Fund Detail Cards -->
                 <div class="row mb-4">
-                  <div class="col-md-4 text-center">
-                    <h6>Giá trị từ đầu năm</h6>
-                    <p class="fs-5 text-primary"><t t-esc="state.selectedFund?.current_ytd || '-'" /></p>
+                  <div class="col-md-3">
+                    <div class="card shadow-sm rounded-3 text-center py-2">
+                      <div class="card-body">
+                        <h6 class="card-title text-muted mb-1">Giá trị từ đầu năm</h6>
+                        <p class="fs-5 text-primary fw-bold mb-0">
+                          <t t-esc="state.selectedFund?.current_ytd || '-'" />
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div class="col-md-4 text-center">
-                    <h6>Giá trị hiện tại</h6>
-                    <p class="fs-5 text-success"><t t-esc="state.selectedFund?.current_nav || '-'" /></p>
+
+                  <div class="col-md-3">
+                    <div class="card shadow-sm rounded-3 text-center py-2">
+                      <div class="card-body">
+                        <h6 class="card-title text-muted mb-1">Giá trị hiện tại</h6>
+                        <p class="fs-5 text-success fw-bold mb-0">
+                          <t t-esc="state.selectedFund?.current_nav || '-'" />
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div class="col-md-4 text-center">
-                    <h6>Giá thấp nhất</h6>
-                    <p class="fs-5 text-danger"><t t-esc="state.selectedFund?.low_nav || '-'" /></p>
+
+                  <div class="col-md-3">
+                    <div class="card shadow-sm rounded-3 text-center py-2">
+                      <div class="card-body">
+                        <h6 class="card-title text-muted mb-1">Giá cao nhất</h6>
+                        <p class="fs-5 text-danger fw-bold mb-0">
+                          <t t-esc="state.selectedFund?.hight_nav || '-'" />
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-3">
+                    <div class="card shadow-sm rounded-3 text-center py-2">
+                      <div class="card-body">
+                        <h6 class="card-title text-muted mb-1">Giá thấp nhất</h6>
+                        <p class="fs-5 text-danger fw-bold mb-0">
+                          <t t-esc="state.selectedFund?.low_nav || '-'" />
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="d-flex justify-content-center gap-2 mb-4">
-                  <button class="btn btn-link" t-on-click="() => goToFundCompare(state.selectedFund)">Compare</button>
-                  <button class="btn btn-dark" t-on-click="() => goToBuyFund(state.selectedFund)">Mua</button>
-                  <button class="btn btn-outline-dark" t-on-click="() => goToSellFund(state.selectedFund)">Bán</button>
+                <div class="d-flex justify-content-center flex-wrap gap-3 mb-4">
+                  <!-- Compare Button -->
+                    <button class="btn btn-pill btn-compare"
+                            t-on-click="() => goToFundCompare(state.selectedFund)">
+                      🔍 So sánh
+                    </button>
+
+                    <!-- Buy Button -->
+                    <button class="btn btn-pill btn-buy"
+                            t-on-click="() => goToBuyFund(state.selectedFund)">
+                      💰 Mua
+                    </button>
+
+                    <!-- Sell Button -->
+                    <button class="btn btn-pill btn-sell"
+                            t-on-click="() => goToSellFund(state.selectedFund)">
+                      💸 Bán
+                    </button>
                 </div>
 
                 <div class="mb-3">
@@ -108,7 +153,6 @@ export class FundWidget extends Component {
             // Load Chart.js dynamically
             await loadJS("https://cdn.jsdelivr.net/npm/chart.js");
 
-            // Fetch fund data
             try {
                 const response = await fetch('/data_fund');
                 const data = await response.json();
@@ -120,10 +164,6 @@ export class FundWidget extends Component {
                 this.state.loading = false;
             }
 
-            this.updateNavChartRange(this.state.activeRange);  // ← Gọi luôn với '1M'
-
-            // Draw charts
-            this.drawCharts();
         });
     }
 
@@ -132,13 +172,23 @@ export class FundWidget extends Component {
         console.log("✅ Selected Fund:", fund);
         this.state.selectedFund = fund;
 
-        this.updateNavChartRange("1M");
+        const navHistory = fund.nav_history_json
+            ? JSON.parse(fund.nav_history_json)
+            : [];
+
+        const labels = navHistory.map(entry => {
+            const d = new Date(entry.date);
+            return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        });
+
+        const values = navHistory.map(entry => entry.value);
+
+        this.drawNavLineChart(labels, values);
+
     }
 
     drawCharts() {
-
         this.drawNavLineChart();  // <--- gọi hàm riêng này
-
     }
 
     goToStockPage(fund) {
@@ -152,7 +202,11 @@ export class FundWidget extends Component {
     }
 
     goToBuyFund(fund) {
-        console.log("Redirecting to buy fund:", fund);
+        if (fund) {
+            sessionStorage.setItem('selectedTicker', fund.ticker);
+        } else {
+            sessionStorage.removeItem('selectedTicker'); // hoặc bỏ dòng này nếu muốn giữ nguyên session cũ
+        }
         window.location.href = "/fund_buy";
     }
 
@@ -162,80 +216,99 @@ export class FundWidget extends Component {
     }
 
     drawNavLineChart(labels = [], values = []) {
-    const navCtx = document.getElementById('navLineChart');
+        const navCtx = document.getElementById('navLineChart');
 
-    if (window.Chart && navCtx) {
-        if (this.navChartInstance) {
-            this.navChartInstance.destroy();  // Xoá biểu đồ cũ
-        }
+        if (window.Chart && navCtx) {
+            if (this.navChartInstance) {
+                this.navChartInstance.destroy();  // Xoá biểu đồ cũ
+            }
 
-        this.navChartInstance = new Chart(navCtx, {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [{
-                    label: 'NAV/Unit (VND)',
-                    data: values,
-                    borderColor: '#36A2EB',
-                    backgroundColor: 'rgba(54,162,235,0.1)',
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Biến động NAV/Unit theo thời gian'
-                    }
+            this.navChartInstance = new Chart(navCtx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'NAV/Unit (VND)',
+                        data: values,
+                        borderColor: '#dc3545', // đỏ đậm giống header
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)', // đỏ nhạt có độ trong suốt
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    }]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: false,
-                        ticks: {
-                            callback: (value) => value.toLocaleString('vi-VN') + '₫'
+
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Biến động NAV/Unit theo thời gian'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: (value) => value.toLocaleString('vi-VN') + '₫'
+                            }
                         }
                     }
                 }
-            }
-        });
-    } else {
-        console.warn("⚠️ Chart.js hoặc canvas chưa sẵn sàng!");
+            });
+        } else {
+            console.warn("⚠️ Chart.js hoặc canvas chưa sẵn sàng!");
+        }
     }
-}
 
-
-    updateNavChartRange(range) {
+    updateNavChartRange(range) {        // Cập nhật NAV theo thời gian thật
         console.log("⏳ Changing NAV chart range to:", range);
         this.state.activeRange = range;
 
-        // Dữ liệu thủ công theo từng khoảng thời gian
-        const navDataByRange = {
-            '1M': {
-                labels: ['01-06', '03-06', '05-06', '07-06', '09-06', '11-06', '13-06', '15-06', '18-06', '22-06'],
-                values: [16500, 16800, 16200, 17000, 16000, 15800, 17200, 15600, 18500, 19678]
-            },
-            '3M': {
-                labels: ['01-04', '08-04', '15-04', '22-04', '29-04', '06-05', '13-05', '20-05', '01-06', '22-06'],
-                values: [19500, 18800, 19200, 18000, 17500, 18200, 17800, 17100, 18800, 20678]
-            },
-            '6M': {
-                labels: ['01-01', '15-01', '01-02', '15-02', '01-03', '15-03', '01-04', '01-05', '01-06', '22-06'],
-                values: [21000, 20000, 19000, 19800, 18000, 18500, 17500, 16000, 22500, 21678]
-            },
-            '1Y': {
-                labels: ['06-2024', '08-2024', '10-2024', '12-2024', '01-2025', '02-2025', '03-2025', '04-2025', '05-2025', '06-2025'],
-                values: [28000, 25000, 26500, 23000, 22500, 21000, 20500, 19000, 17000, 15678]
-            }
+        const fund = this.state.selectedFund;
+        if (!fund || !fund.nav_history_json) {
+            console.warn("⚠️ Không có dữ liệu nav_history_json!");
+            return;
+        }
+
+        const allData = JSON.parse(fund.nav_history_json);
+
+        const now = new Date();
+        const getDateMonthsAgo = (months) => {
+            const d = new Date(now);
+            d.setMonth(d.getMonth() - months);
+            return d;
         };
 
-        const chartData = navDataByRange[range];
-        this.drawNavLineChart(chartData.labels, chartData.values);
+        let startDate;
+        switch (range) {
+            case '1M':
+                startDate = getDateMonthsAgo(1); break;
+            case '3M':
+                startDate = getDateMonthsAgo(3); break;
+            case '6M':
+                startDate = getDateMonthsAgo(6); break;
+            case '1Y':
+                startDate = getDateMonthsAgo(12); break;
+            default:
+                startDate = getDateMonthsAgo(1); break;
+        }
+
+        // Lọc dữ liệu trong khoảng thời gian được chọn
+        const filtered = allData.filter(entry => {
+            const entryDate = new Date(entry.date);
+            return entryDate >= startDate && entryDate <= now;
+        });
+
+        const labels = filtered.map(entry => {
+            const d = new Date(entry.date);
+            return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        });
+
+        const values = filtered.map(entry => entry.value);
+
+        this.drawNavLineChart(labels, values);
     }
-
-
 
 }

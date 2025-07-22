@@ -15,6 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
 import { formatVND } from '../../hooks/formatCurrency';
 import { transactionApi, Transaction } from '../../api/transactionApi';
+import OrderItem from '../../components/transaction/OrderItem';
+import OrderTabHeader from '../../components/transaction/OrderTabHeader';
+import parseDate from '../../hooks/parseDate';
 
 type TabType = 'buy' | 'sell' | 'history';
 
@@ -23,125 +26,25 @@ interface OrderItemProps {
   onPress?: (transaction: Transaction) => void;
 }
 
-const OrderItem: React.FC<OrderItemProps> = ({ transaction, onPress }) => {
-  const getTypeColor = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'buy':
-      case 'purchase':
-      case 'mua':
-        return '#28A745'; // Green for buy
-      case 'sell':
-      case 'sale':
-      case 'bán':
-        return '#DC3545'; // Red for sell
-      default:
-        return '#007BFF';
-    }
-  };
-
-  const getTypeText = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'buy':
-      case 'purchase':
-      case 'mua':
-        return 'MUA';
-      case 'sell':
-      case 'sale':
-      case 'bán':
-        return 'BÁN';
-      default:
-        return type.toUpperCase();
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-      case 'done':
-      case 'success':
-      case 'hoàn thành':
-        return '#28A745';
-      case 'pending':
-      case 'waiting':
-      case 'chờ xử lý':
-        return '#FFC107';
-      case 'failed':
-      case 'error':
-      case 'thất bại':
-        return '#DC3545';
-      default:
-        return '#6C757D';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-      case 'done':
-      case 'success':
-        return 'Hoàn thành';
-      case 'pending':
-      case 'waiting':
-        return 'Chờ xử lý';
-      case 'failed':
-      case 'error':
-        return 'Thất bại';
-      default:
-        return status;
-    }
-  };
-
-  return (
-    <TouchableOpacity 
-      style={styles.orderItem}
-      onPress={() => onPress?.(transaction)}
-    >
-      <View style={styles.orderRow}>
-        {/* Fund Info */}
-        <View style={styles.fundInfo}>
-          <Text style={styles.fundName}>{transaction.fund_name}</Text>
-          <Text style={styles.orderDate}>
-            {transaction.order_date || transaction.session_date}
-          </Text>
-          {transaction.status && (
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(transaction.status) }]}>
-              <Text style={styles.statusText}>
-                {getStatusText(transaction.status)}
-              </Text>
-            </View>
-          )}
-        </View>
-        
-        {/* Order Details */}
-        <View style={styles.orderDetails}>
-          <Text style={styles.amount}>
-            {formatVND(transaction.amount)}
-          </Text>
-          <Text style={styles.units}>
-            {transaction.units || 0} CCQ
-          </Text>
-        </View>
-        
-        {/* Order Type */}
-        <View style={styles.typeContainer}>
-          <View style={[styles.typeBadge, { backgroundColor: getTypeColor(transaction.transaction_type) }]}>
-            <Text style={styles.typeText}>
-              {getTypeText(transaction.transaction_type)}
-            </Text>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
-
 const TransactionManagementScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('buy');
+  
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [allBuyOrders, setAllBuyOrders] = useState<Transaction[]>([]);
+  const [allSellOrders, setAllSellOrders] = useState<Transaction[]>([]);
+  const [allTransactionHistory, setAllTransactionHistory] = useState<Transaction[]>([]);
+
   const [buyOrders, setBuyOrders] = useState<Transaction[]>([]);
   const [sellOrders, setSellOrders] = useState<Transaction[]>([]);
   const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+
+  const now = new Date();
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [fromDate, setFromDate] = useState<Date>(firstDayOfMonth);
+  const [toDate, setToDate] = useState<Date>(now);
 
   const loadOrders = useCallback(async (refresh = false, forceRefresh = false) => {
     try {
@@ -173,6 +76,9 @@ const TransactionManagementScreen: React.FC = () => {
         order.transaction_type.toLowerCase() === 'sale' ||
         order.transaction_type.toLowerCase() === 'bán'
       );
+      setAllBuyOrders(buyOrdersData);
+      setAllSellOrders(sellOrdersData);
+      setAllTransactionHistory(historyOrders);
 
       setBuyOrders(buyOrdersData);
       setSellOrders(sellOrdersData);
@@ -191,15 +97,34 @@ const TransactionManagementScreen: React.FC = () => {
         ]
       );
     } finally {
+      filterOrdersByDate(fromDate, toDate);
+
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+  const filterOrdersByDate = useCallback(( from: Date, to: Date) => {
+    setFromDate(from);
+    setToDate(to);
+    const isInRange = (dateStr: string) => {
+      const d = parseDate(dateStr);
+      return d>= from && d<=to;
+    };
+    setBuyOrders(allBuyOrders.filter(order => isInRange(order.session_date)));
+    setSellOrders(allSellOrders.filter(order => isInRange(order.session_date)));
+    setTransactionHistory(allTransactionHistory.filter(order => isInRange(order.session_date)));
+    
+  }, [allBuyOrders, allSellOrders, allTransactionHistory]);
 
+  useEffect(() => {
+    filterOrdersByDate(fromDate, toDate);
+  }, [allBuyOrders, allSellOrders, allTransactionHistory]);
+
+  
+
+    
+  
   // Auto refresh when screen comes into focus
   useFocusEffect(
     useCallback(() => {
@@ -220,56 +145,6 @@ const TransactionManagementScreen: React.FC = () => {
  
 
  
-
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={styles.titleRow}>
-        <Text style={styles.title}>Quản lý lệnh</Text>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={() => loadOrders(false, true)}
-          disabled={loading || refreshing}
-        >
-          <Ionicons 
-            name="refresh" 
-            size={20} 
-            color={loading || refreshing ? "#CCCCCC" : "#007BFF"} 
-          />
-        </TouchableOpacity>
-      </View>
-      
-      {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'buy' && styles.activeTab]}
-          onPress={() => setActiveTab('buy')}
-        >
-          <Text style={[styles.tabText, activeTab === 'buy' && styles.activeTabText]}>
-            Lệnh mua ({buyOrders.length})
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'sell' && styles.activeTab]}
-          onPress={() => setActiveTab('sell')}
-        >
-          <Text style={[styles.tabText, activeTab === 'sell' && styles.activeTabText]}>
-            Lệnh bán ({sellOrders.length})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'history' && styles.activeTab]}
-          onPress={() => setActiveTab('history')}
-        >
-          <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
-            Lịch sử ({transactionHistory.length})
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-    </View>
-  );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -313,7 +188,19 @@ const TransactionManagementScreen: React.FC = () => {
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
-        {renderHeader()}
+        <OrderTabHeader
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          buyOrdersCount={buyOrders.length}
+          sellOrdersCount={sellOrders.length}
+          historyCount={transactionHistory.length}
+          onRefresh={onRefresh}
+          loading={loading}
+          refreshing={refreshing}
+          fromDate={fromDate}
+          toDate={toDate}
+          onDateFilterChange={filterOrdersByDate}
+        />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.light.tint} />
           <Text style={styles.loadingText}>Đang tải...</Text>
@@ -324,7 +211,19 @@ const TransactionManagementScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {renderHeader()}
+      <OrderTabHeader
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        buyOrdersCount={buyOrders.length}
+        sellOrdersCount={sellOrders.length}
+        historyCount={transactionHistory.length}
+        onRefresh={onRefresh}
+        loading={loading}
+        refreshing={refreshing}
+        fromDate={fromDate}
+        toDate={toDate}
+        onDateFilterChange={filterOrdersByDate}
+      />
       
       <FlatList
         data={currentOrders}

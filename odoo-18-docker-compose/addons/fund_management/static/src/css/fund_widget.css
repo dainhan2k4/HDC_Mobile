@@ -1,15 +1,95 @@
+/* Thanh chọn thời gian biểu đồ */
+
 .custom-range-btn {
-  color: #36A2EB;
+  color: #dc3545; /* đỏ đậm giống header */
   border: none;
   background-color: transparent;
   transition: background-color 0.3s, color 0.3s;
 }
 
+
 .custom-range-btn:hover {
-  background-color: rgba(54, 162, 235, 0.1);
+  background-color: rgba(255, 99, 132, 0.1); /* đỏ nhạt khi hover */
 }
 
 .active-range {
-  background-color: #36A2EB;
+  background-color: #FF6384; /* đỏ đậm khi active */
   color: white !important;
+}
+
+/* Base style for all pill buttons */
+.btn-pill {
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease, transform 0.1s ease;
+}
+
+/* Buy Button - đỏ đậm giống header */
+.btn-buy {
+  background-color: #dc3545;
+}
+.btn-buy:hover {
+  background-color: #c2333d;
+  color: white;
+}
+.btn-buy:active {
+  background-color: #b02a37;
+  transform: scale(0.97);
+}
+
+/* Sell Button - đỏ nhạt nhưng đậm hơn */
+.btn-sell {
+  background-color: #e74c3c;
+}
+.btn-sell:hover {
+  background-color: #d84332;
+  color: white;
+}
+.btn-sell:active {
+  background-color: #c0392b;
+  transform: scale(0.97);
+}
+
+/* Compare Button - đỏ hồng vừa phải */
+.btn-compare {
+  background-color: #f06d6d;
+}
+.btn-compare:hover {
+  background-color: #e45757;
+  color: white;
+}
+.btn-compare:active {
+  background-color: #d84343;
+  transform: scale(0.97);
+}
+
+
+/* các trang buy, sell thanh nav*/
+.nav-link-blue {
+  color: #dc3545; /* đỏ đậm như header */
+  font-weight: 400;
+  transition: color 0.3s ease;
+}
+
+.nav-link-blue:hover {
+  color: #c2333d; /* đỏ đậm hơn khi hover */
+  text-decoration: none;
+}
+
+.nav-link-active {
+  color: #b02a37 !important; /* đỏ đậm hơn nữa để nổi bật */
+  font-weight: 700;
+}
+
+
+#signature-pad {            /* Fix ko lệch chữ ký */
+  display: block;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #ccc;
 }

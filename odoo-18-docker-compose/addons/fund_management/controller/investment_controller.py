@@ -15,48 +15,55 @@ class InvestmentController(http.Controller):
         print("Content type:", request.httprequest.content_type)
 
         try:
-            # Lấy dữ liệu từ form hoặc JSON
+            # Lấy dữ liệu từ form
             fund_id = kwargs.get('fund_id')
-            amount = kwargs.get('amount')
             units = kwargs.get('units')
+            amount = kwargs.get('amount')  # Vẫn in ra để debug, nhưng không dùng
 
             print("fund_id:", fund_id)
-            print("amount:", amount)
             print("units:", units)
+            print("amount (from js - ignored):", amount)
 
-            if not fund_id or not amount or not units:
-                return self._json_response({"success": False, "message": "Thieu thong tin"})
+            if not fund_id or not units:
+                return self._json_response({"success": False, "message": "Thiếu thông tin"})
 
             user_id = request.env.user.id
             print("user_id:", user_id)
 
-            # Tạo investment
-            investment = request.env['portfolio.investment'].sudo().create({
-                'user_id': user_id,
-                'fund_id': int(fund_id),
-                'amount': float(amount),
-                'units': float(units)
-            })
+            # Truy vấn fund để lấy current_nav
+            fund = request.env['portfolio.fund'].sudo().browse(int(fund_id))
+            if not fund.exists():
+                return self._json_response({"success": False, "message": "Fund không tồn tại"})
 
-            # Hoặc dùng create() trực tiếp:
+            current_nav = fund.current_nav
+            units_float = float(units)
+            calculated_amount = units_float * current_nav
+
+            print("current_nav:", current_nav)
+            print("calculated_amount:", calculated_amount)
+
+            # Tạo investment
+            investment = self.upsert_investment(user_id, int(fund_id), float(units), 'purchase')
+
+            # Ghi lại transaction
             request.env['portfolio.transaction'].sudo().create({
                 'user_id': user_id,
-                'fund_id': int(fund_id),
+                'fund_id': fund.id,
                 'transaction_type': 'purchase',
-                'units': float(units),
-                'amount': float(amount),
+                'units': units_float,
+                'amount': amount,
                 'created_at': fields.Datetime.now()
             })
 
-            print("Tao thanh cong investment ID:", investment.id)
+            print("Tạo thành công investment ID:", investment.id)
             return self._json_response({
                 "success": True,
-                "message": "Da tao investment thanh cong",
+                "message": "Đã tạo investment thành công",
                 "id": investment.id
             })
 
         except Exception as e:
-            print("LOI:", str(e))
+            print("LỖI:", str(e))
             import traceback
             traceback.print_exc()
             return self._json_response({"success": False, "message": str(e)})
@@ -114,16 +121,11 @@ class InvestmentController(http.Controller):
         try:
             investment_id = int(kwargs.get('investment_id'))
             quantity = float(kwargs.get('quantity'))
-            estimated_value = float(kwargs.get('estimated_value'))
-
-            investment = request.env['portfolio.investment'].sudo().browse(investment_id)
-
-            user_id = request.env.user.id
-            fund_id = investment.fund_id.id
+            estimated_value_from_js = float(kwargs.get('estimated_value'))  # vẫn log ra để debug
 
             print("✔️ investment_id:", investment_id)
             print("✔️ quantity:", quantity)
-            print("✔️ estimated_value:", estimated_value)
+            print("✔️ estimated_value (from JS - ignored):", estimated_value_from_js)
 
             investment = request.env['portfolio.investment'].sudo().browse(investment_id)
 
@@ -134,26 +136,26 @@ class InvestmentController(http.Controller):
                     status=404
                 )
 
-            # Tính toán mới
-            new_units = max(0, investment.units - quantity)
-            new_amount = max(0, investment.amount - estimated_value)
+            user_id = request.env.user.id
+            fund = investment.fund_id
 
-            print("🔧 Đang cập nhật investment:")
-            print("- Units cũ:", investment.units, "=> mới:", new_units)
-            print("- Amount cũ:", investment.amount, "=> mới:", new_amount)
+            # Tính lại estimated_value theo current NAV
+            current_nav = fund.current_nav
+            estimated_value = quantity * current_nav
 
-            # Cập nhật bản ghi
-            investment.write({
-                'units': new_units,
-                'amount': new_amount
-            })
+            print("🔄 current_nav:", current_nav)
+            print("📌 Tính lại estimated_value:", estimated_value)
 
+            # Tính toán units/amount mới
+            investment = self.upsert_investment(user_id=user_id, fund_id=fund.id, units_change=quantity, transaction_type='sell')
+
+            # Ghi log transaction bán
             request.env['portfolio.transaction'].sudo().create({
                 'user_id': user_id,
-                'fund_id': fund_id,
-                'transaction_type': 'sale',
+                'fund_id': fund.id,
+                'transaction_type': 'sell',
                 'units': quantity,
-                'amount': estimated_value,
+                'amount': estimated_value_from_js,
                 'created_at': fields.Datetime.now()
             })
 
@@ -172,3 +174,35 @@ class InvestmentController(http.Controller):
                 status=500
             )
 
+    def upsert_investment(self,user_id, fund_id, units_change, transaction_type):
+        Investment = request.env['portfolio.investment'].sudo()
+        Fund = request.env['portfolio.fund'].sudo().browse(fund_id)
+        current_nav = Fund.current_nav
+
+        investment = Investment.search([
+            ('user_id', '=', user_id),
+            ('fund_id', '=', fund_id)
+        ], limit=1)
+
+        if not investment:
+            if transaction_type == 'purchase':
+                # Mua lần đầu → tạo mới
+                return Investment.create({
+                    'user_id': user_id,
+                    'fund_id': fund_id,
+                    'units': units_change,
+                    'amount': units_change * current_nav
+                })
+
+        # Nếu đã có, cập nhật
+        old_units = investment.units
+        new_units = old_units + units_change if transaction_type == 'purchase' else old_units - units_change
+        new_units = max(new_units, 0)
+        new_amount = new_units * current_nav
+
+        investment.write({
+            'units': new_units,
+            'amount': new_amount
+        })
+
+        return investment

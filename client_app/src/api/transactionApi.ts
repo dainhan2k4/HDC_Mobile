@@ -74,7 +74,6 @@ export const getPendingTransactions = async (forceRefresh = false): Promise<Tran
   try {
     console.log(`🔗 [TransactionApi] Getting pending transactions${forceRefresh ? ' (force refresh)' : ''}...`);
     const response = await apiService.get('/transaction/pending', undefined, forceRefresh);
-    console.log('✅ [TransactionApi] Pending transactions response:', response);
     return (response.data as Transaction[]) || [];
   } catch (error) {
     console.error('❌ [TransactionApi] Error fetching pending transactions:', error);

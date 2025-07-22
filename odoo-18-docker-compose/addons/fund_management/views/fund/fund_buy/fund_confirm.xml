@@ -17,22 +17,23 @@
         </style>
       </t>
 
-      <t t-call="fund_management.fund_header_template"/>
+<!--      <t t-call="fund_management.fund_header_template"/>-->
+      <div id="header-container"></div>
 
       <div class="profile-container">
-        <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4">
+        <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4 mt-4">
           <div class="bg-white rounded-4 px-3 py-3">
-                  <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 border py-1 " >
+                  <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 border py-2 " >
                     <div class="collapse navbar-collapse justify-content-center">
                       <ul class="navbar-nav d-flex w-100 justify-content-center fs-5">
                         <li class="nav-item flex-fill text-center">
-                          <a class="fw-bold px-2 py-2" href="fund_buy">Mua</a>
+                          <a class="fw-bold px-2 nav-link-blue nav-link-active" href="fund_buy">Mua</a>
                         </li>
-                        <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
-                          <a class="px-2 py-2" href="fund_sell">Bán</a>
+                        <li class="nav-item flex-fill text-center">
+                          <a class="px-2 nav-link-blue" href="fund_sell">Bán</a>
                         </li>
-                        <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
-                          <a class="px-2 py-2" href="#">Chuyển đổi</a>
+                        <li class="nav-item flex-fill text-center">
+                          <a class="px-2 nav-link-blue" href="#">Chuyển đổi</a>
                         </li>
                       </ul>
                     </div>
@@ -114,8 +115,8 @@
                           <div class="mb-2 small text-muted">Tổng cộng thanh toán: <strong id="confirm-total-amount" class="text-dark fs-5">30,000,000đ</strong></div>
                           <div class="mb-4 small text-muted">Tổng số cổ phiếu đang mua: <strong id="confirm-units" class="text-dark fs-5">0</strong></div>
                           <div class="d-flex justify-content-between">
-                            <button type="button" class="btn btn-outline-secondary px-4" id="back-payment-btn">Quay lại</button>
-                            <button type="submit" class="btn btn-primary px-4" id="payment-confirm-btn">Xác nhận thanh toán</button>
+                            <button type="button" class="btn btn-pill btn-sell" id="back-payment-btn">Quay lại</button>
+                            <button type="submit" class="btn btn-pill btn-buy" id="payment-confirm-btn">Xác nhận thanh toán</button>
                           </div>
                         </div>
                       </div>
@@ -127,36 +128,6 @@
         </div>
     </div>
 
-<!--      <div class="bg-light min-vh-100 py-3 px-3">-->
-
-<!--        <div class="container my-5">-->
-
-<!--            &lt;!&ndash; Top Menu &ndash;&gt;-->
-<!--            <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 py-2">-->
-<!--              <a class="navbar-brand fw-bold" href="#">Sản phẩm đầu tư</a>-->
-<!--              <div class="collapse navbar-collapse">-->
-<!--                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">-->
-<!--                  <li class="nav-item mx-2">-->
-<!--                    <a class="nav-link" href="#">Tổng quan</a>-->
-<!--                  </li>-->
-<!--                  <li class="nav-item mx-2">-->
-<!--                    <a class="nav-link active" href="#">Sản phẩm đầu tư</a>-->
-<!--                  </li>-->
-<!--                  <li class="nav-item mx-2">-->
-<!--                    <a class="nav-link" href="#">Quản lý giao dịch</a>-->
-<!--                  </li>-->
-<!--                  <li class="nav-item mx-2">-->
-<!--                    <a class="nav-link" href="#">Quản lý tài sản</a>-->
-<!--                  </li>-->
-<!--                  <li class="nav-item mx-2">-->
-<!--                    <a class="nav-link" href="#">Hồ sơ cá nhân</a>-->
-<!--                  </li>-->
-<!--                </ul>-->
-<!--              </div>-->
-<!--            </nav>-->
-<!--                -->
-<!--        </div>-->
-<!--      </div>-->
     </t>
   </template>
 </odoo>

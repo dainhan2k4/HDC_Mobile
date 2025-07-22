@@ -1,18 +1,20 @@
+// api-middleware/src/controllers/assetController.js
 const OdooService = require('../services/OdooService');
 
-class AssetController {
-  constructor(odooService) {
-    this.odooService = odooService;
-  }
+const odoo = new OdooService();
   
-  async getAssetManagementData(req, res) {
-    try {
-      const assetData = await this.odooService.getAssetManagementData();
-      res.json(assetData);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch asset management data' });
-    }
+exports.getAssetManagement = async (req, res) => {
+  try {
+    const data = await odoo.getAssetManagementData();
+    res.status(200).json({
+      success: true,
+      data: data
+    });
+  } catch (error) {
+    console.error('Error in getAssetManagement:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch asset data'
+    });
   }
-}   
-
-module.exports = AssetController;
+};

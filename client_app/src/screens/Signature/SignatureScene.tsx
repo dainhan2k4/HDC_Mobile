@@ -74,6 +74,7 @@ const SignatureScene = () => {
             setSignature(signature);
             console.log('signature:', signature.substring(0, 100) + '...');
             console.log('signedHtml length:', signedHtml.length);
+            
             // Chuyển sang màn hình xem hợp đồng với HTML đã ký
             (navigation as any).navigate('ContractViewer', { 
             fundContract, 

@@ -20,22 +20,23 @@
       </t>
 
 
-      <t t-call="fund_management.fund_header_template"/>
+<!--      <t t-call="fund_management.fund_header_template"/>-->
+      <div id="header-container"></div>
 
       <div class="profile-container">
-        <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4">
+        <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4 mt-4">
             <div class="bg-white rounded-4 px-3 py-3">
-                <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 border py-1 " >
+                <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 border py-2 " >
                   <div class="collapse navbar-collapse justify-content-center">
                     <ul class="navbar-nav d-flex w-100 justify-content-center fs-5">
-                      <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
-                        <a class=" px-2 py-2" href="fund_buy">Mua</a>
+                      <li class="nav-item flex-fill text-center">
+                        <a class="px-2 nav-link-blue" href="fund_buy">Mua</a>
                       </li>
                       <li class="nav-item flex-fill text-center">
-                        <a class="fw-bold px-2 py-2" href="fund_sell">Bán</a>
+                        <a class="px-2 nav-link-blue fw-bold nav-link-active" href="fund_sell">Bán</a>
                       </li>
-                      <li class="nav-item flex-fill text-center" style="padding-bottom: 6px;">
-                        <a class="px-2 py-2" href="#">Chuyển đổi</a>
+                      <li class="nav-item flex-fill text-center">
+                        <a class="px-2 nav-link-blue" href="#">Chuyển đổi</a>
                       </li>
                     </ul>
                   </div>
@@ -110,8 +111,8 @@
 
                       <!-- Nút hành động -->
                       <div class="d-flex justify-content-between">
-                        <button type="button" class="btn btn-outline-secondary" onclick="window.history.back()">Quay lại</button>
-                        <button type="button" class="btn btn-primary" id="sell-confirm-final-submit">Xác nhận</button>
+                        <button type="button" class="btn btn-pill btn-sell" onclick="window.history.back()">Quay lại</button>
+                        <button type="button" class="btn btn-pill btn-buy" id="sell-confirm-final-submit">Xác nhận</button>
                       </div>
                     </div>
                   </div>
