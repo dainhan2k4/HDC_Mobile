@@ -132,9 +132,10 @@ class ProfileService extends BaseOdooService {
       // Clear cache to force refresh
       this.deleteCachedData('personal_profile_data');
 
-      // Implementation depends on your Odoo model structure
-      // This is a placeholder for the actual update logic
-      console.log('✅ [ProfileService] Personal profile update placeholder');
+      const data = await this.apiCall('/save_personal_profile',
+         { requireAuth: true, method: 'POST', data: JSON.stringify(profileData), headers: {
+        'Content-Type': 'application/json',
+      } });
       
       return { success: true, message: 'Profile updated successfully' };
     } catch (error) {

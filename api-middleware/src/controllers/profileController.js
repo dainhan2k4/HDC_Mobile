@@ -78,7 +78,8 @@ class ProfileController {
             const data = await this.odooService.updatePersonalProfile(req.body);
             res.json({ success: true, data: data });
         } catch (error) {
-            res.status(500).json({ success: false, error: error.message });
+            const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
+            res.status(500).json({ success: false, error: errorMsg });
         }
     }
 }

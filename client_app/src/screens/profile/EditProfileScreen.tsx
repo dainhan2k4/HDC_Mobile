@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../config/apiService';
 import { useNavigation } from '@react-navigation/native';
+import { AxiosError } from 'axios';
 
 interface PersonalInfo {
   name: string;
@@ -59,14 +60,15 @@ export const EditProfileScreen: React.FC = () => {
       setIsLoading(true);
       await apiService.post('/profile/update_personal_profile', personalInfo);
       Alert.alert('Thành công', 'Cập nhật thông tin thành công');
-      navigation.goBack();
+      navigation.navigate('ProfileScreen' as never);
     } catch (error) {
-      console.error('❌ [EditProfile] Update error:', error);
-      Alert.alert('Lỗi', 'Cập nhật thông tin thất bại');
+      const errorMessage = (error as any)?.response?.data?.error || 'Cập nhật thông tin thất bại. Vui lòng thử lại.';
+      Alert.alert('Lỗi', errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   // Xử lý thay đổi giá trị trường nhập liệu
   const handleChange = (field: keyof PersonalInfo, value: string) => {

@@ -193,6 +193,13 @@ class OdooService {
   }
 
   /**
+   * Update personal profile
+   */
+  async updatePersonalProfile(profileData) {
+    return this.profileService.updatePersonalProfile(profileData);
+  }
+
+  /**
    * Get bank info
    */
   async getBankInfo() {

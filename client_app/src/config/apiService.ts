@@ -170,13 +170,11 @@ export class ApiService {
       // Handle 429 rate limit errors with retry
       if (error.response?.status === 429 && retryCount < maxRetries) {
         const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
-        console.warn(`⏰ [ApiService] Rate limited, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
         
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.makeRequest<T>(endpoint, config, retryCount + 1);
       }
 
-      console.error('🔥 [ApiService] Request failed:', error);
       throw error;
     }
   }

@@ -26,5 +26,9 @@ router.get('/data_bank_info', async (req, res) => {
 router.get('/data_address_info', async (req, res) => {
     await profileController.getAddressInfo(req, res);
 });
+
+router.post('/update_personal_profile', async (req, res) => {
+    await profileController.updatePersonalProfile(req, res);
+});
     
 module.exports = router;

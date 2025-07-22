@@ -1,6 +1,9 @@
 from odoo import http
 from odoo.http import request, Response
 import json
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class PersonalProfileController(http.Controller):
@@ -86,6 +89,8 @@ class PersonalProfileController(http.Controller):
     @http.route('/data_personal_profile', type='http', auth='user', methods=['GET'], csrf=False)
     def get_personal_profile_data(self, **kwargs):
         """API endpoint để lấy dữ liệu personal profile của user hiện tại"""
+        _logger.info("Raw request data: %s", request.httprequest.data)
+
         try:
             # Lấy dữ liệu từ model investor.profile của user hiện tại
             current_user = request.env.user
