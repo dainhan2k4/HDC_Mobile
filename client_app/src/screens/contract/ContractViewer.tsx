@@ -18,6 +18,8 @@ export default function ContractViewer() {
   const { signedHtml, fundContract } = route.params as unknown as { signedHtml: string, fundContract: FundContractProps };
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [isLoading, setIsLoading] = useState(false);
+
+  
   console.log('fundContract in ContractViewer :', fundContract);
   const executeBuyOrder = async () => {
     try {
@@ -75,7 +77,7 @@ export default function ContractViewer() {
         style={{ flex: 1, marginTop: 40 }}
       />
 
-      <SafeAreaView style={{  }}>  
+      <SafeAreaView style={{  flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 }}>  
       <GradientButton
         title="In hợp đồng"
         onPress={handlePrint}
