@@ -13,17 +13,12 @@ class PortfolioController {
     try {
       console.log('📊 [Portfolio] Getting portfolio overview...');
       
-      // Get data from multiple sources
-      const [investments, funds] = await Promise.all([
-        this.odooService.getInvestments().catch(err => {
-          console.log('⚠️ [Portfolio] Investments failed, using fallback');
-          return this.getMockInvestments();
-        }),
-        this.odooService.getFunds().catch(err => {
-          console.log('⚠️ [Portfolio] Funds failed, using fallback');
-          return this.getMockFunds();
-        })
-      ]);
+      // Lấy dữ liệu thật từ Odoo
+      const investments = await this.odooService.getInvestments();
+      const funds = await this.odooService.getFunds();
+      
+      console.log('✅ [Portfolio] Got real investments from Odoo:', investments.length);
+      console.log('✅ [Portfolio] Got real funds from Odoo:', funds.length);
 
       // Calculate portfolio metrics
       const portfolioData = this.calculatePortfolioMetrics(investments, funds);
@@ -58,10 +53,9 @@ class PortfolioController {
     try {
       console.log('💰 [Portfolio] Getting investments...');
       
-      const investments = await this.odooService.getInvestments().catch(err => {
-        console.log('⚠️ [Portfolio] Investments API failed, using mock data');
-        return this.getMockInvestments();
-      });
+      // Lấy dữ liệu thật từ Odoo
+      const investments = await this.odooService.getInvestments();
+      console.log('✅ [Portfolio] Got real investments from Odoo:', investments.length);
       
       console.log(`✅ [Portfolio] Investments sent: ${investments.length} items`);
       res.json({
@@ -72,11 +66,9 @@ class PortfolioController {
       
     } catch (error) {
       console.error('❌ [Portfolio] Investments error:', error.message);
-      const mockInvestments = this.getMockInvestments();
-      res.json({
-        success: true,
-        data: mockInvestments,
-        count: mockInvestments.length
+      res.status(500).json({
+        success: false,
+        error: error.message
       });
     }
   }
@@ -89,10 +81,9 @@ class PortfolioController {
     try {
       console.log('🏦 [Portfolio] Getting funds...');
       
-      const funds = await this.odooService.getFunds().catch(err => {
-        console.log('⚠️ [Portfolio] Funds API failed, using mock data');
-        return this.getMockFunds();
-      });
+      // Lấy dữ liệu thật từ Odoo
+      const funds = await this.odooService.getFunds();
+      console.log('✅ [Portfolio] Got real funds from Odoo:', funds.length);
       
       console.log(`✅ [Portfolio] Funds sent: ${funds.length} items`);
       res.json({
@@ -103,11 +94,9 @@ class PortfolioController {
       
     } catch (error) {
       console.error('❌ [Portfolio] Funds error:', error.message);
-      const mockFunds = this.getMockFunds();
-      res.json({
-        success: true,
-        data: mockFunds,
-        count: mockFunds.length
+      res.status(500).json({
+        success: false,
+        error: error.message
       });
     }
   }
@@ -120,7 +109,7 @@ class PortfolioController {
     try {
       console.log('📈 [Portfolio] Getting performance...');
       
-      const investments = await this.odooService.getInvestments().catch(() => this.getMockInvestments());
+      const investments = await this.odooService.getInvestments();
       const performance = this.calculatePerformance(investments);
       
       console.log('✅ [Portfolio] Performance sent');
@@ -240,63 +229,7 @@ class PortfolioController {
     }));
   }
 
-  getMockInvestments() {
-    return [
-      {
-        id: 1,
-        fund_id: 1,
-        fund_name: 'VCBF-BCF',
-        fund_ticker: 'VCBFBCF',
-        units: 1000,
-        amount: 50000000,
-        current_nav: 52500,
-        investment_type: 'equity',
-        current_value: 52500000,
-        profit_loss: 2500000
-      },
-      {
-        id: 2,
-        fund_id: 2,
-        fund_name: 'DCDS',
-        fund_ticker: 'DCDS',
-        units: 800,
-        amount: 40000000,
-        current_nav: 48750,
-        investment_type: 'bond',
-        current_value: 39000000,
-        profit_loss: -1000000
-      }
-    ];
-  }
 
-  getMockFunds() {
-    return [
-      {
-        id: 1,
-        name: 'VCBF-BCF',
-        ticker: 'VCBFBCF',
-        description: 'Quỹ Cổ phiếu Cân bằng Vietcombank',
-        current_nav: 52500,
-        current_ytd: 15.2,
-        investment_type: 'equity'
-      },
-      {
-        id: 2,
-        name: 'DCDS',
-        ticker: 'DCDS',
-        description: 'Quỹ Trái phiếu Dragon Capital',
-        current_nav: 48750,
-        current_ytd: 8.5,
-        investment_type: 'bond'
-      }
-    ];
-  }
-
-  getMockPortfolioData() {
-    const investments = this.getMockInvestments();
-    const funds = this.getMockFunds();
-    return this.calculatePortfolioMetrics(investments, funds);
-  }
 }
 
 module.exports = PortfolioController; 

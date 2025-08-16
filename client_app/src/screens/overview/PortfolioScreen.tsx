@@ -9,9 +9,10 @@ import {
   Alert, 
   TouchableOpacity,
   StatusBar,
-  RefreshControl
+  RefreshControl,
+  Button
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { PortfolioOverview } from '../../types/portfolio';
 import { Investment } from '../../types/fund';
@@ -459,7 +460,16 @@ export const PortfolioScreen: React.FC = () => {
         <View style={styles.headerContent}>
           <View>
             <Text style={styles.headerGreeting}>Xin chào, {user?.name || 'Nhà đầu tư'}!</Text>
-            <Text style={styles.headerTitle}>Danh mục đầu tư</Text>
+            <Button title="KYC" onPress={() => {
+              console.log('KYC button clicked, trying navigation...');
+              try {
+                (navigation as any).navigate('Kyc', { userData: user });
+                console.log('✅ Navigation successful');
+              } catch (error) {
+                console.error('❌ Navigation failed:', error);
+                Alert.alert('Lỗi', 'Không thể mở màn hình KYC');
+              }
+            }} /> 
           </View>
           <TouchableOpacity style={styles.refreshIconButton} onPress={handleRefresh}>
             <Ionicons name="refresh-outline" size={24} color="#FFFFFF" />

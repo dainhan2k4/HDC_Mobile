@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator } from 'react-native';
@@ -12,6 +12,7 @@ import { FundSellScreen } from '../screens/fund/FundSellScreen';
 import SignatureScene from '../screens/Signature/SignatureScene';
 import { ContractViewerWrapper } from './components/ContractViewerWrapper';
 import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
+import KycScreen from '../screens/kyc/KycScreen';
 
 // Import types
 import { RootStackParamList } from '../types/navigation';
@@ -22,6 +23,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 // Root Navigator
 export const AppNavigator = () => {
   const { sessionId, isLoading } = useAuth();
+  const navigationRef = useRef(null);
 
   if (isLoading) {
     return (
@@ -32,21 +34,22 @@ export const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {sessionId ? (
-          <>
-            <Stack.Screen name="Main" component={MainTabNavigator} />
-            <Stack.Screen name="FundBuy" component={FundBuyScreen} />
-            <Stack.Screen name="FundSell" component={FundSellScreen} />
-            <Stack.Screen name="SignatureScene" component={SignatureScene} />
-            <Stack.Screen name="ContractViewer" component={ContractViewerWrapper} />
-            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-          </>
-        ) : (
-          <Stack.Screen name="Auth" component={AuthNavigator} />
-        )}
-      </Stack.Navigator>
+    <NavigationContainer ref={navigationRef}>
+        <Stack.Navigator initialRouteName={sessionId ? "Main" : "Auth"} screenOptions={{ headerShown: false }}>
+          {sessionId ? (
+            <>
+              <Stack.Screen name="Main" component={MainTabNavigator} />
+              <Stack.Screen name="FundBuy" component={FundBuyScreen} />
+              <Stack.Screen name="FundSell" component={FundSellScreen} />
+              <Stack.Screen name="SignatureScene" component={SignatureScene} />
+              <Stack.Screen name="ContractViewer" component={ContractViewerWrapper} />
+              <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+              <Stack.Screen name="Kyc" component={KycScreen} />
+            </>
+          ) : (
+            <Stack.Screen name="Auth" component={AuthNavigator} />
+          )}
+        </Stack.Navigator>
     </NavigationContainer>
   );
 }; 

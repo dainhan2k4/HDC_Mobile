@@ -4,11 +4,14 @@ import { ApiConfig, ApiEndpoints } from '../types/api';
 // API Configuration for different environments
 const ENVIRONMENTS = {
   // Direct Odoo (old approach) 
-  ODOO_DIRECT: 'http://10.10.3.191:11018', // Fixed to localhost instead of ngrok 10.10.3.191192.168.115.1
+  ODOO_DIRECT: 'http://192.168.1.5:11018', // 
   
+
+  KYC_DIRECT: 'http://192.168.1.5:8000', // 
+
   // API Middleware (new approach - recommended)
   // ipconfig | findstr IPv4
-  MIDDLEWARE_LOCAL: 'http://10.10.3.191:3001/api/v1',  
+  MIDDLEWARE_LOCAL: 'http://192.168.1.5:3001/api/v1',  
   MIDDLEWARE_PRODUCTION: '', 
 };
 
@@ -118,6 +121,15 @@ export const API_ENDPOINTS = {
       FUNDS: '/data_fund',
       INVESTMENTS: '/data_investment',
     }
+  },
+
+  // KYC endpoints
+  KYC: {
+    HEALTH: '/api/health-check',
+    FRONT_ID: '/api/ekyc/frontID',
+    BACK_ID: '/api/ekyc/backID',
+    DETECTION: '/api/ekyc/detection',
+    PROCESS: '/api/ekyc-process',
   }
 };
 

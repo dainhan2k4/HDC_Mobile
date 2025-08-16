@@ -59,10 +59,11 @@ class FundService extends BaseOdooService {
         transaction_type: 'purchase'
       };
 
-      const transactionId = await this.callModelMethod('transaction.order', 'create_buy_transaction', [transactionData]);
+      // Sử dụng model portfolio.transaction thay vì transaction.order
+      const transactionId = await this.callModelMethod('portfolio.transaction', 'create', [transactionData]);
       
       if (transactionId) {
-        await this.callModelMethod('transaction.order', 'complete_transaction', [transactionId]);
+        await this.callModelMethod('portfolio.transaction', 'action_complete', [transactionId]);
         this.clearCache();
       }
       

@@ -9,6 +9,11 @@ export type RootStackParamList = {
   FundBuy: { fundId: number; fundName: string; currentNav?: number };
   FundSell: { fundId: number; fundName: string; currentUnits: number; currentNav?: number };
   EditProfile: undefined;
+  Kyc: {
+    userData: any;
+    patch?: boolean;
+    onNavigateTop?: () => void;
+  };
 };
 
 // Auth Stack Types
