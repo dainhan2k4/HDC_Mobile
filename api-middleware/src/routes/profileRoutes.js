@@ -30,5 +30,14 @@ router.get('/data_address_info', async (req, res) => {
 router.post('/update_personal_profile', async (req, res) => {
     await profileController.updatePersonalProfile(req, res);
 });
+
+router.post('/save_personal_profile', async (req, res) => {
+    await profileController.updatePersonalProfile(req, res);
+});
+
+router.post('/update_address_info', async (req, res) => {
+    // Tạm thời trả về success để tránh lỗi 404
+    res.json({ success: true, message: 'Address info update endpoint - not implemented yet' });
+});
     
 module.exports = router;

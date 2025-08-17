@@ -73,9 +73,20 @@ class ProfileController {
     }
 
     async updatePersonalProfile(req, res) {
-
         try {
-            const data = await this.odooService.updatePersonalProfile(req.body);
+            console.log('🔄 [ProfileController] Received request body:', req.body);
+            console.log('🔍 [ProfileController] id_type in request body:', req.body.id_type);
+            console.log('🔍 [ProfileController] All keys in request body:', Object.keys(req.body));
+            
+            // Thêm trường id_type nếu không có
+            const requestData = {
+                ...req.body,
+                id_type: req.body.id_type || 'id_card'
+            };
+            
+            console.log('🔍 [ProfileController] Request data with id_type:', requestData);
+            
+            const data = await this.odooService.updatePersonalProfile(requestData);
             res.json({ success: true, data: data });
         } catch (error) {
             const errorMsg = error.response?.data?.error || error.message || 'Unknown error';

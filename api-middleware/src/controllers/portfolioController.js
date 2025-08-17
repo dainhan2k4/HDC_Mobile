@@ -35,7 +35,9 @@ class PortfolioController {
       console.error('❌ [Portfolio] Overview error:', error.message);
       
       // Return mock data as fallback
-      const mockData = this.getMockPortfolioData();
+      const mockInvestments = [];
+      const mockFunds = [];
+      const mockData = this.calculatePortfolioMetrics(mockInvestments, mockFunds);
       console.log('[Portfolio] Returning mock data as fallback');
       
       res.json({

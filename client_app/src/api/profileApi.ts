@@ -63,16 +63,29 @@ export const updatePersonalProfile = async (data: {
   id_number: string;
   id_issue_date: string;
   id_issue_place: string;
+  front_id_image?: string;
+  back_id_image?: string;
 }): Promise<ApiResponse> => {
   try {
+    // Gửi đầy đủ dữ liệu theo yêu cầu của Odoo controller
     const mappedData = {
       name: data.name,
       phone: data.phone,
-      date_of_birth: data.birth_date,
+      birth_date: data.birth_date,
       gender: data.gender,
-      nationality: data.nationality.toString(),
+      nationality: data.nationality,
+      id_type: data.id_type,
+      id_number: data.id_number,
+      id_issue_date: data.id_issue_date,
+      id_issue_place: data.id_issue_place,
+      id_front: data.front_id_image || '',
+      id_back: data.back_id_image || ''
     };
-    const response = await apiService.updateProfile(mappedData);
+    
+    console.log('📤 [ProfileAPI] Sending personal profile data:', mappedData);
+    console.log('🔍 [ProfileAPI] id_type in mappedData:', mappedData.id_type);
+    console.log('🔍 [ProfileAPI] All keys in mappedData:', Object.keys(mappedData));
+    const response = await apiService.post('/save_personal_profile', mappedData);
     return response;
   } catch (error) {
     console.error('Error updating personal profile:', error);

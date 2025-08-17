@@ -35,11 +35,18 @@ def safe_remove_file(file_path, max_attempts=3, delay=0.1):
 @inject
 def front_verify(ekyc_service: EKYCService = Provide[Container.ekyc_service]):
 
+    print(f"[eKYC] Received request from: {request.headers.get('User-Agent', 'Unknown')}")
+    print(f"[eKYC] Files received: {list(request.files.keys())}")
+    print(f"[eKYC] Content-Type: {request.headers.get('Content-Type', 'Not set')}")
+    
     cccd_front = request.files.get("frontID")
     
     # Guard clause: Fail-fast validation
     if not cccd_front:
+        print(f"[eKYC] No frontID file found in request")
         return jsonify({"error": "Thiếu file frontID"}), 400
+    
+    print(f"[eKYC] File received: {cccd_front.filename}, size: {cccd_front.content_length}")
 
     tmp_cccd = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
     tmp_cccd_path = tmp_cccd.name

@@ -1,7 +1,6 @@
 import { apiService } from '../config/apiService';
 import { ApiResponse } from '../types/api';
 
-// Transaction API functions theo api_current.md
 
 export interface Transaction {
   id: number;

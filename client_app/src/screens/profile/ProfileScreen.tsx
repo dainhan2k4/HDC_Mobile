@@ -351,6 +351,22 @@ export const ProfileScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
+        <TouchableOpacity 
+          style={styles.kycButton} 
+          onPress={() => {
+            console.log('KYC button clicked from Profile, trying navigation...');
+            try {
+              (navigation as any).navigate('Kyc', { userData: { name: personalInfo?.name || 'User' } });
+              console.log('✅ Navigation to KYC successful');
+            } catch (error) {
+              console.error('❌ Navigation to KYC failed:', error);
+              Alert.alert('Lỗi', 'Không thể mở màn hình KYC');
+            }
+          }}
+        >
+          <Ionicons name="shield-checkmark-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.kycButtonText}>KYC</Text>
+        </TouchableOpacity>
       </View>
       
       <View style={styles.tabContainer}>
@@ -408,6 +424,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#DEE2E6',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
@@ -658,5 +677,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  kycButton: {
+    backgroundColor: '#2B4BFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  kycButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
 }); 

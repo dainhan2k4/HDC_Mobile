@@ -57,13 +57,21 @@ class FaceOrientationDetector():
 
         right_angle = self.calculate_angle(right2left_eye, righteye2nose)
 
+        print(f"DEBUG: left_angle = {left_angle}, right_angle = {right_angle}")
+        print(f"DEBUG: frontal_range = {self.frontal_range}")
+        print(f"DEBUG: left_eye = {left_eye}, right_eye = {right_eye}, nose = {nose}")
+
         if self.frontal_range[0] <= left_angle <= self.frontal_range[1] \
             and self.frontal_range[0] <= right_angle <= self.frontal_range[1]:
+                print(f"DEBUG: Returning 'front' (both angles in range)")
                 return 'front'
         
         elif left_angle < right_angle:
+            print(f"DEBUG: Returning 'right' (left_angle < right_angle)")
             return 'right'
-        return 'left'
+        else:
+            print(f"DEBUG: Returning 'left' (left_angle >= right_angle)")
+            return 'left'
 
 
         

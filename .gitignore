@@ -3,6 +3,7 @@ node_modules/
 */node_modules/
 **/node_modules/
 
+# Thêm tất cả các thư mục khác vì đây là project private
 # Package managers
 yarn.lock
 package-lock.json

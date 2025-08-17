@@ -4,14 +4,14 @@ import { ApiConfig, ApiEndpoints } from '../types/api';
 // API Configuration for different environments
 const ENVIRONMENTS = {
   // Direct Odoo (old approach) 
-  ODOO_DIRECT: 'http://192.168.1.5:11018', // 
+  ODOO_DIRECT: 'http://192.168.1.4:11018', // 
   
 
-  KYC_DIRECT: 'http://192.168.1.5:8000', // 
+  KYC_DIRECT: 'http://192.168.1.4:8000', // 
 
   // API Middleware (new approach - recommended)
   // ipconfig | findstr IPv4
-  MIDDLEWARE_LOCAL: 'http://192.168.1.5:3001/api/v1',  
+  MIDDLEWARE_LOCAL: 'http://192.168.1.4:3001/api/v1',  
   MIDDLEWARE_PRODUCTION: '', 
 };
 
@@ -123,7 +123,7 @@ export const API_ENDPOINTS = {
     }
   },
 
-  // KYC endpoints
+  // KYC endpoints - gọi trực tiếp đến eKYC service
   KYC: {
     HEALTH: '/api/health-check',
     FRONT_ID: '/api/ekyc/frontID',

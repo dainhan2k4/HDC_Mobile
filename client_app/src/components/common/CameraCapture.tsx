@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Camera, CameraType } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { AppColors, AppTypography, AppSpacing, AppBorderRadius } from '../../styles/GlobalTheme';
 
 interface CameraCaptureProps {
@@ -14,79 +14,56 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
   onClose,
   cameraType = 'back'
 }) => {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [type, setType] = useState(CameraType.back);
-  const cameraRef = useRef<Camera>(null);
-
-  React.useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
+  console.log('🔍 [CameraCapture] Component initialized with cameraType:', cameraType);
 
   const takePicture = async () => {
-    if (cameraRef.current) {
-      try {
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-          base64: false,
-        });
+    try {
+      // Yêu cầu quyền truy cập camera
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Lỗi', 'Cần quyền truy cập camera để chụp ảnh');
+        return;
+      }
 
+      // Mở camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const photo = result.assets[0];
         onPhotoTaken({
           uri: photo.uri,
           type: 'image/jpeg',
           name: `camera_${Date.now()}.jpg`
         });
-      } catch (error) {
-        console.error('Error taking picture:', error);
-        Alert.alert('Lỗi', 'Không thể chụp ảnh. Vui lòng thử lại.');
       }
+    } catch (error) {
+      console.error('Error taking picture:', error);
+      Alert.alert('Lỗi', 'Không thể chụp ảnh. Vui lòng thử lại.');
     }
   };
 
-  const toggleCameraType = () => {
-    setType(current => (current === CameraType.back ? CameraType.front : CameraType.back));
-  };
-
-  if (hasPermission === null) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.text}>Đang yêu cầu quyền truy cập camera...</Text>
-      </View>
-    );
-  }
-
-  if (hasPermission === false) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.text}>Không có quyền truy cập camera</Text>
-        <TouchableOpacity style={styles.button} onPress={onClose}>
-          <Text style={styles.buttonText}>Đóng</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <Camera style={styles.camera} type={type} ref={cameraRef}>
+      <View style={styles.content}>
+        <Text style={styles.title}>Chụp ảnh</Text>
+        <Text style={styles.subtitle}>Chọn cách chụp ảnh</Text>
+        
         <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
+            <Text style={styles.captureButtonText}>Chụp ảnh</Text>
+          </TouchableOpacity>
+          
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>Đóng</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.flipButton} onPress={toggleCameraType}>
-            <Text style={styles.flipButtonText}>Lật camera</Text>
-          </TouchableOpacity>
         </View>
-        
-        <View style={styles.captureContainer}>
-          <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-            <View style={styles.captureButtonInner} />
-          </TouchableOpacity>
-        </View>
-      </Camera>
+      </View>
     </View>
   );
 };
@@ -95,73 +72,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppColors.background.dark,
-  },
-  camera: {
-    flex: 1,
-  },
-  text: {
-    color: AppColors.text.inverse,
-    fontSize: AppTypography.fontSize.base,
-    textAlign: 'center',
-    marginTop: 50,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: AppSpacing.lg,
-    paddingTop: 50,
-  },
-  closeButton: {
-    backgroundColor: AppColors.background.modal,
-    padding: AppSpacing.sm,
-    borderRadius: AppBorderRadius.sm,
-  },
-  closeButtonText: {
-    color: AppColors.text.inverse,
-    fontSize: AppTypography.fontSize.sm,
-    fontWeight: AppTypography.fontWeight.semibold,
-  },
-  flipButton: {
-    backgroundColor: AppColors.background.modal,
-    padding: AppSpacing.sm,
-    borderRadius: AppBorderRadius.sm,
-  },
-  flipButtonText: {
-    color: AppColors.text.inverse,
-    fontSize: AppTypography.fontSize.sm,
-    fontWeight: AppTypography.fontWeight.semibold,
-  },
-  captureContainer: {
-    position: 'absolute',
-    bottom: 50,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  captureButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  captureButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: AppColors.background.primary,
+  content: {
+    alignItems: 'center',
+    padding: AppSpacing.xl,
   },
-  button: {
-    backgroundColor: AppColors.primary.main,
-    padding: AppSpacing.md,
-    borderRadius: AppBorderRadius.md,
-    marginTop: AppSpacing.lg,
-    alignSelf: 'center',
+  title: {
+    color: AppColors.text.inverse,
+    fontSize: AppTypography.fontSize.xl,
+    fontWeight: AppTypography.fontWeight.bold,
+    marginBottom: AppSpacing.sm,
   },
-  buttonText: {
+  subtitle: {
     color: AppColors.text.inverse,
     fontSize: AppTypography.fontSize.base,
+    marginBottom: AppSpacing.xl,
+    textAlign: 'center',
+  },
+  buttonContainer: {
+    width: '100%',
+    gap: AppSpacing.md,
+  },
+  captureButton: {
+    backgroundColor: AppColors.primary.main,
+    padding: AppSpacing.lg,
+    borderRadius: AppBorderRadius.lg,
+    alignItems: 'center',
+  },
+  captureButtonText: {
+    color: AppColors.text.inverse,
+    fontSize: AppTypography.fontSize.lg,
+    fontWeight: AppTypography.fontWeight.semibold,
+  },
+  closeButton: {
+    backgroundColor: AppColors.background.modal,
+    padding: AppSpacing.lg,
+    borderRadius: AppBorderRadius.lg,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: AppColors.text.inverse,
+    fontSize: AppTypography.fontSize.lg,
     fontWeight: AppTypography.fontWeight.semibold,
   },
 });

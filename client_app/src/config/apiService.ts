@@ -144,6 +144,14 @@ export class ApiService {
       // Merge headers
       config.headers = { ...(config.headers || {}), ...headers };
 
+      console.log('📤 [ApiService] Making request to:', endpoint);
+      console.log('📤 [ApiService] Request config:', JSON.stringify(config, null, 2));
+      if (config.data && config.data.id_type !== undefined) {
+        console.log('🔍 [ApiService] id_type in request config:', config.data.id_type);
+      } else {
+        console.log('⚠️ [ApiService] id_type NOT found in request config');
+      }
+      
       const response: AxiosResponse = await this.axiosInstance.request({
         url: endpoint,
         ...config,
@@ -187,6 +195,13 @@ export class ApiService {
   }
 
   async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    console.log('📤 [ApiService] POST request to:', endpoint);
+    console.log('📤 [ApiService] POST data:', JSON.stringify(data, null, 2));
+    if (data && data.id_type !== undefined) {
+      console.log('🔍 [ApiService] id_type in POST data:', data.id_type);
+    } else {
+      console.log('⚠️ [ApiService] id_type NOT found in POST data');
+    }
     return this.makeRequest<T>(endpoint, { method: 'POST', data });
   }
 

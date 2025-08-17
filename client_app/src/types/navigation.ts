@@ -14,6 +14,10 @@ export type RootStackParamList = {
     patch?: boolean;
     onNavigateTop?: () => void;
   };
+  FaceDetection: {
+    kycData?: any;
+    onComplete?: (result: any) => void;
+  };
 };
 
 // Auth Stack Types

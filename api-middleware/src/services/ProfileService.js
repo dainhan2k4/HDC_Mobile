@@ -325,6 +325,30 @@ class ProfileService extends BaseOdooService {
   async getProfile() {
     return this.getPersonalProfile();
   }
+
+  /**
+   * Update personal profile data
+   */
+  async updatePersonalProfile(profileData) {
+    try {
+      console.log('🔄 [ProfileService] Updating personal profile data:', profileData);
+      console.log('🔍 [ProfileService] id_type in profileData:', profileData.id_type);
+      console.log('🔍 [ProfileService] All keys in profileData:', Object.keys(profileData));
+      
+      // Gọi trực tiếp đến Odoo endpoint /save_personal_profile
+      const data = await this.apiCall('/save_personal_profile', { 
+        method: 'POST',
+        data: profileData,
+        requireAuth: true 
+      });
+      
+      console.log('✅ [ProfileService] Personal profile updated successfully');
+      return data;
+    } catch (error) {
+      console.error('❌ [ProfileService] Failed to update personal profile:', error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = ProfileService; 

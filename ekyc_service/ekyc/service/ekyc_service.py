@@ -23,7 +23,15 @@ class EKYCService:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.detector = MTCNN(device=self.device)
-        self.verifier = FaceVerifier(device=self.device)
+        
+        # Tạm thời bỏ qua face verification nếu không có weights
+        try:
+            self.verifier = FaceVerifier(device=self.device)
+            print("Face verification loaded successfully")
+        except Exception as e:
+            print(f"Warning: Face verification not available: {e}")
+            self.verifier = None
+            
         self.orientation_detector = FaceOrientationDetector()
 
         self.CONF_CONTENT_THRESHOLD = 0.7

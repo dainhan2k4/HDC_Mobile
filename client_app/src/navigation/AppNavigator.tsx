@@ -13,6 +13,7 @@ import SignatureScene from '../screens/Signature/SignatureScene';
 import { ContractViewerWrapper } from './components/ContractViewerWrapper';
 import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import KycScreen from '../screens/kyc/KycScreen';
+import FaceDetectionScreen from '../screens/kyc/FaceDetectionScreen';
 
 // Import types
 import { RootStackParamList } from '../types/navigation';
@@ -45,6 +46,7 @@ export const AppNavigator = () => {
               <Stack.Screen name="ContractViewer" component={ContractViewerWrapper} />
               <Stack.Screen name="EditProfile" component={EditProfileScreen} />
               <Stack.Screen name="Kyc" component={KycScreen} />
+              <Stack.Screen name="FaceDetection" component={FaceDetectionScreen} />
             </>
           ) : (
             <Stack.Screen name="Auth" component={AuthNavigator} />
