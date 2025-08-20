@@ -28,18 +28,18 @@ const OrderTabHeader: React.FC<OrderTabHeaderProps> = ({
   onRefresh,
   loading,
   refreshing,
-  
+  fromDate: parentFromDate,
+  toDate: parentToDate,
   onDateFilterChange,
 }) => {
-    const [fromDate, setFromDate] = useState<Date>(new Date());
-    const [toDate, setToDate] = useState<Date>(new Date());
+    // Sử dụng date từ parent, không tạo state riêng
+    const fromDate = parentFromDate;
+    const toDate = parentToDate;
 
  const handleFromDateChange = (date: Date) => {
-    setFromDate(date);
     onDateFilterChange(date, toDate);
  }
  const handleToDateChange = (date: Date) => {
-    setToDate(date);
     onDateFilterChange(fromDate, date);
  }
 

@@ -39,7 +39,7 @@ class TransactionService extends BaseOdooService {
 
       const options = {
         order: 'create_date desc',
-        limit: filters.limit || 20,
+        limit: filters.limit || 100, 
         page: filters.page || 1
       };
 

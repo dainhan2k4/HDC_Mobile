@@ -636,12 +636,14 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
                    console.log('🔄 [KYC] Saving personal profile data to DATABASE...');
                    
                    // Debug: Kiểm tra userData trước khi tạo dataToSend
-                   
+                   const response = await apiService.get('/profile/data_personal_profile');
+                   console.log('[KYC] Response:', response.data);
+                   const phone = (response.data as any)[0].phone;
                    
                    // Debug: Kiểm tra dữ liệu trước khi gửi
                    const dataToSend = {
                        name: userData.name,
-                       phone: "1234567890", // Sẽ được cập nhật sau
+                       phone: phone === "Chưa cập nhật" ? "123456789" : phone, // Sẽ được cập nhật sau
                        birth_date: userData.birth_date,
                        gender: userData.gender,
                        nationality: userData.nationality,
@@ -670,10 +672,7 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
                        // Throw error để ngắt flow nếu không lưu được database
                        throw saveError;
                    }
-            
-                               // Gọi API để lưu thông tin địa chỉ
-                   console.log('🏠 [KYC] Saving address data to database...');
-                   
+                       
                    const addressData = {
                        street: kycData.address || 'Chưa cập nhật',
                        ward: 'Chưa cập nhật',

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   RefreshControl,
   Alert,
   ActivityIndicator,
@@ -13,18 +12,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/Colors';
-import { formatVND } from '../../hooks/formatCurrency';
 import { transactionApi, Transaction } from '../../api/transactionApi';
 import OrderItem from '../../components/transaction/OrderItem';
 import OrderTabHeader from '../../components/transaction/OrderTabHeader';
 import parseDate from '../../hooks/parseDate';
 
 type TabType = 'buy' | 'sell' | 'history';
-
-interface OrderItemProps {
-  transaction: Transaction;
-  onPress?: (transaction: Transaction) => void;
-}
 
 const TransactionManagementScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('buy');
@@ -59,7 +52,7 @@ const TransactionManagementScreen: React.FC = () => {
       // Load both pending orders and transaction history with force refresh if needed
       const [pendingOrders, historyOrders] = await Promise.all([
         transactionApi.getPendingTransactions(forceRefresh),
-        transactionApi.getTransactionHistory(forceRefresh)
+        transactionApi.getTransactionHistory(forceRefresh, { limit: 200 }) 
       ]);
       
       console.log(`📊 [TransactionManagement] Loaded ${pendingOrders.length} pending orders and ${historyOrders.length} history transactions`);
@@ -79,10 +72,11 @@ const TransactionManagementScreen: React.FC = () => {
       setAllBuyOrders(buyOrdersData);
       setAllSellOrders(sellOrdersData);
       setAllTransactionHistory(historyOrders);
-
-      setBuyOrders(buyOrdersData);
-      setSellOrders(sellOrdersData);
-      setTransactionHistory(historyOrders);
+      
+      // Debug: Log sample dates
+      if (historyOrders.length > 0) {
+        console.log(`📅 [Debug] Sample session_dates:`, historyOrders.slice(0, 3).map(order => order.session_date));
+      }
       
       console.log(`✅ [TransactionManagement] Data loaded - Buy: ${buyOrdersData.length}, Sell: ${sellOrdersData.length}, History: ${historyOrders.length}`);
 
@@ -97,29 +91,36 @@ const TransactionManagementScreen: React.FC = () => {
         ]
       );
     } finally {
-      filterOrdersByDate(fromDate, toDate);
-
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
   const filterOrdersByDate = useCallback(( from: Date, to: Date) => {
+    console.log(`🔍 [Filter] Filtering with date range: ${from.toLocaleDateString()} - ${to.toLocaleDateString()}`);
     setFromDate(from);
     setToDate(to);
     const isInRange = (dateStr: string) => {
       const d = parseDate(dateStr);
-      return d>= from && d<=to;
+      const inRange = d >= from && d <= to;
+      return inRange;
     };
-    setBuyOrders(allBuyOrders.filter(order => isInRange(order.session_date)));
-    setSellOrders(allSellOrders.filter(order => isInRange(order.session_date)));
-    setTransactionHistory(allTransactionHistory.filter(order => isInRange(order.session_date)));
+    
+    const filteredBuy = allBuyOrders.filter(order => isInRange(order.session_date));
+    const filteredSell = allSellOrders.filter(order => isInRange(order.session_date));
+    const filteredHistory = allTransactionHistory.filter(order => isInRange(order.session_date));
+    
+    console.log(`📊 [Filter] Results - Buy: ${filteredBuy.length}/${allBuyOrders.length}, Sell: ${filteredSell.length}/${allSellOrders.length}, History: ${filteredHistory.length}/${allTransactionHistory.length}`);
+    
+    setBuyOrders(filteredBuy);
+    setSellOrders(filteredSell);
+    setTransactionHistory(filteredHistory);
     
   }, [allBuyOrders, allSellOrders, allTransactionHistory]);
 
   useEffect(() => {
     filterOrdersByDate(fromDate, toDate);
-  }, [allBuyOrders, allSellOrders, allTransactionHistory]);
+  }, [allBuyOrders, allSellOrders, allTransactionHistory, filterOrdersByDate, fromDate, toDate]);
 
   
 

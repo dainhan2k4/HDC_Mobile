@@ -122,10 +122,17 @@ export const getBalanceHistory = async (params?: {
 };
 
 // Get transaction history using middleware endpoint
-export const getTransactionHistory = async (forceRefresh = false): Promise<Transaction[]> => {
+export const getTransactionHistory = async (forceRefresh = false, params?: {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+}): Promise<Transaction[]> => {
   try {
     console.log(`🔗 [TransactionApi] Getting transaction history${forceRefresh ? ' (force refresh)' : ''}...`);
-    const response = await apiService.get('/transaction/history', undefined, forceRefresh);
+    const queryParams = params ? new URLSearchParams(params as any).toString() : '';
+    const url = `/transaction/history${queryParams ? `?${queryParams}` : ''}`;
+    const response = await apiService.get(url, undefined, forceRefresh);
     return (response.data as Transaction[]) || [];
   } catch (error) {
     console.error('❌ [TransactionApi] Error fetching transaction history:', error);
