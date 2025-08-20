@@ -116,7 +116,7 @@ const FaceDetectionScreen = () => {
 
             processDetection(photo);
         } catch (error) {
-            console.error('Auto capture error:', error);
+            console.log('Auto capture error:', error);
         }
     };
 
@@ -154,7 +154,7 @@ const FaceDetectionScreen = () => {
                 setIsProcessing(false);
             }
         } catch (error) {
-            console.error('Face detection API error:', error);
+            console.log('Face detection API error:', error);
             setIsProcessing(false);
         }
     };

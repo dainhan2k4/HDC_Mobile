@@ -161,22 +161,9 @@ class PersonalProfileController(http.Controller):
             ], limit=1)
             
             if not profile:
-                
-                # Tạo profile mới với nationality mặc định
+                # Tạo profile mới
                 profile = request.env['investor.profile'].sudo().create({
                     'partner_id': current_user.partner_id.id,
-                    'nationality': 1,  # Vietnam mặc định
-                    'name': current_user.name,
-                    'email': current_user.email,
-                    'phone': current_user.phone,
-                    'gender': data['gender'],
-                    'birth_date': data['birth_date'],
-                    'id_type': data['id_type'],
-                    'id_number': data['id_number'],
-                    'id_issue_date': data['id_issue_date'],
-                    'id_issue_place': data['id_issue_place'],
-                    'id_front': data['id_front'],
-                    'id_back': data['id_back'],
                 })
             
             # Cập nhật dữ liệu
@@ -191,13 +178,6 @@ class PersonalProfileController(http.Controller):
                 update_data['gender'] = data['gender']
             if 'nationality' in data and data['nationality']:
                 update_data['nationality'] = int(data['nationality'])
-            elif 'nationality' not in update_data:
-                # Đảm bảo nationality luôn có giá trị mặc định
-                update_data['nationality'] = 1  # Vietnam mặc định
-            
-            # Cập nhật nationality cho các record cũ có nationality null
-            if not profile.nationality:
-                update_data['nationality'] = 1  # Vietnam mặc định
             if 'birth_date' in data and data['birth_date']:
                 update_data['birth_date'] = data['birth_date']
             if 'id_type' in data:
@@ -269,7 +249,6 @@ class PersonalProfileController(http.Controller):
                 # Tạo profile mới nếu chưa có
                 profile = request.env['investor.profile'].sudo().create({
                     'partner_id': current_user.partner_id.id,
-                    'nationality': 1,  # Vietnam mặc định
                 })
             
             # Lấy dữ liệu từ model investor.bank.account của user hiện tại
@@ -328,7 +307,6 @@ class PersonalProfileController(http.Controller):
             if not profile:
                 profile = request.env['investor.profile'].sudo().create({
                     'partner_id': current_user.partner_id.id,
-                    'nationality': 1,  # Vietnam mặc định
                 })
 
             # Tìm bank account hiện tại hoặc tạo mới
@@ -384,7 +362,6 @@ class PersonalProfileController(http.Controller):
                 # Tạo profile mới nếu chưa có
                 profile = request.env['investor.profile'].sudo().create({
                     'partner_id': current_user.partner_id.id,
-                    'nationality': 1,  # Vietnam mặc định
                 })
             
             # Lấy dữ liệu từ model investor.address của user hiện tại
@@ -439,7 +416,6 @@ class PersonalProfileController(http.Controller):
             if not profile:
                 profile = request.env['investor.profile'].sudo().create({
                     'partner_id': current_user.partner_id.id,
-                    'nationality': 1,  # Vietnam mặc định
                 })
 
             # Tìm address hiện tại hoặc tạo mới
@@ -520,7 +496,6 @@ class PersonalProfileController(http.Controller):
             if not profile:
                 profile = request.env['investor.profile'].sudo().create({
                     'partner_id': current_user.partner_id.id,
-                    'nationality': 1,  # Vietnam mặc định
                 })
             
             personal_update_data = {}

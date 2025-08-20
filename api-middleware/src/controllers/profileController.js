@@ -93,6 +93,30 @@ class ProfileController {
             res.status(500).json({ success: false, error: errorMsg });
         }
     }
+
+    async savePersonalProfile(req, res) {
+        try {
+            console.log('🔄 [ProfileController] Saving personal profile...', req.body);
+            const data = await this.odooService.savePersonalProfile(req.body);
+            res.json({ success: true, data: data });
+        } catch (error) {
+            console.error('❌ [ProfileController] Save personal profile error:', error);
+            const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
+            res.status(500).json({ success: false, error: errorMsg });
+        }
+    }
+
+    async saveAddressInfo(req, res) {
+        try {
+            console.log('🔄 [ProfileController] Saving address info...', req.body);
+            const data = await this.odooService.saveAddressInfo(req.body);
+            res.json({ success: true, data: data });
+        } catch (error) {
+            console.error('❌ [ProfileController] Save address info error:', error);
+            const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
+            res.status(500).json({ success: false, error: errorMsg });
+        }
+    }
 }
 
 module.exports = ProfileController;

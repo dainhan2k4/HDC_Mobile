@@ -45,7 +45,7 @@ export interface KycFile {
 
 // eKYC API Configuration
 const EKYC_CONFIG = {
-  BASE_URL: 'http://192.168.1.4:8000', // eKYC service port - sử dụng IP thực tế
+  BASE_URL: 'http://10.10.2.132:8000', // eKYC service port - sử dụng IP thực tế
   TIMEOUT: 30000, // 30 seconds for image processing
   HEADERS: {
     'Content-Type': 'multipart/form-data',

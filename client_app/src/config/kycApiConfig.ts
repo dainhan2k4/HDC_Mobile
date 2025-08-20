@@ -1,7 +1,7 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosRequestHeaders, AxiosResponse } from "axios";
-import { API_CONFIG, API_ENDPOINTS } from "./apiConfig";
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import { API_ENDPOINTS } from "./apiConfig";
 
-const BaseUrl = "http://192.168.1.5:8000"
+const BaseUrl = "http://10.10.2.132:8000"
 
 const KYC_API_CONFIG = {
     BASE_URL: BaseUrl,
@@ -84,6 +84,24 @@ export class KycApi {
             const res = await this.axios.request({ url: endpoint, ...config })
             const data = res.data;
 
+            // KYC endpoints have different response format
+            if (endpoint.includes('/api/ekyc/')) {
+                if (data?.result) {
+                    // For OCR endpoints, wrap result in expected format
+                    return {
+                        success: true, 
+                        data: {
+                            id: Date.now().toString(), // Generate temporary ID
+                            ocr: data.result
+                        }, 
+                        rawResponse: res
+                    };
+                } else if (data?.error) {
+                    return {success: false, error: data.error, rawResponse: res};
+                }
+            }
+
+            // Standard middleware format
             if(data?.success){
                 return {success: true, data: data.data, rawResponse: res};
             }else{
@@ -97,12 +115,13 @@ export class KycApi {
       /* -------------------- KYC APIs -------------------- */
 
       async healthCheck() {
-        return this.request<void>(KYC_API_CONFIG.BASE_URL + API_ENDPOINTS.KYC.HEALTH, {method: "GET"});
+        return this.request<void>(API_ENDPOINTS.KYC.HEALTH, {method: "GET"});
       } 
 
       async uploadFrontId(file : File | Blob) {
         const formData = new FormData();
-        return this.request<KycUploadResult>(KYC_API_CONFIG.BASE_URL + API_ENDPOINTS.KYC.FRONT_ID, {
+        formData.append("frontID", file, "front_id.jpg");
+        return this.request<KycUploadResult>(API_ENDPOINTS.KYC.FRONT_ID, {
             method:"POST",
             data: formData
         });
@@ -110,7 +129,8 @@ export class KycApi {
 
       async uploadBackId(file : File | Blob) {
         const formData = new FormData();
-        return this.request<KycUploadResult>(KYC_API_CONFIG.BASE_URL + API_ENDPOINTS.KYC.BACK_ID, {
+        formData.append("backID", file, "back_id.jpg");
+        return this.request<KycUploadResult>(API_ENDPOINTS.KYC.BACK_ID, {
             method:"POST",
             data: formData
         });
@@ -121,7 +141,7 @@ export class KycApi {
         formData.append("file", file);
         formData.append("expected", expected);
 
-        return this.request<KycProcessResult>(KYC_API_CONFIG.BASE_URL + API_ENDPOINTS.KYC.DETECTION, {
+        return this.request<KycProcessResult>(API_ENDPOINTS.KYC.DETECTION, {
             method: "POST",
             data: formData,
         });
@@ -135,7 +155,7 @@ export class KycApi {
                 formData.append(`portraits[${idx}]`, p as File, `portraits-${idx}.jpg`);
             })
 
-            return this.request<KycProcessResult>(KYC_API_CONFIG.BASE_URL + API_ENDPOINTS.KYC.PROCESS, {
+            return this.request<KycProcessResult>(API_ENDPOINTS.KYC.PROCESS, {
                 method: "POST",
                 data: formData,
             });

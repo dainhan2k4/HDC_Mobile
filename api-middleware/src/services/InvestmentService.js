@@ -20,9 +20,7 @@ class InvestmentService extends BaseOdooService {
     }
 
     try {
-      console.log('🔗 [InvestmentService] Calling /data_investment endpoint (requires auth)...');
       const data = await this.apiCall('/data_investment', { requireAuth: true });
-      console.log('📊 [InvestmentService] Raw investments response:', data);
       
       // Transform data to consistent format
       const investments = Array.isArray(data) ? data.map(inv => ({

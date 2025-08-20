@@ -50,11 +50,9 @@ class ProfileService extends BaseOdooService {
     try {
       console.log('🔗 [ProfileService] Calling /data_bank_info endpoint (requires auth)...');
       const data = await this.apiCall('/data_bank_info', { requireAuth: true });
-      console.log('📊 [ProfileService] Raw bank info response:', data);
 
       // Return data as-is (should be array from Odoo)
       this.setCachedData(cacheKey, data);
-      console.log(`✅ [ProfileService] Bank info data cached: ${Array.isArray(data) ? data.length : 'single'} items`);
       return data;
     } catch (error) {
       console.error('❌ [ProfileService] Failed to get bank info:', error.message);
@@ -71,14 +69,12 @@ class ProfileService extends BaseOdooService {
     let cached = this.getCachedData(cacheKey);
     
     if (cached) {
-      console.log('📦 [ProfileService] Returning cached address info data');
       return cached;
     }
 
     try {
       console.log('🔗 [ProfileService] Calling /data_address_info endpoint (requires auth)...');
       const data = await this.apiCall('/data_address_info', { requireAuth: true });
-      console.log('📊 [ProfileService] Raw address info response:', data);
 
       // Return data as-is (should be array from Odoo)
       this.setCachedData(cacheKey, data);
@@ -96,7 +92,6 @@ class ProfileService extends BaseOdooService {
    */
   async getCompleteProfile() {
     try {
-      console.log('📋 [ProfileService] Getting complete profile data...');
       
       const [personalProfile, bankInfo, addressInfo] = await Promise.all([
         this.getPersonalProfile(),
@@ -125,7 +120,6 @@ class ProfileService extends BaseOdooService {
    */
   async updatePersonalProfile(profileData) {
     try {
-      console.log('🔄 [ProfileService] Updating personal profile data:', profileData);
       
       await this.authService.getValidSession();
 
@@ -171,7 +165,6 @@ class ProfileService extends BaseOdooService {
    */
   async updateAddressInfo(addressData) {
     try {
-      console.log('🔄 [ProfileService] Updating address info data:', addressData);
       
       await this.authService.getValidSession();
 
@@ -324,6 +317,56 @@ class ProfileService extends BaseOdooService {
   // Legacy method for compatibility
   async getProfile() {
     return this.getPersonalProfile();
+  }
+
+  /**
+   * Save personal profile data (KYC)
+   */
+  async savePersonalProfile(profileData) {
+    try {
+      console.log('💾 [ProfileService] Saving personal profile data:', profileData);
+      
+      // Gọi trực tiếp đến Odoo endpoint /save_personal_profile
+      const data = await this.apiCall('/save_personal_profile', { 
+        method: 'POST',
+        data: profileData,
+        requireAuth: true 
+      });
+      
+      // Clear cache để force refresh data
+      this.deleteCachedData('personal_profile_data');
+      
+      console.log('✅ [ProfileService] Personal profile saved successfully');
+      return data;
+    } catch (error) {
+      console.error('❌ [ProfileService] Failed to save personal profile:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Save address info data (KYC)
+   */
+  async saveAddressInfo(addressData) {
+    try {
+      console.log('🏠 [ProfileService] Saving address info data:', addressData);
+      
+      // Gọi trực tiếp đến Odoo endpoint /save_address_info
+      const data = await this.apiCall('/save_address_info', { 
+        method: 'POST',
+        data: addressData,
+        requireAuth: true 
+      });
+      
+      // Clear cache để force refresh data
+      this.deleteCachedData('address_info_data');
+      
+      console.log('✅ [ProfileService] Address info saved successfully');
+      return data;
+    } catch (error) {
+      console.error('❌ [ProfileService] Failed to save address info:', error.message);
+      throw error;
+    }
   }
 
   /**

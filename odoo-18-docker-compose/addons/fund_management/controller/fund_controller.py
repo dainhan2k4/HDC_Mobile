@@ -9,28 +9,19 @@ class MyController(http.Controller):
     def get_holdings(self):
         holdings = request.env['portfolio.fund'].sudo().search([])
 
-        result = []
-        for h in holdings:
-            fund_data = {
-                "id": h.id,
-                "ticker": h.ticker,
+        result = [
+            {
+                "id": h.id,  # ✅ Thêm dòng này
+                "ticker" : h.ticker,
                 'name': h.name,
                 'description': h.description,
-                'current_ytd': h.current_ytd,
-                'current_nav': h.current_nav,
-                'investment_type': h.investment_type,
+                'current_ytd':h.current_ytd,
+                'current_nav':h.current_nav,
+                'investment_type':h.investment_type,
+                'nav_history_json':h.nav_history_json
             }
-            
-            # Xử lý trường nav_history_json một cách an toàn
-            try:
-                if hasattr(h, 'nav_history_json') and h.nav_history_json:
-                    fund_data['nav_history_json'] = h.nav_history_json
-                else:
-                    fund_data['nav_history_json'] = None
-            except AttributeError:
-                fund_data['nav_history_json'] = None
-                
-            result.append(fund_data)
+            for h in holdings
+        ]
 
         return Response(
             json.dumps(result),

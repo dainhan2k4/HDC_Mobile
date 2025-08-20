@@ -200,6 +200,20 @@ class OdooService {
   }
 
   /**
+   * Save personal profile
+   */
+  async savePersonalProfile(profileData) {
+    return this.profileService.savePersonalProfile(profileData);
+  }
+
+  /**
+   * Save address info
+   */
+  async saveAddressInfo(addressData) {
+    return this.profileService.saveAddressInfo(addressData);
+  }
+
+  /**
    * Get bank info
    */
   async getBankInfo() {

@@ -32,12 +32,38 @@ router.post('/update_personal_profile', async (req, res) => {
 });
 
 router.post('/save_personal_profile', async (req, res) => {
-    await profileController.updatePersonalProfile(req, res);
+    console.log('[Route] save_personal_profile endpoint hit!', req.body);
+    await profileController.savePersonalProfile(req, res);
+});
+
+router.post('/save_address_info', async (req, res) => {
+    console.log('[Route] save_address_info endpoint hit!', req.body);
+    await profileController.saveAddressInfo(req, res);
 });
 
 router.post('/update_address_info', async (req, res) => {
-    // Tạm thời trả về success để tránh lỗi 404
-    res.json({ success: true, message: 'Address info update endpoint - not implemented yet' });
+    await profileController.saveAddressInfo(req, res);
+});
+
+// Debug endpoint để list tất cả routes
+router.get('/debug-routes', (req, res) => {
+    const routes = [];
+    router.stack.forEach(layer => {
+        if (layer.route) {
+            const methods = Object.keys(layer.route.methods).join(', ').toUpperCase();
+            routes.push({
+                path: layer.route.path,
+                methods: methods
+            });
+        }
+    });
+    
+    res.json({
+        success: true,
+        message: 'Available profile routes',
+        routes: routes,
+        total: routes.length
+    });
 });
     
 module.exports = router;

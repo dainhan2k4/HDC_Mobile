@@ -4,14 +4,13 @@ import { ApiConfig, ApiEndpoints } from '../types/api';
 // API Configuration for different environments
 const ENVIRONMENTS = {
   // Direct Odoo (old approach) 
-  ODOO_DIRECT: 'http://192.168.1.4:11018', // 
-  
+  ODOO_DIRECT: 'http://10.10.2.132:11018', // 10.10.2.132
 
-  KYC_DIRECT: 'http://192.168.1.4:8000', // 
+  KYC_DIRECT: 'http://10.10.2.132:8000', // 10.10.2.132
 
   // API Middleware (new approach - recommended)
   // ipconfig | findstr IPv4
-  MIDDLEWARE_LOCAL: 'http://192.168.1.4:3001/api/v1',  
+  MIDDLEWARE_LOCAL: 'http://10.10.2.132:3001/api/v1',
   MIDDLEWARE_PRODUCTION: '', 
 };
 
@@ -19,7 +18,7 @@ const ENVIRONMENTS = {
 const USE_MIDDLEWARE = true; // Re-enabled to avoid direct Odoo connection issues
 
 // Environment configuration
-const IS_PRODUCTION = false; // Change to true for producti on
+const IS_PRODUCTION = false; // Change to true for production
 
 export const API_CONFIG = {
   // Base URL configuration

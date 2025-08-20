@@ -25,8 +25,7 @@ import { AppColors, AppTypography, AppSpacing, AppBorderRadius, AppShadows } fro
 // Import API service
 import { apiService } from '../../config/apiService';
 
-// Import AsyncStorage for React Native
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 interface KycScreenProps {
     navigation: any;
@@ -51,6 +50,7 @@ interface OCRData {
     expiry_date?: string;
     place_of_issue?: string;
     version?: string;
+    state_id?: string;
 }
 
 const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
@@ -84,7 +84,8 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
         init_date: '',
         expiry_date: '',
         place_of_issue: '',
-        version: ''
+        version: '',
+        state_id: ''
     });
 
     useEffect(() => {
@@ -172,7 +173,7 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
                     fullName: result.result.fullName || result.result.name || '',
                     idNumber: result.result.idNumber || result.result.id || '',
                     dob: result.result.dob || result.result.dateOfBirth || '',
-                    gender: result.result.gender || '',
+                    gender: result.result.gender === "Nam" ? 'male' : 'female',
                     nationality: result.result.nationality || '',
                     address: result.result.address || '',
                     birthplace: result.result.birthplace || ''
@@ -188,10 +189,11 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
                     fullName: ocrData.fullName || '',
                     idNumber: ocrData.idNumber || '',
                     dob: ocrData.dob || '',
-                    gender: ocrData.gender || '',
+                    gender: ocrData.gender === 'male' ? 'Nam' : 'Nữ',
                     nationality: ocrData.nationality || '',
                     address: ocrData.address || '',
-                    birthplace: ocrData.birthplace || ''
+                    birthplace: ocrData.birthplace || '',
+                    state_id: ocrData.state_id || ''
                 }));
                 
                 console.log('✅ [KYC] Form data updated with OCR results');
@@ -488,13 +490,12 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
             
             console.log('Submitting KYC data:', combinedData);
             
-            // Lưu thông tin KYC vào hệ thống - bỏ qua database do lỗi constraint
-            console.log('⚠️ [KYC] Skipping database save due to known constraint issues');
-            console.log('⚠️ [KYC] Saving to local storage only');
+            // Lưu thông tin KYC vào hệ thống database
+            console.log('💾 [KYC] Saving KYC data to database...');
             
-            // Lưu vào local storage thay vì database
-            saveKYCToLocalStorage(combinedData);
-            console.log('✅ [KYC] Data saved to local storage successfully');
+            // Gọi saveKYCUserData để lưu vào database
+            await saveKYCUserData(combinedData);
+            console.log('✅ [KYC] Data saved to database successfully');
             
             // Process KYC if we have both IDs
             if (frontId && backId) {
@@ -511,7 +512,7 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
                 handleKYCCompleteLocal();
             } else {
                 console.log('KYC data ready to submit:', combinedData);
-                handleKYCCompleteLocal();
+                handleKYCComplete();
             }
             
         } catch (error: any) {
@@ -521,50 +522,24 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
             const errorMessage = error?.response?.data?.error || error?.message || 'Lỗi không xác định';
             console.log('🔍 [KYC] Error message:', errorMessage);
             
-            if (errorMessage.includes('null value in column "name"')) {
-                console.log('⚠️ [KYC] Database constraint error detected - continuing KYC flow');
-                
-                // Vẫn lưu vào local storage
-                const combinedData = {
-                    ...frontOCRData,
-                    ...backOCRData,
-                    frontImageUri: frontImage?.uri,
-                    backImageUri: backImage?.uri
-                };
-                saveKYCToLocalStorage(combinedData);
-                
-                // Hiển thị thông báo thành công cho người dùng
-                Alert.alert(
-                    '🎉 KYC Hoàn thành!', 
-                    'Xác thực KYC đã hoàn thành thành công! Thông tin đã được lưu vào thiết bị. Bạn có thể sử dụng đầy đủ các tính năng của ứng dụng.',
-                    [
-                        {
-                            text: 'Tuyệt vời!',
-                            onPress: () => {
-                                if (patch) {
-                                    if (onNavigateTop) {
-                                        onNavigateTop();
-                                    }
-                                    navigation.popToTop();
-                                } else {
-                                    navigation.dispatch(CommonActions.reset({
-                                        index: 0,
-                                        routes: [
-                                            { 
-                                                name: 'Main',
-                                                params: {} 
-                                            }
-                                        ]
-                                    }));
-                                }
-                            }
+            // Hiển thị thông báo lỗi cụ thể
+            Alert.alert(
+                'Lỗi lưu dữ liệu', 
+                `Không thể lưu dữ liệu KYC vào hệ thống.\n\nChi tiết lỗi: ${errorMessage}\n\nVui lòng thử lại hoặc liên hệ hỗ trợ.`,
+                [
+                    {
+                        text: 'Thử lại',
+                        onPress: () => {
+                            console.log('🔄 [KYC] User requested retry');
+                            // Có thể thêm logic retry ở đây
                         }
-                    ]
-                );
-            } else {
-                // Lỗi khác - hiển thị thông báo lỗi
-                Alert.alert('Lỗi', 'Không thể gửi dữ liệu KYC. Vui lòng thử lại.');
-            }
+                    },
+                    {
+                        text: 'Hủy',
+                        style: 'cancel'
+                    }
+                ]
+            );
         }
     };
 
@@ -594,8 +569,8 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
                        name: formData.fullName || kycData.fullName || 'Chưa cập nhật',
                        id_number: formData.idNumber || kycData.idNumber || 'Chưa cập nhật',
                        birth_date: formData.dob || kycData.dob || '2000-01-01', // Default date
-                       gender: formData.gender || kycData.gender || 'male', // Default gender
-                       nationality: formData.nationality || kycData.nationality || 1, // Default Vietnam ID
+                       gender: formData.gender === 'male' ? 'Nam' : 'Nữ', // Default gender
+                       nationality: 1, // Default Vietnam ID
                        id_type: 'id_card', // Default ID type
                        id_issue_date: formData.init_date || kycData.init_date || '2000-01-01', // Default date
                        id_issue_place: formData.place_of_issue || kycData.place_of_issue || 'Chưa cập nhật',
@@ -605,7 +580,8 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
                        kyc_status: 'completed',
                        kyc_completed_at: new Date().toISOString(),
                        front_id_image: kycData.frontImageUri || '',
-                       back_id_image: kycData.backImageUri || ''
+                       back_id_image: kycData.backImageUri || '',
+                       state_id: kycData.state_id || ''
                    };
             
             console.log('📋 [KYC] User data to save:', userData);
@@ -652,31 +628,20 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
                    });
                    
                    // Debug: Kiểm tra tất cả field required
-                   console.log('🔍 [KYC] Debug required fields:', {
-                       name: validatedData.name,
-                       id_number: validatedData.id_number,
-                       birth_date: validatedData.birth_date,
-                       gender: validatedData.gender,
-                       nationality: validatedData.nationality,
-                       id_type: validatedData.id_type,
-                       id_issue_date: validatedData.id_issue_date,
-                       id_issue_place: validatedData.id_issue_place
-                   });
+                   
             
             console.log('🎯 [KYC] Final data to send:', finalData);
             
                    // Gọi API để lưu thông tin cá nhân
-                   console.log('🔄 [KYC] Saving personal profile data to server...');
+                   console.log('🔄 [KYC] Saving personal profile data to DATABASE...');
                    
                    // Debug: Kiểm tra userData trước khi tạo dataToSend
-                   console.log('🔍 [KYC] userData before creating dataToSend:', JSON.stringify(userData, null, 2));
-                   console.log('🔍 [KYC] userData.id_type:', userData.id_type);
-                   console.log('🔍 [KYC] userData keys:', Object.keys(userData));
+                   
                    
                    // Debug: Kiểm tra dữ liệu trước khi gửi
                    const dataToSend = {
                        name: userData.name,
-                       phone: 'Chưa cập nhật', // Sẽ được cập nhật sau
+                       phone: "1234567890", // Sẽ được cập nhật sau
                        birth_date: userData.birth_date,
                        gender: userData.gender,
                        nationality: userData.nationality,
@@ -689,19 +654,25 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
                    };
                    
                    console.log('🔍 [KYC] Data to send to API:', JSON.stringify(dataToSend, null, 2));
-                   console.log('🔍 [KYC] id_type value:', dataToSend.id_type);
                    
                    try {
                        const { updatePersonalProfile } = await import('../../api/profileApi');
-                       await updatePersonalProfile(dataToSend);
-                       console.log('✅ [KYC] Personal profile saved successfully');
+                       const saveResult = await updatePersonalProfile(dataToSend);
+                       console.log('✅ [KYC] Personal profile saved successfully to DATABASE');
+                       console.log('🔍 [KYC] Save result:', saveResult);
+                       
+                       // Clear cache and verify data was saved
+                       console.log('🔄 [KYC] Clearing cache and verifying saved data...');
+                       await clearCacheAndVerify();
+                       
                    } catch (saveError) {
-                       console.error('❌ [KYC] Failed to save personal profile:', saveError);
-                       // Vẫn tiếp tục flow KYC mặc dù có lỗi lưu dữ liệu
+                       console.error('❌ [KYC] Failed to save personal profile to DATABASE:', saveError);
+                       // Throw error để ngắt flow nếu không lưu được database
+                       throw saveError;
                    }
             
-                               // Gọi API để lưu thông tin địa chỉ - BỎ QUA DO LỖI DATABASE
-                   console.log('⚠️ [KYC] SKIPPING ADDRESS SAVE - Using local storage only');
+                               // Gọi API để lưu thông tin địa chỉ
+                   console.log('🏠 [KYC] Saving address data to database...');
                    
                    const addressData = {
                        street: kycData.address || 'Chưa cập nhật',
@@ -711,13 +682,11 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
                        is_default: true
                    };
                    
-                   console.log('📦 [KYC] Address data that would be sent:', JSON.stringify(addressData, null, 2));
-                   console.log('✅ [KYC] Address save skipped - data will be saved to local storage only');
+                   console.log('📦 [KYC] Address data to send:', JSON.stringify(addressData, null, 2));
+                   
+                   
             
-            console.log('🎉 [KYC] Thông tin người dùng đã được lưu thành công!');
-            
-            // Lưu dữ liệu KYC vào local storage như backup
-            saveKYCToLocalStorage(finalData);
+            console.log('🎉 [KYC] Thông tin người dùng đã được lưu vào DATABASE thành công!');
             
             // Cập nhật trạng thái KYC trong context nếu cần
             updateKYCStatus();
@@ -734,21 +703,49 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
                        const errorMessage = error?.response?.data?.error || error?.message || 'Lỗi không xác định';
                        console.log('⚠️ [KYC] Lỗi lưu dữ liệu:', errorMessage);
                        
-                       // Kiểm tra nếu lỗi là do database constraint
-                       if (errorMessage.includes('null value in column "name"')) {
-                           console.log('⚠️ [KYC] Database constraint error detected - skipping save');
-                           console.log('⚠️ [KYC] This is likely due to existing corrupted records in database');
-                           console.log('⚠️ [KYC] Continuing KYC flow without saving to database');
-                           
-                           // Vẫn lưu vào local storage để backup
-                           saveKYCToLocalStorage(kycData);
-                           console.log('✅ [KYC] Data saved to local storage as backup');
-                       } else {
-                           // Không throw error để không làm gián đoạn flow KYC
-                           // Chỉ log lỗi và tiếp tục
-                           console.log('⚠️ [KYC] Tiếp tục flow KYC mặc dù có lỗi lưu dữ liệu');
-                       }
+                       // Log lỗi và throw để người dùng biết có vấn đề với database
+                       console.log('❌ [KYC] Database save failed with error:', errorMessage);
+                       throw error;
                    }
+    };
+
+    // Function to clear cache and verify data was actually saved
+    const clearCacheAndVerify = async () => {
+        try {
+            // Wait a bit for save to propagate
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            console.log('🧹 [KYC] Clearing cache to force fresh data...');
+            // Add cache busting query param
+            const timestamp = Date.now();
+            
+            console.log('🔍 [KYC] Fetching fresh data to verify...');
+            const response = await apiService.get(`/profile/data_personal_profile?_t=${timestamp}`);
+            
+            console.log('📋 [KYC] Retrieved fresh data:', response.data);
+            
+            if (response.data && response.data.length > 0) {
+                const profile = response.data[0];
+                console.log('✅ [KYC] Data verification successful! Found profile:', {
+                    name: profile.name,
+                    id_number: profile.id_number,
+                    phone: profile.phone,
+                    birth_date: profile.birth_date,
+                    id_type: profile.id_type
+                });
+                
+                // Check if it's the new KYC data
+                if (profile.id_number === formData.idNumber || profile.name === formData.fullName) {
+                    console.log('🎉 [KYC] NEW KYC DATA CONFIRMED! Successfully saved to database!');
+                } else {
+                    console.log('⚠️ [KYC] Old data still showing - save might not have worked');
+                }
+            } else {
+                console.log('⚠️ [KYC] No profile data found after save - potential issue!');
+            }
+        } catch (verifyError) {
+            console.error('❌ [KYC] Failed to verify saved data:', verifyError);
+        }
     };
 
     const completeKYC = async (kycData: any) => {
@@ -758,7 +755,7 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
     const handleKYCComplete = () => {
         Alert.alert(
             '🎉 KYC Hoàn thành!', 
-            'Xác thực KYC đã hoàn thành thành công! Thông tin cá nhân đã được lưu vào hệ thống. Bạn có thể sử dụng đầy đủ các tính năng của ứng dụng.',
+            'Xác thực KYC đã hoàn thành thành công! Thông tin cá nhân đã được lưu vào DATABASE. Bạn có thể sử dụng đầy đủ các tính năng của ứng dụng.',
             [
                 {
                     text: 'Tuyệt vời!',
@@ -876,8 +873,8 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
                         <Text style={styles.inputLabel}>Giới tính</Text>
                         <TextInput
                             style={styles.textInput}
-                            value={extractedData.gender}
-                            onChangeText={(text) => setExtractedData(prev => ({ ...prev, gender: text }))}
+                            value={extractedData.gender === 'male' ? 'Nam' : 'Nữ'}
+                            onChangeText={(text) => setExtractedData(prev => ({ ...prev, gender: text === 'Nam' ? 'male' : 'female' }))}
                             placeholder="Nam/Nữ"
                         />
                     </View>
@@ -1141,26 +1138,7 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
         }
     };
 
-    // Lưu dữ liệu KYC vào AsyncStorage
-    const saveKYCToLocalStorage = async (kycData: any) => {
-        try {
-            console.log('💾 [KYC] Lưu dữ liệu KYC vào AsyncStorage...');
-            
-            // Lưu dữ liệu KYC với timestamp
-            const kycStorageData = {
-                ...kycData,
-                saved_at: new Date().toISOString(),
-                kyc_completed: true
-            };
-            
-            // Sử dụng AsyncStorage cho React Native
-            await AsyncStorage.setItem('kyc_data', JSON.stringify(kycStorageData));
-            console.log('✅ [KYC] Dữ liệu KYC đã được lưu vào AsyncStorage');
-            
-        } catch (error) {
-            console.error('❌ [KYC] Error saving to AsyncStorage:', error);
-        }
-    };
+
 
     if (showEditForm) {
         return renderEditForm();
@@ -1214,7 +1192,7 @@ const KycScreen: React.FC<KycScreenProps> = ({ navigation, route }) => {
 
                 <View style={styles.submitContainer}>
                     <ButtonCustom
-                        title="Tiếp theo: Xác thực khuôn mặt"
+                        title="Hoàn thành KYC (Bypass Face Detection)"
                         onPress={handleSubmit}
                         disabled={!(frontOCRData && backOCRData)}
                         variant="primary"

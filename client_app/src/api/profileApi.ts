@@ -58,7 +58,7 @@ export const updatePersonalProfile = async (data: {
   phone: string;
   birth_date: string;
   gender: string;
-  nationality: number;
+  nationality: string;
   id_type: string;
   id_number: string;
   id_issue_date: string;
@@ -67,16 +67,55 @@ export const updatePersonalProfile = async (data: {
   back_id_image?: string;
 }): Promise<ApiResponse> => {
   try {
+    // Map gender từ tiếng Việt sang Odoo format
+    const mapGender = (gender: string) => {
+      switch (gender?.toLowerCase()) {
+        case 'nam': return 'male';
+        case 'nữ': return 'female';
+        case 'khác': return 'other';
+        default: return 'male'; // Default fallback
+      }
+    };
+
+    // Map nationality từ tên quốc gia sang country ID
+    const mapNationality = (nationality: string) => {
+      switch (nationality) {
+        case 'việt nam':
+        case 'vietnam': 
+          return 243; // Vietnam country ID in Odoo
+        default: 
+          return 243; // Default to Vietnam
+      }
+    };
+
+    // Convert date từ DD/MM/YYYY sang YYYY-MM-DD format cho Odoo
+    const formatDateForOdoo = (dateString: string) => {
+      if (!dateString) return '';
+      
+      // Nếu đã đúng format YYYY-MM-DD thì return luôn
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return dateString;
+      }
+      
+      // Convert từ DD/MM/YYYY sang YYYY-MM-DD
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+        const [day, month, year] = dateString.split('/');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      
+      return dateString; // Fallback
+    };
+
     // Gửi đầy đủ dữ liệu theo yêu cầu của Odoo controller
     const mappedData = {
       name: data.name,
       phone: data.phone,
-      birth_date: data.birth_date,
-      gender: data.gender,
-      nationality: data.nationality,
+      birth_date: formatDateForOdoo(data.birth_date),
+      gender: mapGender(data.gender),
+      nationality: mapNationality(data.nationality),
       id_type: data.id_type,
       id_number: data.id_number,
-      id_issue_date: data.id_issue_date,
+      id_issue_date: formatDateForOdoo(data.id_issue_date),
       id_issue_place: data.id_issue_place,
       id_front: data.front_id_image || '',
       id_back: data.back_id_image || ''
@@ -85,7 +124,7 @@ export const updatePersonalProfile = async (data: {
     console.log('📤 [ProfileAPI] Sending personal profile data:', mappedData);
     console.log('🔍 [ProfileAPI] id_type in mappedData:', mappedData.id_type);
     console.log('🔍 [ProfileAPI] All keys in mappedData:', Object.keys(mappedData));
-    const response = await apiService.post('/save_personal_profile', mappedData);
+    const response = await apiService.post('/profile/save_personal_profile', mappedData);
     return response;
   } catch (error) {
     console.error('Error updating personal profile:', error);
@@ -145,13 +184,13 @@ export const updateAddressInfo = async (data: {
   postal_code: string;
 }): Promise<ApiResponse> => {
   try {
-    const response = await apiService.updateAddress({
+    const response = await apiService.post('/profile/save_address_info', {
       street: data.street,
+      ward: data.ward,
+      district: data.district,
       city: data.city,
-      state: data.district,
-      zip_code: data.postal_code,
       country: data.country,
-      address_type: 'permanent'
+      postal_code: data.postal_code
     });
     return response;
   } catch (error) {

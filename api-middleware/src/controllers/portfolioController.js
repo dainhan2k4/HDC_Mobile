@@ -23,8 +23,7 @@ class PortfolioController {
       // Calculate portfolio metrics
       const portfolioData = this.calculatePortfolioMetrics(investments, funds);
       
-      console.log('📊 [Debug] Portfolio data calculated:', JSON.stringify(portfolioData, null, 2));
-      console.log(`✅ [Portfolio] Overview sent: ${investments.length} investments, ${funds.length} funds`);
+    
       
       res.json({
         success: true,
@@ -81,13 +80,10 @@ class PortfolioController {
    */
   async getFunds(req, res) {
     try {
-      console.log('🏦 [Portfolio] Getting funds...');
       
       // Lấy dữ liệu thật từ Odoo
       const funds = await this.odooService.getFunds();
-      console.log('✅ [Portfolio] Got real funds from Odoo:', funds.length);
       
-      console.log(`✅ [Portfolio] Funds sent: ${funds.length} items`);
       res.json({
         success: true,
         data: funds,
@@ -109,12 +105,10 @@ class PortfolioController {
    */
   async getPerformance(req, res) {
     try {
-      console.log('📈 [Portfolio] Getting performance...');
       
       const investments = await this.odooService.getInvestments();
       const performance = this.calculatePerformance(investments);
       
-      console.log('✅ [Portfolio] Performance sent');
       res.json({
         success: true,
         data: performance
@@ -135,11 +129,9 @@ class PortfolioController {
    */
   async refresh(req, res) {
     try {
-      console.log('🔄 [Portfolio] Refreshing cache...');
       
       this.odooService.clearCache();
       
-      console.log('✅ [Portfolio] Cache refreshed');
       res.json({
         success: true,
         message: 'Cache refreshed successfully'
@@ -158,7 +150,6 @@ class PortfolioController {
    * Calculate portfolio metrics inspired by Simpos data processing
    */
   calculatePortfolioMetrics(investments, funds) {
-    console.log('🔢 [Debug] Calculating metrics for:', investments?.length, 'investments,', funds?.length, 'funds');
     
     if (!investments || !Array.isArray(investments)) {
       console.log('⚠️ [Debug] Invalid investments data:', investments);
@@ -189,7 +180,6 @@ class PortfolioController {
       comparisons: []
     };
     
-    console.log('🔢 [Debug] Calculated result:', result);
     return result;
   }
 
