@@ -1,0 +1,66 @@
+<odoo>
+    <template id="ward_form" name="Tạo mới Phường (Xã)">
+        <t t-call="web.layout">
+            <t t-set="title">Tạo mới Phường (Xã)</t>
+            <t t-call-assets="web.assets_backend" t-js="true"/>
+            <div class="d-flex">
+                <t t-call="fund_management_control.sidebar_template"/>
+                <main class="flex-grow-1 p-4">
+                    <div class="container-fluid">
+                        <div class="mb-4">
+                            <h2 class="h3 fw-bold">Tạo mới Phường (Xã)</h2>
+                            <nav aria-label="breadcrumb">
+                              <ol class="breadcrumb small">
+                                <li class="breadcrumb-item"><a href="/ward_list" class="text-decoration-none">Trở về</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Tạo mới Phường (Xã)</li>
+                              </ol>
+                            </nav>
+                        </div>
+                        <div class="card shadow-sm form-container">
+                            <div class="card-body p-5">
+                                <form t-att-action="edit_mode and ward and '/ward/update/' + str(ward.id) or '/ward/create'" method="POST">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="name" class="form-label">Tên Phường (Xã) (*)</label>
+                                            <input type="text" class="form-control" name="name" required="1" t-att-value="ward and ward.name or ''"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="english_name" class="form-label">Tên Tiếng Anh (*)</label>
+                                            <input type="text" class="form-control" name="english_name" required="1" t-att-value="ward and ward.english_name or ''"/>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="district" class="form-label">Quận (Huyện) (*)</label>
+                                            <input type="text" class="form-control" name="district" required="1" t-att-value="ward and ward.district or ''"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="code" class="form-label">Mã hành chính</label>
+                                            <input type="text" class="form-control" name="code" t-att-value="ward and ward.code or ''"/>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="sort_order" class="form-label">Trọng số sắp xếp (*)</label>
+                                            <input type="number" class="form-control" name="sort_order" required="1" t-att-value="ward and ward.sort_order or ''"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" name="active" t-att-checked="not ward or ward.active and 'checked' or False"/>
+                                                <label class="form-check-label">Kích hoạt</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-center mt-4">
+                                        <a href="/ward_list" class="btn btn-secondary btn-lg px-5">Hủy</a>
+                                        <button type="submit" class="btn btn-primary btn-lg px-5">Lưu</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </t>
+    </template>
+</odoo> 

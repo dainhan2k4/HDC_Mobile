@@ -1,12 +1,36 @@
 from odoo import http
 from odoo.http import request, Response
 import json
-import logging
-
-_logger = logging.getLogger(__name__)
+import requests
+from odoo import http
+from odoo.http import request
+import base64
+import os
+from datetime import datetime
+import re
+from odoo.tools import config as odoo_config
 
 
 class PersonalProfileController(http.Controller):
+
+    @http.route('/id_images/<string:filename>', type='http', auth='user', methods=['GET'], csrf=False)
+    def serve_id_image(self, filename, **kwargs):
+        """Serve ID images saved on disk under the id_images folder."""
+        try:
+            data_dir = odoo_config.get('data_dir') or '/etc/odoo'
+            base_folder = os.path.join(data_dir, 'id_images')
+            file_path = os.path.join(base_folder, filename)
+            if not os.path.isfile(file_path):
+                return request.make_response('Not found', [('Content-Type', 'text/plain')], 404)
+            with open(file_path, 'rb') as f:
+                content = f.read()
+            headers = [
+                ('Content-Type', 'image/jpeg'),
+                ('Cache-Control', 'max-age=86400'),
+            ]
+            return request.make_response(content, headers=headers)
+        except Exception as e:
+            return request.make_response(str(e), [('Content-Type', 'text/plain')], 500)
 
     @http.route('/personal_profile', type='http', auth='user', website=True)
     def personal_profile_page(self, **kwargs):
@@ -89,14 +113,12 @@ class PersonalProfileController(http.Controller):
     @http.route('/data_personal_profile', type='http', auth='user', methods=['GET'], csrf=False)
     def get_personal_profile_data(self, **kwargs):
         """API endpoint để lấy dữ liệu personal profile của user hiện tại"""
-        _logger.info("Raw request data: %s", request.httprequest.data)
-
         try:
             # Lấy dữ liệu từ model investor.profile của user hiện tại
             current_user = request.env.user
             personal_profiles = request.env['investor.profile'].sudo().search([
-                ('partner_id', '=', current_user.partner_id.id)
-            ])
+                ('user_id', '=', current_user.id)
+            ], limit=1)
             
             data = []
             if personal_profiles:
@@ -104,9 +126,15 @@ class PersonalProfileController(http.Controller):
                 for profile in personal_profiles:
                     id_front_url = ''
                     id_back_url = ''
-                    if profile.id_front:
+                    # Ưu tiên URL tĩnh từ file system nếu có
+                    if getattr(profile, 'id_front_path', False):
+                        id_front_url = f"/id_images/{os.path.basename(profile.id_front_path)}"
+                    elif profile.id_front:
                         id_front_url = f"/web/image?model=investor.profile&field=id_front&id={profile.id}"
-                    if profile.id_back:
+
+                    if getattr(profile, 'id_back_path', False):
+                        id_back_url = f"/id_images/{os.path.basename(profile.id_back_path)}"
+                    elif profile.id_back:
                         id_back_url = f"/web/image?model=investor.profile&field=id_back&id={profile.id}"
                     data.append({
                         'id': profile.id,
@@ -151,58 +179,190 @@ class PersonalProfileController(http.Controller):
         """API endpoint để lưu dữ liệu personal profile"""
         try:
             current_user = request.env.user
-            
             # Parse JSON data
             data = json.loads(request.httprequest.data.decode('utf-8'))
-            
+            # Kiểm tra các trường bắt buộc
+            required_fields = ['name', 'email', 'phone', 'gender', 'nationality', 'birth_date', 'id_type', 'id_number', 'id_issue_date', 'id_issue_place']
+            missing_fields = [field for field in required_fields if not data.get(field)]
+            # Kiểm tra nationality hợp lệ
+            nationality_val = data.get('nationality')
+            try:
+                nationality_id = int(nationality_val) if nationality_val and str(nationality_val).isdigit() else None
+            except Exception:
+                nationality_id = None
+            if not nationality_id:
+                missing_fields.append('nationality')
+            if missing_fields:
+                return Response(json.dumps({'error': f'Thiếu hoặc sai thông tin: {", ".join(set(missing_fields))}. Vui lòng nhập lại.'}), content_type='application/json', status=400)
             # Tìm profile hiện tại hoặc tạo mới
             profile = request.env['investor.profile'].sudo().search([
-                ('partner_id', '=', current_user.partner_id.id)
+                ('user_id', '=', current_user.id)
             ], limit=1)
-            
             if not profile:
-                # Tạo profile mới
-                profile = request.env['investor.profile'].sudo().create({
+                # Tạo profile mới với đầy đủ trường required
+                create_dict = {
                     'partner_id': current_user.partner_id.id,
-                })
-            
+                    'name': data['name'],
+                    'gender': data['gender'],
+                    'birth_date': data['birth_date'],
+                    'nationality': nationality_id,
+                    'id_type': data['id_type'],
+                    'id_number': data['id_number'],
+                    'id_issue_date': data['id_issue_date'],
+                    'id_issue_place': data['id_issue_place'],
+                    'phone': data.get('phone', ''),
+                    'email': data.get('email', ''),
+                }
+                
+                # Thêm CCCD images nếu có từ eKYC
+                if 'frontPreviewBase64' in data and data['frontPreviewBase64']:
+                    try:
+                        front_base64 = data['frontPreviewBase64']
+                        if front_base64.startswith('data:'):
+                            front_base64 = front_base64.split(',')[1]
+                        import base64
+                        front_binary = base64.b64decode(front_base64)
+                        create_dict['id_front'] = front_binary
+                        # Build filename using login username
+                        login = (current_user.login or '').strip().lower()
+                        uname = re.sub(r'[^a-z0-9_-]+', '', login.replace('@', '_').replace('.', '_').replace(' ', '_')) or 'user'
+                        ts = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+                        filename = f"cccd_front_{uname}_{ts}.jpg"
+                        create_dict['id_front_filename'] = filename
+                        # Save to disk
+                        data_dir = odoo_config.get('data_dir') or '/etc/odoo'
+                        static_folder = os.path.join(data_dir, 'id_images')
+                        try:
+                            os.makedirs(static_folder, exist_ok=True)
+                        except Exception:
+                            pass
+                        fs_path = os.path.join(static_folder, filename)
+                        with open(fs_path, 'wb') as f:
+                            f.write(front_binary)
+                        create_dict['id_front_path'] = fs_path
+                        print(f"✅ Front CCCD image added to new profile ({len(front_binary)} bytes)")
+                    except Exception as e:
+                        print(f"❌ Error processing front CCCD image for new profile: {e}")
+                
+                if 'backPreviewBase64' in data and data['backPreviewBase64']:
+                    try:
+                        back_base64 = data['backPreviewBase64']
+                        if back_base64.startswith('data:'):
+                            back_base64 = back_base64.split(',')[1]
+                        import base64
+                        back_binary = base64.b64decode(back_base64)
+                        create_dict['id_back'] = back_binary
+                        # Build filename using login username
+                        login = (current_user.login or '').strip().lower()
+                        uname = re.sub(r'[^a-z0-9_-]+', '', login.replace('@', '_').replace('.', '_').replace(' ', '_')) or 'user'
+                        ts = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+                        filename = f"cccd_back_{uname}_{ts}.jpg"
+                        create_dict['id_back_filename'] = filename
+                        # Save to disk
+                        data_dir = odoo_config.get('data_dir') or '/etc/odoo'
+                        static_folder = os.path.join(data_dir, 'id_images')
+                        try:
+                            os.makedirs(static_folder, exist_ok=True)
+                        except Exception:
+                            pass
+                        fs_path = os.path.join(static_folder, filename)
+                        with open(fs_path, 'wb') as f:
+                            f.write(back_binary)
+                        create_dict['id_back_path'] = fs_path
+                        print(f"✅ Back CCCD image added to new profile ({len(back_binary)} bytes)")
+                    except Exception as e:
+                        print(f"❌ Error processing back CCCD image for new profile: {e}")
+                
+                profile = request.env['investor.profile'].sudo().create(create_dict)
             # Cập nhật dữ liệu
-            update_data = {}
-            if 'name' in data:
-                update_data['name'] = data['name']
-            if 'email' in data:
-                update_data['email'] = data['email']
-            if 'phone' in data:
-                update_data['phone'] = data['phone']
-            if 'gender' in data:
-                update_data['gender'] = data['gender']
-            if 'nationality' in data and data['nationality']:
-                update_data['nationality'] = int(data['nationality'])
-            if 'birth_date' in data and data['birth_date']:
-                update_data['birth_date'] = data['birth_date']
-            if 'id_type' in data:
-                update_data['id_type'] = data['id_type']
-            if 'id_number' in data:
-                update_data['id_number'] = data['id_number']
-            if 'id_issue_date' in data and data['id_issue_date']:
-                update_data['id_issue_date'] = data['id_issue_date']
-            if 'id_issue_place' in data:
-                update_data['id_issue_place'] = data['id_issue_place']
+            update_data = {
+                'name': data['name'],
+                'email': data['email'],
+                'phone': data['phone'],
+                'gender': data['gender'],
+                'nationality': nationality_id,
+                'birth_date': data['birth_date'],
+                'id_type': data['id_type'],
+                'id_number': data['id_number'],
+                'id_issue_date': data['id_issue_date'],
+                'id_issue_place': data['id_issue_place'],
+            }
             
-            # Cập nhật profile
+            # Xử lý CCCD images từ base64 (từ eKYC hoặc upload). Ngoài việc lưu Binary,
+            # ta còn lưu ra thư mục static để tạo URL tĩnh phục vụ frontend.
+            if 'frontPreviewBase64' in data and data['frontPreviewBase64']:
+                try:
+                    # Decode base64 thành binary data
+                    front_base64 = data['frontPreviewBase64']
+                    if front_base64.startswith('data:'):
+                        # Remove data URL prefix (data:image/jpeg;base64,)
+                        front_base64 = front_base64.split(',')[1]
+                    
+                    import base64
+                    front_binary = base64.b64decode(front_base64)
+                    update_data['id_front'] = front_binary
+                    # Build filename using login username
+                    login = (current_user.login or '').strip().lower()
+                    uname = re.sub(r'[^a-z0-9_-]+', '', login.replace('@', '_').replace('.', '_').replace(' ', '_')) or 'user'
+                    ts = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+                    filename = f"cccd_front_{uname}_{ts}.jpg"
+                    update_data['id_front_filename'] = filename
+                    # Lưu file ra thư mục static/id_images
+                    data_dir = odoo_config.get('data_dir') or '/etc/odoo'
+                    static_folder = os.path.join(data_dir, 'id_images')
+                    try:
+                        os.makedirs(static_folder, exist_ok=True)
+                    except Exception:
+                        pass
+                    fs_path = os.path.join(static_folder, filename)
+                    with open(fs_path, 'wb') as f:
+                        f.write(front_binary)
+                    update_data['id_front_path'] = fs_path
+                    print(f"✅ Front CCCD image saved to database ({len(front_binary)} bytes)")
+                except Exception as e:
+                    print(f"❌ Error processing front CCCD image: {e}")
+            
+            if 'backPreviewBase64' in data and data['backPreviewBase64']:
+                try:
+                    # Decode base64 thành binary data
+                    back_base64 = data['backPreviewBase64']
+                    if back_base64.startswith('data:'):
+                        # Remove data URL prefix (data:image/jpeg;base64,)
+                        back_base64 = back_base64.split(',')[1]
+                    
+                    import base64
+                    back_binary = base64.b64decode(back_base64)
+                    update_data['id_back'] = back_binary
+                    # Build filename using login username
+                    login = (current_user.login or '').strip().lower()
+                    uname = re.sub(r'[^a-z0-9_-]+', '', login.replace('@', '_').replace('.', '_').replace(' ', '_')) or 'user'
+                    ts = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+                    filename = f"cccd_back_{uname}_{ts}.jpg"
+                    update_data['id_back_filename'] = filename
+                    # Lưu file ra thư mục static/id_images
+                    data_dir = odoo_config.get('data_dir') or '/etc/odoo'
+                    static_folder = os.path.join(data_dir, 'id_images')
+                    try:
+                        os.makedirs(static_folder, exist_ok=True)
+                    except Exception:
+                        pass
+                    fs_path = os.path.join(static_folder, filename)
+                    with open(fs_path, 'wb') as f:
+                        f.write(back_binary)
+                    update_data['id_back_path'] = fs_path
+                    print(f"✅ Back CCCD image saved to database ({len(back_binary)} bytes)")
+                except Exception as e:
+                    print(f"❌ Error processing back CCCD image: {e}")
+            
             profile.sudo().write(update_data)
-
             # Đồng bộ lên contact/customer (res.partner)
-            partner_update = {}
-            if 'name' in data:
-                partner_update['name'] = data['name']
-            if 'email' in data:
-                partner_update['email'] = data['email']
-            if 'phone' in data:
-                partner_update['phone'] = data['phone']
+            partner_update = {
+                'name': data['name'],
+                'email': data['email'],
+                'phone': data['phone'],
+            }
             if partner_update:
                 profile.partner_id.sudo().write(partner_update)
-            
             return Response(json.dumps({'success': True, 'message': 'Profile updated successfully'}), 
                           content_type='application/json')
         except Exception as e:
@@ -213,7 +373,7 @@ class PersonalProfileController(http.Controller):
         try:
             current_user = request.env.user
             profile = request.env['investor.profile'].sudo().search([
-                ('partner_id', '=', current_user.partner_id.id)
+                ('user_id', '=', current_user.id)
             ], limit=1)
             if not profile:
                 return Response(json.dumps({'error': 'Chưa có hồ sơ cá nhân'}), content_type='application/json', status=400)
@@ -224,11 +384,26 @@ class PersonalProfileController(http.Controller):
                 return Response(json.dumps({'error': 'Thiếu file hoặc side'}), content_type='application/json', status=400)
 
             file_data = file.read()
-            filename = file.filename
+            # Build filename using login username
+            login = (current_user.login or '').strip().lower()
+            uname = re.sub(r'[^a-z0-9_-]+', '', login.replace('@', '_').replace('.', '_').replace(' ', '_')) or 'user'
+            ts = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+            filename = f"cccd_{side}_{uname}_{ts}.jpg"
+            # Save to disk folder as well
+            data_dir = odoo_config.get('data_dir') or '/etc/odoo'
+            static_folder = os.path.join(data_dir, 'id_images')
+            try:
+                os.makedirs(static_folder, exist_ok=True)
+            except Exception:
+                pass
+            fs_path = os.path.join(static_folder, filename)
+            with open(fs_path, 'wb') as f:
+                f.write(file_data)
+
             if side == 'front':
-                profile.sudo().write({'id_front': file_data, 'id_front_filename': filename})
+                profile.sudo().write({'id_front': file_data, 'id_front_filename': filename, 'id_front_path': fs_path})
             else:
-                profile.sudo().write({'id_back': file_data, 'id_back_filename': filename})
+                profile.sudo().write({'id_back': file_data, 'id_back_filename': filename, 'id_back_path': fs_path})
 
             return Response(json.dumps({'success': True}), content_type='application/json')
         except Exception as e:
@@ -242,7 +417,7 @@ class PersonalProfileController(http.Controller):
             
             # Tìm hoặc tạo investor profile trước
             profile = request.env['investor.profile'].sudo().search([
-                ('partner_id', '=', current_user.partner_id.id)
+                ('user_id', '=', current_user.id)
             ], limit=1)
             
             if not profile:
@@ -298,50 +473,50 @@ class PersonalProfileController(http.Controller):
         try:
             current_user = request.env.user
             data = json.loads(request.httprequest.data.decode('utf-8'))
-
+            # Kiểm tra các trường bắt buộc
+            required_fields = ['account_holder', 'account_number', 'bank_name', 'branch']
+            missing_fields = [field for field in required_fields if not data.get(field)]
+            if missing_fields:
+                return Response(json.dumps({'error': f'Thiếu hoặc sai thông tin: {", ".join(set(missing_fields))}. Vui lòng nhập lại.'}), content_type='application/json', status=400)
             # Tìm hoặc tạo investor profile trước
             profile = request.env['investor.profile'].sudo().search([
-                ('partner_id', '=', current_user.partner_id.id)
+                ('user_id', '=', current_user.id)
             ], limit=1)
-
             if not profile:
                 profile = request.env['investor.profile'].sudo().create({
                     'partner_id': current_user.partner_id.id,
                 })
-
             # Tìm bank account hiện tại hoặc tạo mới
             bank_account = request.env['investor.bank.account'].sudo().search([
                 ('investor_id', '=', profile.id)
             ], limit=1)
-
             if not bank_account:
-                # Tạo bank account mới với investor_id
-                bank_account = request.env['investor.bank.account'].sudo().create({
+                # Tạo bank account mới với đầy đủ trường required
+                create_dict = {
                     'investor_id': profile.id,
-                })
-
-            update_data = {}
-            if 'account_holder' in data:
-                update_data['account_holder'] = data['account_holder']
-            if 'account_number' in data:
-                update_data['account_number'] = data['account_number']
-            if 'bank_name' in data:
-                update_data['bank_name'] = data['bank_name']
-            if 'branch' in data:
-                update_data['branch'] = data['branch']
-            if 'company_name' in data:
-                update_data['company_name'] = data['company_name']
-            if 'company_address' in data:
-                update_data['company_address'] = data['company_address']
-            if 'monthly_income' in data:
-                update_data['monthly_income'] = data['monthly_income']
-            if 'occupation' in data:
-                update_data['occupation'] = data['occupation']
-            if 'position' in data:
-                update_data['position'] = data['position']
-            
+                    'bank_name': data['bank_name'],
+                    'account_number': data['account_number'],
+                    'account_holder': data['account_holder'],
+                    'branch': data['branch'],
+                    'company_name': data.get('company_name', ''),
+                    'company_address': data.get('company_address', ''),
+                    'monthly_income': data.get('monthly_income', 0),
+                    'occupation': data.get('occupation', ''),
+                    'position': data.get('position', ''),
+                }
+                bank_account = request.env['investor.bank.account'].sudo().create(create_dict)
+            update_data = {
+                'account_holder': data['account_holder'],
+                'account_number': data['account_number'],
+                'bank_name': data['bank_name'],
+                'branch': data['branch'],
+                'company_name': data.get('company_name', ''),
+                'company_address': data.get('company_address', ''),
+                'monthly_income': data.get('monthly_income', 0),
+                'occupation': data.get('occupation', ''),
+                'position': data.get('position', ''),
+            }
             bank_account.sudo().write(update_data)
-
             return Response(json.dumps({'success': True, 'message': 'Bank info updated successfully'}),
                           content_type='application/json')
         except Exception as e:
@@ -355,7 +530,7 @@ class PersonalProfileController(http.Controller):
             
             # Tìm hoặc tạo investor profile trước
             profile = request.env['investor.profile'].sudo().search([
-                ('partner_id', '=', current_user.partner_id.id)
+                ('user_id', '=', current_user.id)
             ], limit=1)
             
             if not profile:
@@ -376,7 +551,6 @@ class PersonalProfileController(http.Controller):
                     data.append({
                         'id': address.id,
                         'street': address.street or '',
-                        'city': address.city or '',
                         'state': address.state_id.id if address.state_id else '',
                         'zip': address.zip or '',
                         'country_id': address.country_id.id if address.country_id else '',
@@ -389,7 +563,6 @@ class PersonalProfileController(http.Controller):
                 data.append({
                     'id': None,
                     'street': partner.street or '',
-                    'city': partner.city or '',
                     'state': partner.state_id.id if partner.state_id else '',
                     'zip': partner.zip or '',
                     'country_id': partner.country_id.id if partner.country_id else '',
@@ -407,41 +580,52 @@ class PersonalProfileController(http.Controller):
         try:
             current_user = request.env.user
             data = json.loads(request.httprequest.data.decode('utf-8'))
-
+            required_fields = ['street', 'district', 'ward', 'zip', 'country_id', 'state']
+            for field in required_fields:
+                if not data.get(field):
+                    return Response(json.dumps({'error': f'Thiếu hoặc sai thông tin: {field}. Vui lòng nhập lại.'}), content_type='application/json', status=400)
+            # Kiểm tra state_id hợp lệ
+            state_val = data.get('state')
+            try:
+                state_id = int(state_val) if state_val and str(state_val).isdigit() else None
+            except Exception:
+                state_id = None
+            if not state_id or state_id <= 0:
+                return Response(json.dumps({'error': 'Thiếu hoặc sai thông tin: state. Vui lòng nhập lại.'}), content_type='application/json', status=400)
+            # Kiểm tra country_id hợp lệ
+            country_val = data.get('country_id')
+            try:
+                country_id = int(country_val) if country_val and str(country_val).isdigit() else None
+            except Exception:
+                country_id = None
+            if not country_id or country_id <= 0:
+                return Response(json.dumps({'error': 'Thiếu hoặc sai thông tin: country_id. Vui lòng nhập lại.'}), content_type='application/json', status=400)
             # Tìm hoặc tạo investor profile trước
             profile = request.env['investor.profile'].sudo().search([
-                ('partner_id', '=', current_user.partner_id.id)
+                ('user_id', '=', current_user.id)
             ], limit=1)
-
             if not profile:
                 profile = request.env['investor.profile'].sudo().create({
                     'partner_id': current_user.partner_id.id,
                 })
-
             # Tìm address hiện tại hoặc tạo mới
             address = request.env['investor.address'].sudo().search([
                 ('investor_id', '=', profile.id)
             ], limit=1)
-
-            if not address:
-                # Tạo address mới với investor_id
-                address = request.env['investor.address'].sudo().create({
-                    'investor_id': profile.id,
-                })
-            
-            # Update address info
             address_vals = {
-                'street': data.get('street'),
-                'city': data.get('city'),
-                'district': data.get('district'),
-                'ward': data.get('ward'),
-                'state_id': int(data.get('state')) if data.get('state') else False,
-                'zip': data.get('zip'),
-                'country_id': int(data.get('country_id')) if data.get('country_id') else False,
+                'street': data['street'],
+                'state_id': state_id,
+                'district': data['district'],
+                'ward': data['ward'],
+                'zip': data['zip'],
+                'country_id': country_id,
             }
-
-            address.sudo().write(address_vals)
-            
+            if not address:
+                address_vals['investor_id'] = profile.id
+                address_vals['address_type'] = 'current'
+                address = request.env['investor.address'].sudo().create(address_vals)
+            else:
+                address.sudo().write(address_vals)
             return Response(json.dumps({'success': True, 'message': 'Address information updated successfully'}), 
                           content_type='application/json')
         except Exception as e:
@@ -453,7 +637,7 @@ class PersonalProfileController(http.Controller):
         try:
             current_user = request.env.user
             verification_profiles = request.env['investor.profile'].sudo().search([
-                ('partner_id', '=', current_user.partner_id.id)
+                ('user_id', '=', current_user.id)
             ])
 
             data = []
@@ -486,92 +670,152 @@ class PersonalProfileController(http.Controller):
         try:
             current_user = request.env.user
             all_data = json.loads(request.httprequest.data.decode('utf-8'))
-
             # --- 1. Personal Profile Data ---
             personal_data = all_data.get('personalProfileData', {})
+            required_fields = ['name', 'email', 'phone', 'gender', 'nationality', 'birth_date', 'id_type', 'id_number', 'id_issue_date', 'id_issue_place']
+            missing_fields = [field for field in required_fields if not personal_data.get(field)]
+            nationality_val = personal_data.get('nationality')
+            try:
+                nationality_id = int(nationality_val) if nationality_val and str(nationality_val).isdigit() else None
+            except Exception:
+                nationality_id = None
+            if not nationality_id:
+                missing_fields.append('nationality')
+            if missing_fields:
+                return Response(json.dumps({'error': f'Thiếu hoặc sai thông tin cá nhân: {", ".join(set(missing_fields))}. Vui lòng nhập lại.'}), content_type='application/json', status=400)
             profile = request.env['investor.profile'].sudo().search([
-                ('partner_id', '=', current_user.partner_id.id)
+                ('user_id', '=', current_user.id)
             ], limit=1)
-
             if not profile:
-                profile = request.env['investor.profile'].sudo().create({
+                create_dict = {
                     'partner_id': current_user.partner_id.id,
-                })
-            
-            personal_update_data = {}
-            if 'name' in personal_data:
-                personal_update_data['name'] = personal_data['name']
-            if 'email' in personal_data:
-                personal_update_data['email'] = personal_data['email']
-            if 'phone' in personal_data:
-                personal_update_data['phone'] = personal_data['phone']
-            if 'gender' in personal_data:
-                personal_update_data['gender'] = personal_data['gender']
-            if 'nationality' in personal_data and personal_data['nationality']:
-                personal_update_data['nationality'] = int(personal_data['nationality'])
-            if 'birth_date' in personal_data and personal_data['birth_date']:
-                personal_update_data['birth_date'] = personal_data['birth_date']
-            if 'id_type' in personal_data:
-                personal_update_data['id_type'] = personal_data['id_type']
-            if 'id_number' in personal_data:
-                personal_update_data['id_number'] = personal_data['id_number']
-            if 'id_issue_date' in personal_data and personal_data['id_issue_date']:
-                personal_update_data['id_issue_date'] = personal_data['id_issue_date']
-            if 'id_issue_place' in personal_data:
-                personal_update_data['id_issue_place'] = personal_data['id_issue_place']
-            
+                    'name': personal_data['name'],
+                    'gender': personal_data['gender'],
+                    'id_type': personal_data['id_type'],
+                    'id_number': personal_data['id_number'],
+                    'id_issue_place': personal_data['id_issue_place'],
+                    'birth_date': personal_data['birth_date'],
+                    'id_issue_date': personal_data['id_issue_date'],
+                    'email': personal_data['email'],
+                    'phone': personal_data['phone'],
+                    'nationality': nationality_id,
+                }
+                profile = request.env['investor.profile'].sudo().create(create_dict)
+            personal_update_data = {
+                'name': personal_data['name'],
+                'email': personal_data['email'],
+                'phone': personal_data['phone'],
+                'gender': personal_data['gender'],
+                'nationality': nationality_id,
+                'birth_date': personal_data['birth_date'],
+                'id_type': personal_data['id_type'],
+                'id_number': personal_data['id_number'],
+                'id_issue_date': personal_data['id_issue_date'],
+                'id_issue_place': personal_data['id_issue_place'],
+            }
+            # Xử lý lưu ảnh CCCD và video eKYC (nếu có)
+            if 'id_front' in personal_data and personal_data['id_front']:
+                try:
+                    personal_update_data['id_front'] = base64.b64decode(personal_data['id_front'].split(',')[-1])
+                    personal_update_data['id_front_filename'] = 'cccd_front.jpg'
+                    print(f"✅ Front CCCD image saved to database ({len(personal_update_data['id_front'])} bytes)")
+                except Exception as e:
+                    print(f"❌ Error processing front CCCD image: {e}")
+            if 'id_back' in personal_data and personal_data['id_back']:
+                try:
+                    personal_update_data['id_back'] = base64.b64decode(personal_data['id_back'].split(',')[-1])
+                    personal_update_data['id_back_filename'] = 'cccd_back.jpg'
+                    print(f"✅ Back CCCD image saved to database ({len(personal_update_data['id_back'])} bytes)")
+                except Exception as e:
+                    print(f"❌ Error processing back CCCD image: {e}")
+            # Video eKYC không được lưu vào profile vì field không tồn tại
+            # Video chỉ dùng cho quá trình verification
             profile.sudo().write(personal_update_data)
-
-            # Update res.partner with basic info (name, email, phone)
-            partner_update = {}
-            if 'name' in personal_data:
-                partner_update['name'] = personal_data['name']
-            if 'email' in personal_data:
-                partner_update['email'] = personal_data['email']
-            if 'phone' in personal_data:
-                partner_update['phone'] = personal_data['phone']
+            partner_update = {
+                'name': personal_data['name'],
+                'email': personal_data['email'],
+                'phone': personal_data['phone'],
+            }
             if partner_update:
                 profile.partner_id.sudo().write(partner_update)
-
             # --- 2. Bank Account Data ---
             bank_data = all_data.get('bankInfoData', {})
             if bank_data:
+                required_fields = ['bank_name', 'bank_account_number', 'account_holder_name', 'bank_branch']
+                missing_fields = [field for field in required_fields if not bank_data.get(field)]
+                if missing_fields:
+                    return Response(json.dumps({'error': f'Thiếu hoặc sai thông tin ngân hàng: {", ".join(set(missing_fields))}. Vui lòng nhập lại.'}), content_type='application/json', status=400)
                 bank_account_vals = {
-                    'bank_name': bank_data.get('bank_name'),
-                    'account_number': bank_data.get('bank_account_number'),
-                    'account_holder': bank_data.get('account_holder_name'),
-                    'branch': bank_data.get('bank_branch'),
-                    'company_name': bank_data.get('company_name'),
-                    'company_address': bank_data.get('company_address'),
-                    'occupation': bank_data.get('occupation'),
-                    'monthly_income': bank_data.get('monthly_income'),
-                    'position': bank_data.get('position'),
+                    'bank_name': bank_data['bank_name'],
+                    'account_number': bank_data['bank_account_number'],
+                    'account_holder': bank_data['account_holder_name'],
+                    'branch': bank_data['bank_branch'],
+                    'company_name': bank_data.get('company_name', ''),
+                    'company_address': bank_data.get('company_address', ''),
+                    'occupation': bank_data.get('occupation', ''),
+                    'monthly_income': bank_data.get('monthly_income', 0),
+                    'position': bank_data.get('position', ''),
                 }
                 if profile.bank_account_ids:
                     profile.bank_account_ids[0].sudo().write(bank_account_vals)
                 else:
                     bank_account_vals['investor_id'] = profile.id
                     request.env['investor.bank.account'].sudo().create(bank_account_vals)
-
             # --- 3. Address Information Data ---
             address_data = all_data.get('addressInfoData', {})
             if address_data:
+                # Kiểm tra từng trường required, trả về lỗi rõ ràng từng trường
+                required_fields = ['street', 'district', 'ward', 'zip', 'country_id', 'state']
+                for field in required_fields:
+                    if not address_data.get(field):
+                        return Response(json.dumps({'error': f'Thiếu hoặc sai thông tin địa chỉ: {field}. Vui lòng nhập lại.'}), content_type='application/json', status=400)
+                state_val = address_data.get('state')
+                try:
+                    state_id = int(state_val) if state_val and str(state_val).isdigit() else None
+                except Exception:
+                    state_id = None
+                if not state_id or state_id <= 0:
+                    return Response(json.dumps({'error': 'Thiếu hoặc sai thông tin địa chỉ: state. Vui lòng nhập lại.'}), content_type='application/json', status=400)
+                country_val = address_data.get('country_id')
+                try:
+                    country_id = int(country_val) if country_val and str(country_val).isdigit() else None
+                except Exception:
+                    country_id = None
+                if not country_id or country_id <= 0:
+                    return Response(json.dumps({'error': 'Thiếu hoặc sai thông tin địa chỉ: country_id. Vui lòng nhập lại.'}), content_type='application/json', status=400)
                 address_vals = {
-                    'street': address_data.get('street'),
-                    'city': address_data.get('city'), # Keep for now if there's a corresponding model field
-                    'district': address_data.get('district'),
-                    'ward': address_data.get('ward'),
-                    'state_id': int(address_data.get('state')) if address_data.get('state') else False, # Mapping frontend 'state' to backend 'state_id'
-                    'zip': address_data.get('zip'),
-                    'country_id': int(address_data.get('country_id')) if address_data.get('country_id') else False, # Mapping frontend 'country_id' to backend 'country_id'
+                    'street': address_data['street'],
+                    'district': address_data['district'],
+                    'ward': address_data['ward'],
+                    'state_id': state_id,
+                    'zip': address_data['zip'],
+                    'country_id': country_id,
                 }
                 if profile.address_ids:
                     profile.address_ids[0].sudo().write(address_vals)
                 else:
                     address_vals['investor_id'] = profile.id
                     request.env['investor.address'].sudo().create(address_vals)
-
+            # Sau khi lưu xong toàn bộ, cập nhật trạng thái TK đầu tư và hồ sơ gốc
+            status_info = request.env['status.info'].sudo().search([
+                ('partner_id', '=', current_user.partner_id.id)
+            ], limit=1)
+            if status_info:
+                status_info.set_approved()
             return Response(json.dumps({'success': True, 'message': 'All profile data saved successfully'}), 
                           content_type='application/json')
+        except Exception as e:
+            return Response(json.dumps({'error': str(e)}), content_type='application/json', status=500) 
+
+    @http.route('/get_states', type='http', auth='user', methods=['GET'], csrf=False)
+    def get_states(self, **kwargs):
+        country_id = kwargs.get('country_id')
+        try:
+            domain = []
+            if country_id:
+                domain.append(('country_id', '=', int(country_id)))
+            states = request.env['res.country.state'].sudo().search(domain)
+            data = [{'id': s.id, 'name': s.name} for s in states]
+            return Response(json.dumps(data), content_type='application/json')
         except Exception as e:
             return Response(json.dumps({'error': str(e)}), content_type='application/json', status=500) 

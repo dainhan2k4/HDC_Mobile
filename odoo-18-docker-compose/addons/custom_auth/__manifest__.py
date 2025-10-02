@@ -22,6 +22,10 @@
             'custom_auth/static/src/js/signup/signup_with_otp.js',
             'custom_auth/static/src/js/reset_password/reset_password.js',
         ],
+        'web.assets_backend': [
+            'custom_auth/static/src/js/auth_redirect.js',
+            'custom_auth/static/src/js/login_override.js',
+        ],
     },
     'installable': True,
     'application': True,

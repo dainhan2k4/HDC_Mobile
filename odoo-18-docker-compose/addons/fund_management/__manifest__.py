@@ -47,20 +47,19 @@
     ],
     'assets': {
         'web.assets_frontend': [
-            'https://cdn.jsdelivr.net/npm/sweetalert2@11',
-            'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js',
-            'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
+
             'fund_management/static/src/css/steps.css',
             'fund_management/static/src/css/fund_widget.css',
+            'fund_management/static/src/css/fund_buy.css',
 
             'fund_management/static/src/xml/fund_templates.xml',
             'fund_management/static/src/js/fund/entry_fund.js',
             'fund_management/static/src/js/fund/fund_widget.js',
 
             'fund_management/static/src/js/fund/fund_buy/fund_buy.js',
-            'fund_management/static/src/js/fund/fund_buy/signature_utils.js',
             'fund_management/static/src/js/fund/fund_buy/fund_confirm.js',
             'fund_management/static/src/js/fund/fund_buy/fund_result.js',
+            'fund_management/static/src/js/fund/fund_buy/signature_sign.js',
 
             'fund_management/static/src/js/fund/fund_sell/fund_sell.js'
         ],

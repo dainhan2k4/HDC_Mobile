@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="stock_market_data_root" name="Stock Market" sequence="10">
+        <menuitem id="stock_market_Dashboard" name="Dashboard" sequence="1"/>
+        <menuitem id="stock_market_Dashboard_js" name="TOP 5 Nifty 50" action="action_dashboard" sequence="2"/>
+        <menuitem id="stock_market_Dashboard_all_js" name="All Components" action="action_dashboard_all" sequence="2"/>
+        <menuitem id="stock_market_top_50_watchlist" name="Watchlist" action="action_stock_data_watchlist_xml" sequence="3"/>
+        <menuitem id="stock_market_live_status" name="All Indices" action="action_all_indices" sequence="4"/>
+        <menuitem id="stock_market_live_data_root" name="Market Watch" sequence="5">
+            <menuitem id="stock_market_live_nse_market" name="NSE Market" action="action_nifty_totalmarket" sequence="2"/>
+        </menuitem>
+    </menuitem>
+
+</odoo>

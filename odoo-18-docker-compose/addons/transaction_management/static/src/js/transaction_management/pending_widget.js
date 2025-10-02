@@ -3,49 +3,57 @@ import { Component, useState, xml } from "@odoo/owl";
 
 export class PendingWidget extends Component {
     static template = xml`
-        <div class="bg-gray-50 text-gray-900">
-            <main class="max-w-7xl mx-auto p-6 space-y-8">
+        <div class="bg-light text-dark">
+            <main class="container py-4">
                 <!-- Tabs -->
-                <nav class="flex border-b border-gray-300 mb-8 flex-wrap">
-                    <a href="/transaction_management/pending" class="text-sm font-semibold text-blue-700 border-b-4 border-blue-700 pb-3 px-5 whitespace-nowrap" aria-current="page">Lệnh chờ xử lý</a>
-                    <a href="/transaction_management/order" class="text-sm font-normal text-gray-400 border-b-4 border-transparent pb-3 px-5 whitespace-nowrap hover:text-gray-600 hover:border-gray-300 transition">Lịch sử giao dịch</a>
-                    <a href="/transaction_management/periodic" class="text-sm font-normal text-gray-400 border-b-4 border-transparent pb-3 px-5 whitespace-nowrap hover:text-gray-600 hover:border-gray-300 transition">Quản lý định kỳ</a>
-                </nav>
+                <ul class="nav nav-tabs mb-4">
+                    <li class="nav-item">
+                        <a href="/transaction_management/pending" class="nav-link active fw-semibold">Lệnh chờ xử lý</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/transaction_management/order" class="nav-link">Lịch sử giao dịch</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/transaction_management/periodic" class="nav-link">Quản lý định kỳ</a>
+                    </li>
+                </ul>
 
                 <!-- Section header -->
-                <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <h2 class="text-xl sm:text-2xl font-semibold text-gray-900" id="section-title">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+                    <h2 class="h4 fw-bold mb-0">
                         Lệnh chờ <t t-esc="state.currentFilter === 'buy' ? 'mua' : state.currentFilter === 'sell' ? 'bán' : 'chuyển đổi'"/>
                     </h2>
-                    <p class="text-sm sm:text-base text-gray-600">
-                        Tổng số lệnh: <span class="font-semibold" id="total-orders"><t t-esc="state.filteredOrders.length"/></span>
+                    <p class="mb-0 text-secondary">
+                        Tổng số lệnh: <span class="fw-semibold"><t t-esc="state.filteredOrders.length"/></span>
                     </p>
                 </div>
 
                 <!-- Buttons group -->
-                <div class="mb-8 flex flex-wrap gap-3">
-                    <button t-att-data-filter="'buy'" 
-                            t-attf-class="text-sm font-semibold rounded-lg px-5 py-2 shadow-md transition filter-btn #{state.currentFilter === 'buy' ? 'bg-blue-700 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}"
+                <div class="mb-4 d-flex flex-wrap gap-2">
+                    <button t-att-data-filter="'buy'"
+                            t-attf-class="btn btn-sm fw-semibold rounded-pill px-4 py-2 shadow-sm filter-btn #{state.currentFilter === 'buy' ? 'text-white' : ''}"
+                            t-att-style="state.currentFilter === 'buy' ? 'background-color:#f97316;border-color:#f97316' : 'color:#f97316;border-color:#f97316'"
                             t-on-click="() => this.filterOrders('buy')" type="button">
                         Lệnh chờ mua
                     </button>
-                    <button t-att-data-filter="'sell'" 
-                            t-attf-class="text-sm font-semibold rounded-lg px-5 py-2 shadow-md transition filter-btn #{state.currentFilter === 'sell' ? 'bg-blue-700 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}"
+                    <button t-att-data-filter="'sell'"
+                            t-attf-class="btn btn-sm fw-semibold rounded-pill px-4 py-2 shadow-sm filter-btn #{state.currentFilter === 'sell' ? 'text-white' : ''}"
+                            t-att-style="state.currentFilter === 'sell' ? 'background-color:#f97316;border-color:#f97316' : 'color:#f97316;border-color:#f97316'"
                             t-on-click="() => this.filterOrders('sell')" type="button">
                         Lệnh chờ bán
                     </button>
-                    <button t-att-data-filter="'exchange'" 
-                            t-attf-class="text-sm font-semibold rounded-lg px-5 py-2 shadow-md transition filter-btn #{state.currentFilter === 'exchange' ? 'bg-blue-700 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}"
+                    <button t-att-data-filter="'exchange'"
+                            t-attf-class="btn btn-sm fw-semibold rounded-pill px-4 py-2 shadow-sm filter-btn #{state.currentFilter === 'exchange' ? 'text-white' : ''}"
+                            t-att-style="state.currentFilter === 'exchange' ? 'background-color:#f97316;border-color:#f97316' : 'color:#f97316;border-color:#f97316'"
                             t-on-click="() => this.filterOrders('exchange')" type="button">
                         Lệnh chờ chuyển đổi
                     </button>
-                    <button id="create-order-btn" 
-                            class="ml-auto bg-yellow-400 hover:bg-yellow-300 text-sm font-semibold rounded-lg px-5 py-2 text-gray-900 flex items-center gap-2 shadow-md transition" 
-                            type="button" 
+                    <button id="create-order-btn"
+                            class="ms-auto btn btn-sm fw-semibold rounded-pill px-4 py-2 d-flex align-items-center gap-2 shadow-sm"
+                            style="background-color:#f97316;border-color:#f97316;color:white"
+                            type="button"
                             t-on-click="() => this.createOrder()">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                        </svg>
+                        <i class="fas fa-plus"></i>
                         <span id="create-btn-text">
                             <t t-esc="state.currentFilter === 'buy' ? 'Tạo lệnh mua' : state.currentFilter === 'sell' ? 'Tạo lệnh bán' : 'Tạo lệnh chuyển đổi'"/>
                         </span>
@@ -53,103 +61,83 @@ export class PendingWidget extends Component {
                 </div>
 
                 <!-- Table container -->
-                <div class="border border-gray-300 rounded-lg shadow-sm bg-white overflow-visible">
-                    <table class="w-full text-[9px] sm:text-xs text-left text-gray-700 table-fixed">
-                        <thead class="bg-blue-500 text-white font-semibold">
-                            <tr>
-                                <th scope="col" class="px-2 py-2 border-r border-blue-600 w-[10%] truncate">Số tài khoản</th>
-                                <th scope="col" class="px-2 py-2 border-r border-blue-600 w-[15%] truncate">Quỹ - Chương trình</th>
-                                <th scope="col" class="px-2 py-2 border-r border-blue-600 w-[15%] truncate">Ngày đặt lệnh</th>
-                                <th scope="col" class="px-2 py-2 border-r border-blue-600 w-[15%] truncate">Mã lệnh</th>
-                                <th scope="col" class="px-2 py-2 border-r border-blue-600 w-[10%] truncate">NAV kỳ trước</th>
-                                <th scope="col" class="px-2 py-2 border-r border-blue-600 w-[10%] truncate" id="amount-column">
-                                    <t t-if="state.currentFilter === 'buy'">Số tiền mua</t>
-                                    <t t-elif="state.currentFilter === 'sell' or state.currentFilter === 'exchange'">Giá trị ước tính</t>
-                                    <t t-else="">Số tiền</t>
-                                </th>
-                                <th scope="col" class="px-2 py-2 border-r border-blue-600 w-[10%] truncate">Phiên giao dịch</th>
-                                <th scope="col" class="px-2 py-2 border-r border-blue-600 w-[10%] truncate">Trạng thái</th>
-                                <th scope="col" class="px-2 py-2 w-[5%]"></th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200" id="table-body">
-                            <t t-if="state.filteredOrders and state.filteredOrders.length > 0">
-                                <t t-foreach="state.filteredOrders" t-as="order" t-key="order.order_code">
-                                    <tr class="hover:bg-gray-50 transition order-row">
-                                        <td class="px-2 py-1 border-r border-gray-300 font-mono truncate">
-                                            <t t-esc="order.account_number"/>
-                                        </td>
-                                        <td class="px-2 py-1 border-r border-gray-300 text-[10px] font-semibold text-blue-900 hover:underline cursor-pointer truncate">
-                                            <t t-esc="order.fund_name"/>
-                                            <t t-if="order.fund_ticker"> (<t t-esc="order.fund_ticker"/>)</t>
-                                        </td>
-                                        <td class="px-2 py-1 border-r border-gray-300 truncate">
-                                            <t t-esc="order.order_date"/>
-                                        </td>
-                                        <td class="px-2 py-1 border-r border-gray-300 font-mono truncate">
-                                            <t t-esc="order.order_code"/>
-                                        </td>
-                                        <td class="px-2 py-1 border-r border-gray-300 truncate">
-                                            <t t-esc="order.nav"/>
-                                        </td>
-                                        <td class="px-2 py-1 border-r border-gray-300 truncate">
-                                            <t t-if="order.transaction_type === 'Bán' or order.transaction_type === 'Hoán đổi'">
+                <div class="card shadow-sm rounded-4 border-0 mb-4">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle mb-0 text-center">
+                            <thead class="custom-red-bg" style="background-color:#f97316;color:white">
+                                <tr>
+                                    <th>Số tài khoản</th>
+                                    <th>Quỹ - Chương trình</th>
+                                    <th>Ngày đặt lệnh</th>
+                                    <th>Mã lệnh</th>
+                                    <th>NAV kỳ trước</th>
+                                    <th>Số lượng (CCQ)</th>
+                                    <th id="amount-column">
+                                        <t t-if="state.currentFilter === 'buy'">Số tiền mua</t>
+                                        <t t-elif="state.currentFilter === 'sell' or state.currentFilter === 'exchange'">Giá trị ước tính</t>
+                                        <t t-else="">Số tiền</t>
+                                    </th>
+                                    <th>Phiên giao dịch</th>
+                                    <th>Trạng thái</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="state.filteredOrders and state.filteredOrders.length > 0">
+                                    <t t-foreach="state.filteredOrders" t-as="order" t-key="order.order_code">
+                                        <tr>
+                                            <td><t t-esc="order.account_number"/></td>
+                                            <td class="fw-semibold" style="color:#f97316"><t t-esc="order.fund_name"/><t t-if="order.fund_ticker"> (<t t-esc="order.fund_ticker"/>)</t></td>
+                                            <td><t t-esc="order.order_date"/></td>
+                                            <td class="font-monospace"><t t-esc="order.order_code"/></td>
+                                            <td><t t-esc="order.nav"/></td>
+                                            <td class="fw-semibold">
+                                                <t t-esc="order.units || 0"/> CCQ
+                                            </td>
+                                            <td>
                                                 <t t-esc="order.amount"/><t t-esc="order.currency"/>
-                                            </t>
-                                            <t t-elif="order.transaction_type === 'Mua'">
-                                                <t t-esc="order.amount"/><t t-esc="order.currency"/>
-                                            </t>
-                                            <t t-else="">
-                                                <t t-esc="order.amount"/><t t-esc="order.currency"/>
-                                            </t>
-                                            <t t-if="state.currentFilter === 'sell' or state.currentFilter === 'exchange'">
-                                                <br/><span class="text-[8px] text-gray-500">(<t t-esc="order.units"/> CCQ)</span>
-                                            </t>
-                                        </td>
-                                        <td class="px-2 py-1 border-r border-gray-300 truncate">
-                                            <t t-esc="order.session_date"/>
-                                        </td>
-                                        <td class="px-2 py-1 border-r border-gray-300">
-                                            <div class="flex items-center gap-1 text-[10px] font-semibold text-yellow-600 truncate">
-                                                <span class="w-2.5 h-2.5 rounded-full bg-yellow-400 inline-block"></span>
-                                                <t t-esc="order.status"/>
-                                            </div>
-                                            <div class="text-[8px] text-gray-400 ml-6 -mt-1 truncate">
-                                                <t t-esc="order.status_detail"/>
-                                            </div>
-                                        </td>
-                                        <td class="px-2 py-1 text-center text-gray-400 cursor-pointer">
-                                            <div class="relative">
-                                                <button t-on-click="() => this.state.showMenu = order.order_code" class="p-1"><i class="fas fa-ellipsis-h"></i></button>
-                                                <div t-if="this.state.showMenu === order.order_code" class="absolute right-0 bg-white border rounded shadow z-10">
-                                                    <button t-on-click="() => { this.openDetailPopup(order); this.state.showMenu = null; }" class="block w-full text-center px-4 py-2 whitespace-nowrap font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition rounded-lg text-nowrap">Thông tin giao dịch</button>
+                                            </td>
+                                            <td><t t-esc="order.session_date"/></td>
+                                            <td>
+                                                <div class="d-flex flex-column align-items-center">
+                                                    <span t-attf-class="badge rounded-pill px-2 py-1 fw-semibold mb-1 #{ this.badgeClass(order.status) }">
+                                                        <t t-esc="order.status"/>
+                                                    </span>
                                                 </div>
-                                            </div>
+                                            </td>
+                                            <td>
+                                                <div class="dropdown">
+                                                    <button class="btn btn-link text-secondary p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <i class="fas fa-ellipsis-h" style="color:#f97316"></i>
+                                                    </button>
+                                                     <ul class="dropdown-menu">
+                                                         <li><a class="dropdown-item" href="#" t-on-click="() => { this.openDetailPopup(order); }">Thông tin giao dịch</a></li>
+                                                     </ul>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </t>
+                                <t t-if="!state.filteredOrders or state.filteredOrders.length === 0">
+                                    <tr>
+                                        <td colspan="9" class="text-center text-muted py-4">
+                                            Không có dữ liệu lệnh chờ xử lý
                                         </td>
                                     </tr>
                                 </t>
-                            </t>
-                            <t t-if="!state.filteredOrders or state.filteredOrders.length === 0">
-                                <tr class="bg-white">
-                                    <td colspan="9" class="px-2 py-4 text-center text-gray-500">
-                                        Không có dữ liệu lệnh chờ xử lý
-                                    </td>
-                                </tr>
-                            </t>
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- Pagination and info -->
-                <div class="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs sm:text-sm text-gray-600 gap-4">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 small text-secondary">
                     <div>
                         Hiện 1 - <t t-esc="state.filteredOrders.length"/> trong số <span id="pagination-total"><t t-esc="state.filteredOrders.length"/></span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <label for="perPage" class="whitespace-nowrap font-medium">Số lượng 1 trang:</label>
-                        <select id="perPage" name="perPage" 
-                                class="border border-gray-300 rounded px-3 py-1 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                t-on-change="(ev) => this.changePageSize(ev.target.value)">
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="perPage" class="form-label mb-0">Số lượng 1 trang:</label>
+                        <select id="perPage" name="perPage" class="form-select form-select-sm w-auto rounded-pill" t-on-change="(ev) => this.changePageSize(ev.target.value)">
                             <option value="10" t-att-selected="state.pageSize == 10">10</option>
                             <option value="20" t-att-selected="state.pageSize == 20">20</option>
                             <option value="50" t-att-selected="state.pageSize == 50">50</option>
@@ -159,102 +147,117 @@ export class PendingWidget extends Component {
             </main>
         </div>
         <t t-if="state.showDetailPopup">
-            <div class="fixed inset-0 z-50 flex" style="justify-content: flex-end;">
-                <div class="bg-white w-full max-w-xl h-full shadow-2xl border-l border-blue-200 p-0 flex flex-col animate-slide-in-right fixed right-0 top-0 rounded-l-2xl">
-                    <div class="flex items-center justify-between px-6 py-4 bg-blue-600 rounded-tl-2xl">
-                        <h2 class="text-lg font-bold text-white tracking-wide">Thông tin giao dịch</h2>
-                        <button t-on-click="() => this.state.showDetailPopup = false" class="text-white hover:text-yellow-300 text-2xl transition"><i class="fas fa-times"></i></button>
-                    </div>
-                    <div class="flex-1 overflow-y-auto px-6 py-4">
-                        <t t-if="state.selectedOrder.transaction_type === 'Bán'">
-                            <!-- Lệnh chờ bán -->
-                            <div class="mb-6 pb-4 border-b border-gray-200">
-                                <div class="font-semibold text-base mb-3 text-blue-700">Thông tin giao dịch</div>
-                                <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-[15px]">
-                                    <div class="text-gray-500">Quỹ đầu tư:</div><div class="font-medium text-gray-900"><t t-esc="state.selectedOrder.fund_full_name || state.selectedOrder.fund_name"/></div>
-                                    <div class="text-gray-500">Chương trình:</div><div class="font-medium text-gray-900"><t t-esc="state.selectedOrder.fund_name"/></div>
-                                    <div class="text-gray-500">Loại lệnh:</div><div class="font-medium text-gray-900">Lệnh bán</div>
-                                    <div class="text-gray-500">Ngày đặt lệnh:</div><div class="font-medium text-gray-900"><t t-esc="state.selectedOrder.order_date || state.selectedOrder.session_date"/></div>
-                                    <div class="text-gray-500">Phiên giao dịch:</div><div class="font-medium text-gray-900"><t t-esc="state.selectedOrder.session_date"/></div>
-                                    <div class="text-gray-500">Số CCQ bán:</div><div class="font-medium text-blue-700"><t t-esc="state.selectedOrder.units"/></div>
+            <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.3);z-index:2000;">
+                <div class="modal-dialog modal-dialog-end modal-lg modal-dialog-scrollable" style="z-index:2001;">
+                    <div class="modal-content rounded-4 shadow">
+                        <div class="modal-header text-white rounded-top-4" style="background-color:#f97316">
+                            <h2 class="modal-title h5 fw-bold mb-0">Thông tin giao dịch</h2>
+                            <button type="button" class="btn-close btn-close-white" t-on-click="() => this.state.showDetailPopup = false"></button>
+                        </div>
+                        <div class="modal-body">
+                            <t t-if="state.selectedOrder.transaction_type === 'sell'">
+                                <!-- Lệnh chờ bán -->
+                                <div class="mb-4 pb-3 border-bottom">
+                                    <div class="fw-semibold mb-2" style="color:#f97316">Thông tin giao dịch</div>
+                                    <div class="row g-2 small">
+                                        <div class="col-4 text-secondary">Quỹ đầu tư:</div><div class="col-8 fw-medium"><t t-esc="state.selectedOrder.fund_full_name || state.selectedOrder.fund_name"/></div>
+                                        <div class="col-4 text-secondary">Chương trình:</div><div class="col-8 fw-medium"><t t-esc="state.selectedOrder.fund_name"/></div>
+                                        <div class="col-4 text-secondary">Loại lệnh:</div><div class="col-8 fw-medium">Lệnh bán</div>
+                                        <div class="col-4 text-secondary">Ngày đặt lệnh:</div><div class="col-8 fw-medium"><t t-esc="state.selectedOrder.order_date || state.selectedOrder.session_date"/></div>
+                                        <div class="col-4 text-secondary">Phiên giao dịch:</div><div class="col-8 fw-medium"><t t-esc="state.selectedOrder.session_date"/></div>
+                                        <div class="col-4 text-secondary">Số CCQ bán:</div><div class="col-8 fw-bold text-danger"><t t-esc="state.selectedOrder.units"/></div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="mb-2">
-                                <div class="font-semibold text-base mb-3 text-blue-700">Chi tiết lệnh bán</div>
-                                <table class="w-full text-[15px] border border-gray-200 rounded-lg overflow-hidden">
-                                    <thead class="bg-gray-100">
-                                        <tr>
-                                            <th class="px-3 py-2 font-semibold text-gray-700">Ngày mua</th>
-                                            <th class="px-3 py-2 font-semibold text-gray-700">TG nắm giữ</th>
-                                            <th class="px-3 py-2 font-semibold text-gray-700">SL bán</th>
-                                            <th class="px-3 py-2 font-semibold text-gray-700">Phí</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <t t-if="state.selectedOrder.buy_date">
+                                <div class="mb-2">
+                                    <div class="fw-semibold mb-2" style="color:#f97316">Chi tiết lệnh bán</div>
+                                    <table class="table table-bordered table-sm mb-0">
+                                        <thead class="table-light">
                                             <tr>
-                                                <td class="px-3 py-2 text-center"><t t-esc="state.selectedOrder.buy_date"/></td>
-                                                <td class="px-3 py-2 text-center"><t t-esc="state.selectedOrder.holding_days"/> ngày</td>
-                                                <td class="px-3 py-2 text-center"><t t-esc="state.selectedOrder.units"/></td>
-                                                <td class="px-3 py-2 text-center"><t t-esc="this.formatCurrency(state.selectedOrder.sell_fee)"/></td>
+                                                <th>Ngày mua</th>
+                                                <th>TG nắm giữ</th>
+                                                <th>SL bán</th>
+                                                <th>Phí</th>
                                             </tr>
-                                        </t>
-                                        <t t-if="!state.selectedOrder.buy_date">
-                                            <tr><td colspan="4" class="px-3 py-2 text-center text-gray-400">Không có dữ liệu</td></tr>
-                                        </t>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </t>
-                        <t t-else="">
-                            <!-- Lệnh mua, chuyển đổi ... giữ nguyên như cũ -->
-                            <!-- Thông tin đầu tư -->
-                            <div class="mb-6 pb-4 border-b border-gray-200">
-                                <div class="font-semibold text-base mb-3 text-blue-700">Thông tin đầu tư</div>
-                                <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-[15px]">
-                                    <div class="text-gray-500">Quỹ đầu tư:</div><div class="font-medium text-gray-900"><t t-esc="state.selectedOrder.fund_full_name || state.selectedOrder.fund_name"/></div>
-                                    <div class="text-gray-500">Chương trình:</div><div class="font-medium text-gray-900"><t t-esc="state.selectedOrder.fund_name"/></div>
-                                    <div class="text-gray-500">Loại lệnh:</div><div class="font-medium text-gray-900"><t t-esc="state.selectedOrder.transaction_type"/></div>
-                                    <div class="text-gray-500">Ngày đặt lệnh:</div><div class="font-medium text-gray-900"><t t-esc="state.selectedOrder.order_date || state.selectedOrder.session_date"/></div>
-                                    <div class="text-gray-500">Phiên giao dịch:</div><div class="font-medium text-gray-900"><t t-esc="state.selectedOrder.session_date"/></div>
-                                    <div class="text-gray-500">Số tiền mua:</div><div class="font-medium text-blue-700"><t t-esc="state.selectedOrder.amount"/> <t t-esc="state.selectedOrder.currency || 'đ'"/></div>
+                                        </thead>
+                                        <tbody>
+                                            <t t-if="state.selectedOrder.buy_date">
+                                                <tr>
+                                                    <td class="text-center"><t t-esc="state.selectedOrder.buy_date"/></td>
+                                                    <td class="text-center"><t t-esc="state.selectedOrder.holding_days"/> ngày</td>
+                                                    <td class="text-center"><t t-esc="state.selectedOrder.units"/></td>
+                                                    <td class="text-center"><t t-esc="this.formatCurrency(state.selectedOrder.sell_fee)"/></td>
+                                                </tr>
+                                            </t>
+                                            <t t-if="!state.selectedOrder.buy_date">
+                                                <tr><td colspan="4" class="text-center text-muted">Không có dữ liệu</td></tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
                                 </div>
-                            </div>
-                            <!-- Thông tin chuyển khoản -->
-                            <div class="mb-6 pb-4 border-b border-gray-200">
-                                <div class="font-semibold text-base mb-3 text-blue-700">Thông tin chuyển khoản</div>
-                                <div class="text-gray-700">Bạn đang chọn phương thức chuyển khoản qua ngân hàng.</div>
-                            </div>
-                            <!-- Tài khoản thụ hưởng -->
-                            <div class="mb-2">
-                                <div class="font-semibold text-base mb-3 text-blue-700">Tài khoản thụ hưởng</div>
-                                <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-[15px]">
-                                    <div class="text-gray-500">Tên thụ hưởng:</div>
-                                    <div class="flex items-center gap-2 font-medium text-gray-900">
-                                        <t t-esc="state.selectedOrder.fund_name"/>
-                                        <button class="ml-1 px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-600 hover:text-white transition" t-on-click="() => this.copyToClipboard(state.selectedOrder.fund_name)"><i class="fas fa-copy"></i> Copy</button>
-                                    </div>
-                                    <div class="text-gray-500">Số tài khoản:</div>
-                                    <div class="flex items-center gap-2 font-medium text-gray-900">
-                                        666666666
-                                        <button class="ml-1 px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-600 hover:text-white transition" t-on-click="() => this.copyToClipboard('666666666')"><i class="fas fa-copy"></i> Copy</button>
-                                    </div>
-                                    <div class="text-gray-500">Tên ngân hàng:</div>
-                                    <div class="flex items-center gap-2 font-medium text-gray-900">
-                                        NH Standard Chartered VN
-                                        <button class="ml-1 px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-600 hover:text-white transition" t-on-click="() => this.copyToClipboard('NH Standard Chartered VN')"><i class="fas fa-copy"></i> Copy</button>
-                                    </div>
-                                    <div class="text-gray-500">Nội dung:</div>
-                                    <div class="flex items-center gap-2 font-medium text-gray-900">
-                                        <t t-esc="state.selectedOrder.order_code"/> - <t t-esc="state.selectedOrder.fund_name"/>
-                                        <button class="ml-1 px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-600 hover:text-white transition" t-on-click="() => this.copyToClipboard(state.selectedOrder.order_code + ' - ' + state.selectedOrder.fund_name)"><i class="fas fa-copy"></i> Copy</button>
+                            </t>
+                            <t t-else="">
+                                <!-- Lệnh mua, chuyển đổi ... giữ nguyên như cũ -->
+                                <!-- Thông tin đầu tư -->
+                                <div class="mb-4 pb-3 border-bottom">
+                                    <div class="fw-semibold mb-2 text-danger">Thông tin đầu tư</div>
+                                    <div class="row g-2 small">
+                                        <div class="col-4 text-secondary">Quỹ đầu tư:</div><div class="col-8 fw-medium"><t t-esc="state.selectedOrder.fund_full_name || state.selectedOrder.fund_name"/></div>
+                                        <div class="col-4 text-secondary">Chương trình:</div><div class="col-8 fw-medium"><t t-esc="state.selectedOrder.fund_name"/></div>
+                                        <div class="col-4 text-secondary">Loại lệnh:</div>
+                                        <div class="col-8 fw-medium">
+                                            <t t-if="state.selectedOrder.transaction_type === 'buy'">Lệnh mua</t>
+                                            <t t-elif="state.selectedOrder.transaction_type === 'exchange'">Lệnh hoán đổi</t>
+                                            <t t-else=""><t t-esc="state.selectedOrder.transaction_type"/></t>
+                                        </div>
+                                        <div class="col-4 text-secondary">Ngày đặt lệnh:</div><div class="col-8 fw-medium"><t t-esc="state.selectedOrder.order_date || state.selectedOrder.session_date"/></div>
+                                        <div class="col-4 text-secondary">Phiên giao dịch:</div><div class="col-8 fw-medium"><t t-esc="state.selectedOrder.session_date"/></div>
+                                        <div class="col-4 text-secondary">Số lượng (CCQ):</div><div class="col-8 fw-bold text-primary"><t t-esc="state.selectedOrder.units || 0"/> CCQ</div>
+                                        <div class="col-4 text-secondary">Số tiền mua:</div><div class="col-8 fw-bold text-danger"><t t-esc="state.selectedOrder.amount"/> <t t-esc="state.selectedOrder.currency || 'đ'"/></div>
                                     </div>
                                 </div>
-                            </div>
-                        </t>
+                                <!-- Thông tin chuyển khoản -->
+                                <div class="mb-4 pb-3 border-bottom">
+                                    <div class="fw-semibold mb-2 text-danger">Thông tin chuyển khoản</div>
+                                    <div class="text-secondary small">Bạn đang chọn phương thức chuyển khoản qua ngân hàng.</div>
+                                </div>
+                                <!-- Tài khoản thụ hưởng -->
+                                <div class="mb-2">
+                                    <div class="fw-semibold mb-2 text-danger">Tài khoản thụ hưởng</div>
+                                    <div class="row g-2 small">
+                                        <div class="col-4 text-secondary">Tên thụ hưởng:</div>
+                                        <div class="col-8 d-flex align-items-center gap-2 fw-medium">
+                                            <t t-esc="state.selectedOrder.fund_name"/>
+                                            <button class="btn btn-outline-danger btn-sm py-0 px-2" t-on-click="() => this.copyToClipboard(state.selectedOrder.fund_name)"><i class="fas fa-copy"></i> Copy</button>
+                                        </div>
+                                        <div class="col-4 text-secondary">Số tài khoản:</div>
+                                        <div class="col-8 d-flex align-items-center gap-2 fw-medium">
+                                            666666666
+                                            <button class="btn btn-outline-danger btn-sm py-0 px-2" t-on-click="() => this.copyToClipboard('666666666')"><i class="fas fa-copy"></i> Copy</button>
+                                        </div>
+                                        <div class="col-4 text-secondary">Tên ngân hàng:</div>
+                                        <div class="col-8 d-flex align-items-center gap-2 fw-medium">
+                                            NH Standard Chartered VN
+                                            <button class="btn btn-outline-danger btn-sm py-0 px-2" t-on-click="() => this.copyToClipboard('NH Standard Chartered VN')"><i class="fas fa-copy"></i> Copy</button>
+                                        </div>
+                                        <div class="col-4 text-secondary">Nội dung:</div>
+                                        <div class="col-8 d-flex align-items-center gap-2 fw-medium">
+                                            <t t-esc="state.selectedOrder.order_code"/> - <t t-esc="state.selectedOrder.fund_name"/>
+                                            <button class="btn btn-outline-danger btn-sm py-0 px-2" t-on-click="() => this.copyToClipboard(state.selectedOrder.order_code + ' - ' + state.selectedOrder.fund_name)"><i class="fas fa-copy"></i> Copy</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <t t-if="state.selectedOrder.has_contract">
+                                    <div class="mb-2">
+                                        <div class="fw-semibold mb-2 text-danger">Hợp đồng</div>
+                                        <a t-att-href="state.selectedOrder.contract_url" target="_blank" class="btn btn-link btn-sm">Xem hợp đồng</a>
+                                        <a t-att-href="state.selectedOrder.contract_download_url" class="btn btn-link btn-sm">Tải về</a>
+                                    </div>
+                                </t>
+                            </t>
+                        </div>
                     </div>
                 </div>
-                <div class="flex-1" t-on-click="() => this.state.showDetailPopup = false"></div>
+                <div class="modal-backdrop fade show" style="z-index:1999;" t-on-click="() => this.state.showDetailPopup = false"></div>
             </div>
         </t>
     `;
@@ -273,19 +276,54 @@ export class PendingWidget extends Component {
         this.filterOrders('buy'); // Mặc định hiển thị lệnh mua
     }
 
+    badgeStyle(status) {
+        // Các trạng thái dùng cam #f97316
+        const orangeStatuses = ['pending', 'cancelled', 'Chờ khớp lệnh', 'Đang chờ'];
+        if (orangeStatuses.includes(status)) {
+            return 'background-color:#f97316;color:#fff';
+        }
+        // Mặc định giữ nguyên màu chữ tối để tương phản với các bg-* mặc định
+        return '';
+    }
+
+    badgeClass(status) {
+        // Chuẩn hóa status về chữ thường để map dễ hơn
+        const normalized = (status || '').toString().trim().toLowerCase();
+        // Map trạng thái -> màu Bootstrap hợp lý
+        switch (normalized) {
+            case 'pending':
+            case 'chờ khớp lệnh':
+            case 'đang chờ':
+                return 'bg-warning text-dark';
+            case 'completed':
+            case 'hoàn tất':
+            case 'khớp thành công':
+                return 'bg-success text-white';
+            case 'cancelled':
+            case 'đã hủy':
+                return 'bg-danger text-white';
+            case 'đang xử lý':
+            case 'processing':
+                return 'bg-info text-white';
+            case 'đã từ chối':
+            case 'rejected':
+                return 'bg-secondary text-white';
+            default:
+                return 'bg-secondary text-white';
+        }
+    }
+
     filterOrders(filterType) {
         this.state.currentFilter = filterType;
-        
         // Lọc dữ liệu theo loại giao dịch
         let filtered = this.state.orders;
         if (filterType === 'buy') {
-            filtered = this.state.orders.filter(order => order.transaction_type === 'Mua');
+            filtered = this.state.orders.filter(order => order.transaction_type === 'buy');
         } else if (filterType === 'sell') {
-            filtered = this.state.orders.filter(order => order.transaction_type === 'Bán');
+            filtered = this.state.orders.filter(order => order.transaction_type === 'sell');
         } else if (filterType === 'exchange') {
-            filtered = this.state.orders.filter(order => order.transaction_type === 'Hoán đổi');
+            filtered = this.state.orders.filter(order => order.transaction_type === 'exchange');
         }
-        
         this.state.filteredOrders = filtered;
     }
 

@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="fund_management_control.tax_settings_edit_form" name="Chỉnh sửa Cài đặt Thuế">
+        <t t-call="web.layout">
+            <t t-set="title">Chỉnh sửa Cài đặt Thuế</t>
+            <t t-call-assets="web.assets_backend" t-js="true"/>
+
+            <t t-set="head">
+                <!-- Dependencies -->
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+                <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+                
+                <style>
+                    /* General and Layout Styles */
+                    body {
+                        background-color: #f8f9fa;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    .app-container {
+                        display: flex;
+                        min-height: 100vh;
+                        position: relative;
+                    }
+                    .sidebar-container {
+                        position: sticky;
+                        top: 0;
+                        height: 100vh;
+                        z-index: 1000;
+                    }
+                    .sidebar-toggle {
+                        position: absolute; top: 15px; right: -15px; background: #fff;
+                        border: 2px solid #667eea; border-radius: 50%; width: 30px; height: 30px;
+                        display: flex; align-items: center; justify-content: center; cursor: pointer;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1001; transition: all 0.3s ease;
+                    }
+                    .sidebar-toggle:hover {
+                        background: #667eea;
+                        color: #fff !important;
+                        transform: scale(1.1);
+                    }
+                    .main-content {
+                        flex: 1;
+                        min-height: 100vh;
+                        overflow-x: auto;
+                    }
+
+                    /* Mobile Responsive Layout */
+                    @media (max-width: 768px) {
+                        .sidebar-container { position: fixed; z-index: 1050; }
+                        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1040; display: none; opacity: 0; transition: opacity 0.3s ease; }
+                        .sidebar-overlay.show { display: block; opacity: 1; }
+                        .mobile-header { display: flex !important; }
+                        .sidebar-toggle { display: none !important; }
+                    }
+                    @media (min-width: 769px) { .mobile-header { display: none !important; } }
+
+                    /* Form Specific Styles */
+                    .form-main-container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+                    .form-card { background: white; border-radius: 1rem; box-shadow: 0 8px 25px rgba(0,0,0,0.1); overflow: hidden; margin-bottom: 2rem; }
+                    .card-header-custom { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; text-align: center; }
+                    .form-section { padding: 2rem; border-bottom: 1px solid #f0f0f0; }
+                    .form-section:last-child { border-bottom: none; }
+                    .section-header { display: flex; align-items: center; margin-bottom: 1.5rem; color: #2c3e50; }
+                    .section-icon { width: 45px; height: 45px; border-radius: 12px; background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%); display: flex; align-items: center; justify-content: center; margin-right: 1rem; }
+                    .form-control, .form-select { border: 2px solid #e9ecef; border-radius: 0.75rem; padding: 0.875rem 1rem; font-size: 0.95rem; transition: all 0.3s ease; }
+                    .form-control:focus, .form-select:focus { border-color: #667eea; box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.15); }
+                    .toggle-switch-card { background: #f8f9fa; border-radius: 1rem; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer; border: 2px solid transparent; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+                    .toggle-switch-card:hover { background: #e9eafc; border-color: #667eea; transform: translateY(-2px); }
+                    .toggle-switch-card.active { background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%); border-color: #667eea; }
+                    .custom-switch { width: 50px; height: 28px; background: #dee2e6; border-radius: 14px; position: relative; display: inline-block; cursor: pointer; transition: all 0.3s ease; }
+                    .custom-switch.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+                    .switch-handle { width: 22px; height: 22px; background: white; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+                    .custom-switch.active .switch-handle { transform: translateX(22px); }
+                    .btn-primary-custom { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 0.75rem; padding: 0.875rem 2rem; font-weight: 600; transition: all 0.3s ease; }
+                    .btn-secondary-custom { background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 0.75rem; padding: 0.875rem 2rem; font-weight: 600; color: #495057; transition: all 0.3s ease; }
+                </style>
+            </t>
+
+            <div class="app-container">
+                <div class="sidebar-overlay" id="sidebarOverlay"></div>
+                <header class="mobile-header w-100 bg-white p-3 shadow-sm align-items-center justify-content-between position-fixed" style="top: 0; left: 0; z-index: 1060;">
+                    <h5 class="mb-0 fw-bold">Fund Management</h5>
+                    <button class="btn btn-link p-0" id="mobileSidebarToggle"><i class="fas fa-bars fa-lg text-primary"></i></button>
+                </header>
+
+                <div class="sidebar-container" id="sidebarContainer">
+                    <div class="sidebar-toggle d-none d-lg-flex" id="sidebarToggle"><i class="fas fa-chevron-left text-primary" id="toggleIcon"></i></div>
+                    <t t-call="fund_management_control.sidebar_template"/>
+                </div>
+
+                <main class="main-content">
+                    <div class="d-block d-md-none" style="height: 70px;"></div>
+                    <div class="form-main-container">
+                        <div class="form-card">
+                            <div class="card-header-custom">
+                                <h2 class="mb-2 h3"><i class="fas fa-edit me-2"></i>Chỉnh sửa Cài đặt Thuế</h2>
+                                <p class="mb-0 opacity-90">Cập nhật thông tin cho loại thuế đã có.</p>
+                            </div>
+
+                            <form action="/tax_settings/update" method="POST" id="taxSettingsEditForm" novalidate="1">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <input type="hidden" name="tax_id" t-att-value="tax.id"/>
+                                
+                                <div class="form-section">
+                                    <div class="section-header">
+                                        <div class="section-icon"><i class="fas fa-file-invoice-dollar fa-lg text-primary"></i></div>
+                                        <div><h5 class="mb-1">Thông tin chi tiết Thuế</h5><small class="text-muted">Cập nhật các thông tin định danh và tỉ lệ cho loại thuế.</small></div>
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-md-6"><label for="tax_name" class="form-label fw-semibold">Tên Thuế <span class="text-danger">*</span></label><input type="text" class="form-control" id="tax_name" name="tax_name" required="1" t-att-value="tax.tax_name"/></div>
+                                        <div class="col-md-6"><label for="tax_english_name" class="form-label fw-semibold">Tên Tiếng Anh <span class="text-danger">*</span></label><input type="text" class="form-control" id="tax_english_name" name="tax_english_name" required="1" t-att-value="tax.tax_english_name"/></div>
+                                        <div class="col-md-6"><label for="tax_code" class="form-label fw-semibold">Mã Thuế <span class="text-danger">*</span></label><input type="text" class="form-control" id="tax_code" name="tax_code" required="1" t-att-value="tax.tax_code"/></div>
+                                        <div class="col-md-6"><label for="rate" class="form-label fw-semibold">Tỉ lệ đóng <span class="text-danger">*</span></label><div class="input-group"><input type="number" step="0.01" class="form-control" id="rate" name="rate" placeholder="5.0" required="1" t-att-value="tax.rate"/><span class="input-group-text">%</span></div></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-section">
+                                    <div class="section-header"><div class="section-icon"><i class="fas fa-toggle-on fa-lg text-success"></i></div><div><h5 class="mb-1">Trạng thái hoạt động</h5><small class="text-muted">Bật hoặc tắt việc áp dụng loại thuế này.</small></div></div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div t-att-class="'toggle-switch-card ' + ('active' if tax.active else '')" onclick="toggleSwitchCard(this)">
+                                                <input type="checkbox" class="d-none" name="active" value="on" t-att-checked="tax.active and 'checked'"/>
+                                                <div t-att-class="'custom-switch mb-3 ' + ('active' if tax.active else '')"><div class="switch-handle"></div></div>
+                                                <h6 class="fw-bold mb-2">
+                                                    <i t-att-class="'fas fa-power-off me-2 ' + ('text-success' if tax.active else 'text-danger')"></i>
+                                                    <span class="status-text">
+                                                        <t t-if="tax.active">Đang Kích hoạt</t>
+                                                        <t t-else="">Chưa Kích hoạt</t>
+                                                    </span>
+                                                </h6>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-section">
+                                    <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                                        <a href="/tax_settings_list" class="btn btn-secondary-custom d-flex align-items-center justify-content-center"><i class="fas fa-times me-2"></i>Hủy bỏ</a>
+                                        <button type="submit" class="btn btn-primary-custom d-flex align-items-center justify-content-center"><i class="fas fa-save me-2"></i>Lưu thay đổi</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <script>
+                <![CDATA[
+                document.addEventListener('DOMContentLoaded', function() {
+                    const sidebarContainer = document.getElementById('sidebarContainer');
+                    const sidebar = sidebarContainer?.querySelector('.modern-sidebar');
+                    const sidebarToggle = document.getElementById('sidebarToggle');
+                    const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+                    const sidebarOverlay = document.getElementById('sidebarOverlay');
+                    const toggleIcon = document.getElementById('toggleIcon');
+
+                    if (sidebarToggle && sidebar && toggleIcon) {
+                        sidebarToggle.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            sidebar.classList.toggle('collapsed');
+                            const isCollapsed = sidebar.classList.contains('collapsed');
+                            toggleIcon.classList.toggle('fa-chevron-left', !isCollapsed);
+                            toggleIcon.classList.toggle('fa-chevron-right', isCollapsed);
+                        });
+                    }
+
+                    if (mobileSidebarToggle && sidebar && sidebarOverlay) {
+                        mobileSidebarToggle.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            sidebar.classList.add('show');
+                            sidebarOverlay.classList.add('show');
+                        });
+                        sidebarOverlay.addEventListener('click', function() {
+                            sidebar.classList.remove('show');
+                            sidebarOverlay.classList.remove('show');
+                        });
+                    }
+
+                    window.addEventListener('resize', function() {
+                        if (window.innerWidth > 768 && sidebar && sidebar.classList.contains('show')) {
+                            sidebar.classList.remove('show');
+                            sidebarOverlay.classList.remove('show');
+                        }
+                    });
+                    
+                    const form = document.getElementById('taxSettingsEditForm');
+                    if(form) {
+                        form.addEventListener('submit', function (event) {
+                            if (!form.checkValidity()) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                            }
+                            form.classList.add('was-validated');
+                        }, false);
+                    }
+                });
+
+                function toggleSwitchCard(cardElement) {
+                    const hiddenCheckbox = cardElement.querySelector('input[type="checkbox"]');
+                    const customSwitch = cardElement.querySelector('.custom-switch');
+                    const icon = cardElement.querySelector('i.fa-power-off');
+                    const text = cardElement.querySelector('.status-text');
+                    
+                    const isActive = cardElement.classList.toggle('active');
+                    
+                    customSwitch.classList.toggle('active', isActive);
+                    hiddenCheckbox.checked = isActive;
+                    
+                    icon.classList.toggle('text-success', isActive);
+                    icon.classList.toggle('text-danger', !isActive);
+                    text.textContent = isActive ? 'Đang Kích hoạt' : 'Chưa Kích hoạt';
+                }
+                ]]>
+            </script>
+        </t>
+    </template>
+</odoo>

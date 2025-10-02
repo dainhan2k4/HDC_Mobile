@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- SIDEBAR TEMPLATE đơn giản với JavaScript thuần -->
+    <template id="fund_management_control.sidebar_template" name="Fund Management Sidebar">
+        <style>
+            /* Custom CSS cho sidebar hiện đại */
+            .modern-sidebar {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+                transition: width 0.3s ease;
+                width: 280px;
+                position: relative;
+            }
+            
+            .modern-sidebar.collapsed {
+                width: 70px;
+            }
+            
+            .modern-sidebar.collapsed .sidebar-header .nav-item-text,
+            .modern-sidebar.collapsed .nav-item-text,
+            .modern-sidebar.collapsed .nav-main-item .fa-chevron-down,
+            .modern-sidebar.collapsed .submenu-container,
+            .modern-sidebar.collapsed .mt-auto {
+                display: none;
+            }
+
+            /* Sửa lỗi giao diện khi thu gọn */
+            .modern-sidebar.collapsed .sidebar-header {
+                background: rgba(255,255,255,0.1);
+                width: 45px;
+                height: 45px;
+                padding: 0;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 2rem auto;
+            }
+            
+            .modern-sidebar.collapsed .nav-main-item {
+                justify-content: center;
+                padding: 0;
+                width: 45px;
+                height: 45px;
+                margin: 0 auto 0.5rem auto;
+            }
+
+            .modern-sidebar.collapsed .sidebar-title i,
+            .modern-sidebar.collapsed .nav-main-item i {
+                margin: 0 !important;
+            }
+            
+            .modern-sidebar.collapsed .nav-main-item > span.d-flex {
+                justify-content: center;
+                width: 100%;
+            }
+
+            .modern-sidebar.collapsed .nav-main-item:hover {
+                transform: none;
+            }
+
+            .modern-sidebar.collapsed .nav-main-item.active {
+                box-shadow: none;
+            }
+            
+            .sidebar-header {
+                background: rgba(255,255,255,0.1);
+                border-radius: 15px;
+                margin-bottom: 2rem;
+                padding: 1rem;
+                transition: all 0.3s ease;
+            }
+            
+            .sidebar-title {
+                color: #fff;
+                font-weight: 700;
+                font-size: 1.5rem;
+                margin-bottom: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .nav-main-item {
+                color: rgba(255,255,255,0.8) !important;
+                padding: 0.85rem 1rem;
+                margin-bottom: 0.5rem;
+                border-radius: 12px;
+                font-weight: 500;
+                transition: all 0.3s ease;
+                text-decoration: none;
+                display: flex;
+                align-items: center;
+                cursor: pointer;
+                border: none;
+                background: transparent;
+                width: 100%;
+            }
+            
+            .nav-main-item:hover {
+                background: rgba(255,255,255,0.15);
+                color: #fff !important;
+                transform: translateX(5px);
+                text-decoration: none;
+            }
+            
+            .nav-main-item.active {
+                background: rgba(255,255,255,0.2);
+                color: #fff !important;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            }
+
+            .nav-main-item .fa-chevron-down {
+                transition: transform 0.3s ease;
+                font-size: 0.7rem;
+            }
+
+            .nav-main-item.expanded .fa-chevron-down {
+                transform: rotate(180deg);
+            }
+            
+            /* Submenu container */
+            .submenu-container {
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+            }
+            
+            .submenu-container.show {
+                max-height: 300px;
+            }
+            
+            .nav-sub-item {
+                color: rgba(255,255,255,0.7) !important;
+                padding: 0.6rem 0.75rem 0.6rem 2.5rem;
+                margin-bottom: 0.25rem;
+                border-radius: 8px;
+                font-size: 0.9rem;
+                transition: all 0.3s ease;
+                text-decoration: none;
+                display: block;
+                position: relative;
+            }
+            
+            .nav-sub-item:before {
+                content: '•';
+                position: absolute;
+                left: 1rem;
+                color: rgba(255,255,255,0.5);
+                font-size: 1.2rem;
+                line-height: 1.5rem;
+            }
+            
+            .nav-sub-item:hover {
+                background: rgba(255,255,255,0.1);
+                color: #fff !important;
+                padding-left: 2.75rem;
+                text-decoration: none;
+            }
+            
+            .nav-sub-item.active {
+                background: rgba(255,255,255,0.15);
+                color: #fff !important;
+                font-weight: 600;
+            }
+            
+            .nav-sub-item.active:before {
+                color: #fff;
+                content: '▶';
+                font-size: 0.8rem;
+                left: 1.1rem;
+            }
+            
+            /* Responsive adjustments */
+            @media (max-width: 768px) {
+                .modern-sidebar {
+                    min-height: auto;
+                    position: fixed;
+                    left: -280px;
+                    z-index: 1050;
+                    transition: left 0.3s ease;
+                }
+                
+                .modern-sidebar.show {
+                    left: 0;
+                }
+            }
+        </style>
+        
+        <div class="modern-sidebar d-flex flex-column p-3">
+            <!-- Header Section -->
+            <div class="sidebar-header text-center mb-4">
+                <h2 class="sidebar-title">
+                    <i class="fas fa-chart-line me-2"></i>
+                    <span class="nav-item-text">Dashboard</span>
+                </h2>
+            </div>
+            
+            <!-- Navigation Menu -->
+            <nav class="nav flex-column">
+                <!-- Người dùng -->
+                <a class="nav-main-item" href="#">
+                    <i class="fas fa-users fa-fw me-3"></i>
+                    <span class="nav-item-text">Người dùng</span>
+                </a>
+                
+                <!-- Sản phẩm Dropdown -->
+                <t t-set="product_pages" t-value="['fund_certificate', 'scheme_type', 'scheme', 'fee_schedule', 'sip_settings', 'tax_settings']" />
+                
+                <!-- Toggle button cho submenu -->
+                <button t-attf-class="nav-main-item justify-content-between #{'active expanded' if active_page in product_pages else ''}"
+                        type="button"
+                        onclick="toggleSubmenu('productSubmenu', this)"
+                        style="text-align: left;">
+                    <span class="d-flex align-items-center">
+                        <i class="fas fa-box fa-fw me-3"></i>
+                        <span class="nav-item-text">Sản phẩm</span>
+                    </span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                
+                <!-- Submenu container -->
+                <div t-attf-class="submenu-container #{'show' if active_page in product_pages else ''}" 
+                     id="productSubmenu">
+                    <div class="nav flex-column ps-3 mt-2">
+                        <a t-attf-class="nav-sub-item #{'active' if active_page == 'fund_certificate' else ''}" 
+                           href="/fund_certificate_list">
+                            Chứng chỉ quỹ
+                        </a>
+                        <a t-attf-class="nav-sub-item #{'active' if active_page == 'scheme_type' else ''}" 
+                           href="/scheme_type_list">
+                            Loại chương trình
+                        </a>
+                        <a t-attf-class="nav-sub-item #{'active' if active_page == 'scheme' else ''}" 
+                           href="/scheme_list">
+                            Chương trình
+                        </a>
+                        <a t-attf-class="nav-sub-item #{'active' if active_page == 'fee_schedule' else ''}" 
+                           href="/fee_schedule_list">
+                            Biểu phí
+                        </a>
+                        <a t-attf-class="nav-sub-item #{'active' if active_page == 'sip_settings' else ''}" 
+                           href="/sip_settings_list">
+                            Cài đặt SIP
+                        </a>
+                        <a t-attf-class="nav-sub-item #{'active' if active_page == 'tax_settings' else ''}" 
+                           href="/tax_settings_list">
+                            Cài đặt Thuế
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Dữ liệu Dropdown -->
+                <t t-set="data_pages" t-value="['holiday', 'bank', 'bank_branch', 'country', 'city', 'ward']" />
+
+                <button t-attf-class="nav-main-item justify-content-between #{'active expanded' if active_page in data_pages else ''}"
+                        type="button"
+                        onclick="toggleSubmenu('dataSubmenu', this)"
+                        style="text-align: left;">
+                    <span class="d-flex align-items-center">
+                        <i class="fas fa-database fa-fw me-3"></i>
+                        <span class="nav-item-text">Dữ liệu</span>
+                    </span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+
+                <div t-attf-class="submenu-container #{'show' if active_page in data_pages else ''}"
+                        id="dataSubmenu">
+                    <div class="nav flex-column ps-3 mt-2">
+                        <a t-attf-class="nav-sub-item #{'active' if active_page == 'holiday' else ''}"
+                            href="/holiday_list">
+                            Ngày lễ
+                        </a>
+                        <a t-attf-class="nav-sub-item #{'active' if active_page == 'bank' else ''}"
+                            href="/bank_list">
+                            Ngân hàng
+                        </a>
+                        <a t-attf-class="nav-sub-item #{'active' if active_page == 'bank_branch' else ''}"
+                            href="/bank_branch_list">
+                            Chi nhánh ngân hàng
+                        </a>
+                        <a t-attf-class="nav-sub-item #{'active' if active_page == 'country' else ''}"
+                            href="/country_list">
+                            Quốc gia
+                        </a>
+                        <a t-attf-class="nav-sub-item #{'active' if active_page == 'city' else ''}"
+                            href="/city_list">
+                            Thành phố (tỉnh)
+                        </a>
+                        <a t-attf-class="nav-sub-item #{'active' if active_page == 'ward' else ''}"
+                            href="/ward_list">
+                            Phường (xã)
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Other Main Navigation Items -->
+                <a class="nav-main-item" href="#">
+                    <i class="fas fa-cog fa-fw me-3"></i>
+                    <span class="nav-item-text">Cấu hình</span>
+                </a>
+                
+                <a class="nav-main-item" href="#">
+                    <i class="fas fa-tools fa-fw me-3"></i>
+                    <span class="nav-item-text">Tiện ích</span>
+                </a>
+            </nav>
+            
+            <!-- Footer Section -->
+            <div class="mt-auto pt-4 text-center">
+                <small class="text-white-50">Fund Management v2.0</small>
+            </div>
+        </div>
+
+        <script>
+            <![CDATA[
+            // Hàm toggle submenu đơn giản
+            function toggleSubmenu(submenuId, button) {
+                console.log('Toggle submenu:', submenuId);
+                
+                const submenu = document.getElementById(submenuId);
+                const chevron = button.querySelector('.fa-chevron-down');
+                
+                if (submenu && chevron) {
+                    if (submenu.classList.contains('show')) {
+                        // Thu gọn
+                        submenu.classList.remove('show');
+                        button.classList.remove('expanded');
+                        chevron.style.transform = 'rotate(0deg)';
+                        console.log('Submenu collapsed');
+                    } else {
+                        // Mở rộng
+                        submenu.classList.add('show');
+                        button.classList.add('expanded');
+                        chevron.style.transform = 'rotate(180deg)';
+                        console.log('Submenu expanded');
+                    }
+                }
+            }
+            ]]>
+        </script>
+    </template>
+</odoo>

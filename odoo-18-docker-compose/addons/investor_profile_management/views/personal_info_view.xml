@@ -27,10 +27,10 @@
                             <field name="id_issue_place" required="1" class="oe_required"/>
                         </group>
                     </group>
-                    <group string="ID Documents">
-                        <field name="id_front" widget="image" filename="id_front_filename" required="1" class="oe_required"/>
+                    <group string="ID Documents" col="2">
+                        <field name="id_front" widget="image" filename="id_front_filename" required="1" class="oe_required" options="{'preview_image': 'id_front'}" style="width: 200px; height: 120px;" string="CCCD Mặt Trước"/>
                         <field name="id_front_filename" invisible="1"/>
-                        <field name="id_back" widget="image" filename="id_back_filename" required="1" class="oe_required"/>
+                        <field name="id_back" widget="image" filename="id_back_filename" required="1" class="oe_required" options="{'preview_image': 'id_back'}" style="width: 200px; height: 120px;" string="CCCD Mặt Sau"/>
                         <field name="id_back_filename" invisible="1"/>
                     </group>
                 </sheet>

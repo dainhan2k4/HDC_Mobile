@@ -20,7 +20,7 @@
             <field name="description">Quỹ thu nhập đầu tư vào trái phiếu và tài sản ổn định</field>
             <field name="inception_date">2018-06-15</field>
             <field name="current_ytd">120000</field>
-            <field name="current_nav">130000</field>
+            <field name="current_nav">10000</field>
             <field name="investment_type">Income</field>
             <field name="is_shariah">True</field>
             <field name="ytd_history">{"2019": 3.1, "2020": 3.5, "2021": 4.0, "2022": 4.1}</field>

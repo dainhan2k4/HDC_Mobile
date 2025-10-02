@@ -40,7 +40,7 @@ async function initFundSellPage() {
       if (selected) {
         unitsDisplay.textContent = selected.units.toLocaleString('vi-VN');
         amountDisplay.textContent = Number(selected.amount).toLocaleString('vi-VN') + 'đ';
-        navDisplay.textContent = Number(selected.current_nav).toLocaleString('vi-VN') + 'đ';
+        navDisplay.textContent = Number(selected.current_nav).toLocaleString('vi-VN') + 'đ'; // Giữ lại cho hiển thị, nhưng không dùng để tính toán
       } else {
         unitsDisplay.textContent = '--';
         amountDisplay.textContent = '--';
@@ -90,7 +90,9 @@ function updateSellSummary(fundData, fundSelect, amountInput) {
       return;
     }
 
-    const estimated = quantity * selected.current_nav;
+    // Làm tròn current_nav cho bội số 50 (giữ lại cho hiển thị, nhưng không dùng để tính toán)
+    const navRounded = Math.round(selected.current_nav / 50) * 50;
+    const estimated = quantity * navRounded;
 
     estimatedValueDisplay.textContent = estimated.toLocaleString('vi-VN') + 'đ';
     fundNameDisplay.textContent = selected.fund_name;
@@ -119,8 +121,8 @@ function handleFundSellConfirm(fundData, fundSelect, amountInput, confirmButtonI
       fund_name: selected.fund_name,
       fund_ticker: selected.fund_ticker,
       quantity: quantity,
-      current_nav: selected.current_nav,
-      estimated_value: quantity * selected.current_nav,
+      current_nav: selected.current_nav, // Giữ lại cho hiển thị, nhưng không dùng để tính toán
+      estimated_value: quantity * navRounded,
       investment_id: selected.id,
       original_amount: selected.amount,
       original_units: selected.units
@@ -145,7 +147,7 @@ function initFundSellConfirmPage() {
   document.getElementById('sell-confirm-fund-name').textContent = data.fund_name;
   document.getElementById('sell-confirm-fund-ticker').textContent = data.fund_ticker;
   document.getElementById('sell-confirm-quantity').textContent = formatNumber(data.quantity);
-  document.getElementById('sell-confirm-nav').textContent = formatCurrency(data.current_nav);
+  document.getElementById('sell-confirm-nav').textContent = formatCurrency(data.current_nav); // Giữ lại cho hiển thị, nhưng không dùng để tính toán
   document.getElementById('sell-confirm-value').textContent = formatCurrency(data.estimated_value);
   document.getElementById('sell-confirm-estimated-value').textContent = formatCurrency(data.estimated_value);
   document.getElementById('sell-confirm-original-units').textContent = formatNumber(data.original_units);

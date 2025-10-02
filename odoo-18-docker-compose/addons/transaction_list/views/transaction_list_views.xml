@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Root Menu (được nạp trước để các menu con tham chiếu) -->
+  <menuitem id="menu_transaction_list_root"
+            name="Transaction List"
+            sequence="10"/>
+  <!-- Portfolio Transaction List View -->
+  <record id="view_portfolio_transaction_tree" model="ir.ui.view">
+    <field name="name">portfolio.transaction.list</field>
+    <field name="model">portfolio.transaction</field>
+    <field name="arch" type="xml">
+      <list string="Transaction List">
+        <field name="name"/>
+        <field name="user_id"/>
+        <field name="fund_id"/>
+        <field name="transaction_type"/>
+        <field name="term_months"/>
+        <field name="interest_rate"/>
+        <field name="units"/>
+        <field name="price" widget="monetary"/>
+        <field name="amount"/>
+        <field name="fee" widget="monetary"/>
+        <field name="currency_id"/>
+        <field name="status"/>
+        <field name="investment_type"/>
+        <field name="transaction_date"/>
+        <field name="created_at"/>
+        <!-- Add matching fields with visibility conditions -->
+        <field name="matched_units" optional="show" 
+               invisible="[('transaction_type', 'not in', ['buy', 'sell', 'purchase'])]"/>
+        <field name="remaining_units" optional="show"
+               invisible="[('transaction_type', 'not in', ['buy', 'sell', 'purchase'])]"/>
+        <field name="is_matched" optional="show"
+               invisible="[('transaction_type', 'not in', ['buy', 'sell', 'purchase'])]"/>
+        <!-- Add match orders button -->
+        <button name="action_match_orders" 
+                string="Khớp lệnh" 
+                type="object" 
+                icon="fa-refresh"
+                invisible="['|', ('status', '!=', 'completed'), ('transaction_type', 'not in', ['buy', 'sell', 'purchase'])]"
+                class="oe_highlight"/>
+      </list>
+    </field>
+  </record>
+
+  <!-- Portfolio Transaction Form View -->
+  <record id="view_portfolio_transaction_form" model="ir.ui.view">
+    <field name="name">portfolio.transaction.form</field>
+    <field name="model">portfolio.transaction</field>
+    <field name="arch" type="xml">
+      <form string="Transaction">
+        <header>
+          <field name="status" widget="statusbar"/>
+        </header>
+        <sheet>
+          <group>
+            <group>
+              <field name="name"/>
+              <field name="user_id"/>
+              <field name="fund_id"/>
+              <field name="transaction_type"/>
+              <field name="term_months"/>
+              <field name="interest_rate"/>
+              <field name="units"/>
+              <field name="price" widget="monetary" string="Giá đơn vị"/>
+              <field name="amount"/>
+              <field name="fee" widget="monetary" string="Phí mua"/>
+              <field name="currency_id"/>
+            </group>
+            <group>
+              <field name="status"/>
+              <field name="destination_fund_id"/>
+              <field name="destination_units"/>
+              <field name="investment_type"/>
+              <field name="transaction_date"/>
+              <field name="created_at"/>
+            </group>
+          </group>
+          <group>
+            <field name="description"/>
+            <field name="reference"/>
+            <field name="calculated_amount"/>
+          </group>
+          <group string="Thông tin khớp lệnh" invisible="[('transaction_type', 'not in', ['buy', 'sell', 'purchase'])]">
+            <field name="matched_units"/>
+            <field name="remaining_units"/>
+            <field name="is_matched"/>
+            <field name="matched_order_ids" invisible="[('transaction_type', 'not in', ['buy', 'purchase'])]"/>
+            <field name="matched_sell_order_ids" invisible="[('transaction_type', '!=', 'sell')]"/>
+          </group>
+        </sheet>
+        <div class="oe_chatter">
+          <field name="message_follower_ids"/>
+          <field name="activity_ids"/>
+          <field name="message_ids"/>
+        </div>
+      </form>
+    </field>
+  </record>
+
+  <!-- Portfolio Transaction Search View -->
+  <record id="view_portfolio_transaction_search" model="ir.ui.view">
+    <field name="name">portfolio.transaction.search</field>
+    <field name="model">portfolio.transaction</field>
+    <field name="arch" type="xml">
+      <search string="Transaction Search">
+        <field name="name"/>
+        <field name="user_id"/>
+        <field name="fund_id"/>
+        <field name="transaction_type"/>
+        <field name="price"/>
+        <field name="amount"/>
+        <field name="status"/>
+        <field name="investment_type"/>
+        <filter string="Pending" name="pending" domain="[('status', '=', 'pending')]"/>
+        <filter string="Completed" name="completed" domain="[('status', '=', 'completed')]"/>
+        <filter string="Cancelled" name="cancelled" domain="[('status', '=', 'cancelled')]"/>
+        <group expand="0" string="Group By">
+          <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
+          <filter string="Fund" name="group_fund" context="{'group_by': 'fund_id'}"/>
+          <filter string="Transaction Type" name="group_type" context="{'group_by': 'transaction_type'}"/>
+          <filter string="Investment Type" name="group_investment" context="{'group_by': 'investment_type'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <!-- Portfolio Transaction Action -->
+  <record id="action_portfolio_transaction" model="ir.actions.act_window">
+    <field name="name">Danh sách lệnh giao dịch</field>
+    <field name="res_model">portfolio.transaction</field>
+    <field name="view_mode">list,form</field>
+    <field name="context">{'search_default_pending': 1}</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">
+        Tạo lệnh giao dịch đầu tiên
+      </p>
+    </field>
+  </record>
+
+  <!-- Menu Item -->
+  <menuitem id="menu_portfolio_transaction"
+            name="Danh sách lệnh giao dịch"
+            parent="menu_transaction_list_root"
+            action="action_portfolio_transaction"
+            sequence="10"/>
+</odoo> 

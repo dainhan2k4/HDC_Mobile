@@ -1,0 +1,31 @@
+.share-stepper .btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #f97316;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  color: #f97316;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(249, 115, 22, 0.15);
+  transition: all 0.2s ease;
+}
+
+.share-stepper .btn:hover {
+  background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
+  color: #9a3412;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.25);
+}
+
+.share-stepper .btn:active {
+  transform: scale(0.96);
+}
+
+.share-stepper {
+  vertical-align: middle;
+}
+

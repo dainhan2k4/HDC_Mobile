@@ -5,25 +5,22 @@
 
       <t t-call-assets="web.assets_frontend" t-js="true"/>
       <t t-set="head">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
       </t>
 
       <!-- Header Container -->
       <div id="header-container"></div>
 
-      <div class="profile-container w-full max-w-full md:max-w-[1400px] mx-auto pt-4 md:pt-8 px-2 sm:px-4">
-
-        <!-- Loading Spinner -->
-        <div id="loadingSpinner" class="loading-spinner flex justify-center items-center h-32 md:h-48">
-          <div class="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-t-2 border-b-2 border-indigo-600" role="status">
-            <span class="sr-only">Loading...</span>
-          </div>
-        </div>
+      <div class="container py-4">
 
         <!-- OWL Component Container -->
-        <div id="verificationWidget" class="w-full" style="display: none;">
+        <div id="verificationWidget" class="w-100" style="display: none;">
           <!-- OWL component will be rendered here -->
+        </div>
+        <!-- Thêm thông báo trạng thái -->
+        <div class="alert alert-info mt-3" role="alert">
+          Sau khi xác nhận hoàn tất hợp đồng, trạng thái Tài khoản đầu tư và Hồ sơ gốc của bạn sẽ chuyển sang <b>Đã duyệt</b>.
         </div>
       </div>
 

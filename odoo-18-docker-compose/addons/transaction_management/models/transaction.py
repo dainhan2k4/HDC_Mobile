@@ -15,15 +15,19 @@ class Transaction(models.Model):
     fund_id = fields.Many2one("portfolio.fund", string="Fund", required=True, tracking=True)
     transaction_type = fields.Selection([
         ('purchase', 'Purchase'),
-        ('sale', 'Sale'),
+        ('sell', 'Sell'),
         ('exchange', 'Exchange')
     ], string="Transaction Type", required=True, tracking=True)
     units = fields.Float(string="Units", required=True, tracking=True)
     destination_fund_id = fields.Many2one('portfolio.fund', string='Destination Fund', tracking=True)
     destination_units = fields.Float(string="Destination Units", tracking=True)
     amount = fields.Monetary(string="Amount", required=True, tracking=True)
+    fee = fields.Monetary(string="Phí mua", default=0.0, help="Phí mua cho giao dịch này", currency_field='currency_id')
     currency_id = fields.Many2one('res.currency', string='Currency', required=True, default=lambda self: self.env.company.currency_id, tracking=True)
     created_at = fields.Datetime(string="Created At", required=True, default=fields.Datetime.now, tracking=True)
+    date_end = fields.Datetime(string="Date End At", tracking=True)
+    contract_pdf_path = fields.Char(string="Contract PDF Path")
+    current_nav = fields.Float(string="NAV at transaction time", help="NAV value when transaction was made")
     status = fields.Selection([
         ('pending', 'Pending'),
         ('completed', 'Completed'),
@@ -43,6 +47,17 @@ class Transaction(models.Model):
     description = fields.Text(string="Description", tracking=True)
     reference = fields.Char(string="Reference", tracking=True)
     calculated_amount = fields.Monetary(string="Calculated Amount", compute='_compute_calculated_amount', store=True, currency_field='currency_id')
+
+    # Added fields for NAV Management integration (ensure related fields exist)
+    term_months = fields.Integer(string="Kỳ hạn (tháng)", default=12)
+    interest_rate = fields.Float(string="Lãi suất (%)", digits=(16, 2))
+
+    # Source field for transaction origin
+    source = fields.Selection([
+        ('portal', 'Portal'),
+        ('sale', 'Sale Portal'),
+        ('portfolio', 'Portfolio')
+    ], string="Source", default='portfolio', tracking=True)
 
     @api.depends('created_at')
     def _compute_transaction_time(self):
@@ -97,9 +112,16 @@ class Transaction(models.Model):
                     'currency_id': self.currency_id.id,
                     'investment_type': self.investment_type,
                 })
-        elif self.transaction_type == 'sale':
+        elif self.transaction_type == 'sell':
             if not investment or investment.units < self.units:
-                raise ValidationError(_("Not enough units to sell for user %s in fund %s.", self.user_id.name, self.fund_id.name))
+                partner = self.user_id.partner_id
+                so_tk = ''
+                if partner:
+                    status_info = self.env['status.info'].sudo().search([('partner_id', '=', partner.id)], limit=1)
+                    so_tk = status_info.so_tk if status_info else self.user_id.name
+                else:
+                    so_tk = self.user_id.name
+                raise ValidationError(_("Not enough units to sell for user %s in fund %s.", so_tk, self.fund_id.name))
             
             proportional_amount = (investment.amount / investment.units) * self.units if investment.units else 0
             
@@ -169,7 +191,7 @@ class Transaction(models.Model):
                 'amount': investment.amount - self.amount,
                 'status': 'closed' if new_units <= 0 else 'active'
             })
-        elif self.transaction_type == 'sale':
+        elif self.transaction_type == 'sell':
             proportional_amount = (investment.amount / (investment.units if investment.units else 1)) * self.units
             investment.write({
                 'units': investment.units + self.units,
@@ -211,19 +233,21 @@ class Transaction(models.Model):
         self.ensure_one()
         if self.transaction_type == 'purchase':
             self.fund_id.total_units += self.units
-        elif self.transaction_type == 'sale':
+        elif self.transaction_type == 'sell':
             self.fund_id.total_units -= self.units
         elif self.transaction_type == 'exchange':
             self.fund_id.total_units -= self.units
             self.destination_fund_id.total_units += self.destination_units
 
-    @api.depends('units', 'fund_id.current_nav', 'investment_type')
+    @api.depends('units', 'amount', 'investment_type')
     def _compute_calculated_amount(self):
         for record in self:
-            if record.investment_type == 'fund_certificate' and record.fund_id and record.fund_id.current_nav:
-                record.calculated_amount = record.units * record.fund_id.current_nav
+            # Sử dụng giá trị thực tế từ form thay vì current_nav
+            if record.investment_type == 'fund_certificate' and record.units > 0:
+                # Tính từ amount thực tế thay vì current_nav
+                record.calculated_amount = record.amount
             else:
-                record.calculated_amount = record.amount # Hoặc 0.0 nếu bạn muốn nó chỉ tính cho CCQ
+                record.calculated_amount = record.amount
 
     @api.depends('fund_id', 'transaction_type', 'units', 'transaction_date')
     def _compute_name(self):

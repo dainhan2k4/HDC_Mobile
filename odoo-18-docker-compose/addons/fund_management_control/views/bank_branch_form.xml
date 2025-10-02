@@ -1,0 +1,58 @@
+<odoo>
+    <template id="bank_branch_form" name="Tạo mới Chi nhánh Ngân hàng">
+        <t t-call="web.layout">
+            <t t-set="title">Tạo mới Chi nhánh Ngân hàng</t>
+            <t t-call-assets="web.assets_backend" t-js="true"/>
+            <div class="d-flex">
+                <t t-call="fund_management_control.sidebar_template"/>
+                <main class="flex-grow-1 p-4">
+                    <div class="container-fluid">
+                        <div class="mb-4">
+                            <h2 class="h3 fw-bold">Tạo mới Chi nhánh Ngân hàng</h2>
+                            <nav aria-label="breadcrumb">
+                              <ol class="breadcrumb small">
+                                <li class="breadcrumb-item"><a href="/bank_branch_list" class="text-decoration-none">Trở về</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Tạo mới Chi nhánh Ngân hàng</li>
+                              </ol>
+                            </nav>
+                        </div>
+                        <div class="card shadow-sm form-container">
+                            <div class="card-body p-5">
+                                <form t-att-action="edit_mode and bank_branch and '/bank_branch/update/' + str(bank_branch.id) or '/bank_branch/create'" method="POST">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="name" class="form-label">Tên chi nhánh ngân hàng (*)</label>
+                                            <input type="text" class="form-control" name="name" required="1" t-att-value="bank_branch and bank_branch.name or ''"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="bank_id" class="form-label">Trực thuộc ngân hàng (*)</label>
+                                            <input type="text" class="form-control" name="bank_id" required="1" t-att-value="bank_branch and bank_branch.bank_id and bank_branch.bank_id.name or ''"/>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="code" class="form-label">Mã hành chính</label>
+                                            <input type="text" class="form-control" name="code" t-att-value="bank_branch and bank_branch.code or ''"/>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" name="active" t-att-checked="not bank_branch or bank_branch.active and 'checked' or False"/>
+                                                <label class="form-check-label">Kích hoạt</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-center mt-4">
+                                        <a href="/bank_branch_list" class="btn btn-secondary btn-lg px-5">Hủy</a>
+                                        <button type="submit" class="btn btn-primary btn-lg px-5">Lưu</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </t>
+    </template>
+</odoo> 

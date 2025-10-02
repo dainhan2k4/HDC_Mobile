@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- List View - Danh sách cấu hình quỹ -->
+    <record id="view_nav_fund_config_list" model="ir.ui.view">
+        <field name="name">nav.fund.config.list</field>
+        <field name="model">nav.fund.config</field>
+        <field name="arch" type="xml">
+            <list string="Cấu hình quỹ NAV" decoration-info="not active" create="true" edit="false" delete="true">
+                <field name="fund_id" widget="many2one_tags"/>
+                <field name="initial_nav_price" widget="monetary" digits="[16,2]" string="Giá NAV ban đầu"/>
+                <field name="initial_ccq_quantity" widget="float" digits="[16,2]" string="Số CCQ ban đầu"/>
+                <field name="capital_cost_percent" widget="float" digits="[16,2]" string="Chi phí vốn (%)"/>
+                <field name="initial_total_value" widget="monetary" digits="[16,2]" string="Tổng giá trị ban đầu"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View - Form cấu hình quỹ -->
+    <record id="view_nav_fund_config_form" model="ir.ui.view">
+        <field name="name">nav.fund.config.form</field>
+        <field name="model">nav.fund.config</field>
+        <field name="arch" type="xml">
+            <form string="Cấu hình quỹ NAV">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button" options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    
+                    <div class="oe_title">
+                        <h1>
+                            <field name="fund_id" placeholder="Chọn quỹ..." options="{'no_create': True}"/>
+                        </h1>
+                    </div>
+                    
+                    <group>
+                        <group name="fund_info" string="Thông tin quỹ">
+                            <field name="fund_id" readonly="1" widget="many2one_tags"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                        <group name="config_info" string="Cấu hình">
+                            <field name="initial_nav_price" widget="monetary" digits="[16,2]" string="Giá NAV ban đầu"/>
+                            <field name="initial_ccq_quantity" widget="float" digits="[16,2]" string="Số CCQ ban đầu"/>
+                            <field name="capital_cost_percent" widget="float" digits="[16,2]" string="Chi phí vốn (%)"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="computed_info" string="Thông tin tính toán">
+                            <field name="initial_total_value" readonly="1" widget="monetary" digits="[16,2]" string="Tổng giá trị ban đầu"/>
+                        </group>
+                        <group name="description_info" string="Mô tả">
+                            <field name="description" nolabel="1" widget="text" placeholder="Nhập mô tả cấu hình quỹ..."/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View - Tìm kiếm cấu hình quỹ -->
+    <record id="view_nav_fund_config_search" model="ir.ui.view">
+        <field name="name">nav.fund.config.search</field>
+        <field name="model">nav.fund.config</field>
+        <field name="arch" type="xml">
+            <search string="Tìm kiếm cấu hình quỹ">
+                <field name="fund_id" string="Quỹ"/>
+                <field name="initial_nav_price" string="Giá NAV ban đầu"/>
+                <field name="capital_cost_percent" string="Chi phí vốn (%)"/>
+                
+                <filter string="Đang hoạt động" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Không hoạt động" name="inactive" domain="[('active', '=', False)]"/>
+                
+                <group expand="0" string="Nhóm theo">
+                    <filter string="Quỹ" name="group_fund" context="{'group_by': 'fund_id'}"/>
+                    <filter string="Trạng thái" name="group_active" context="{'group_by': 'active'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action - Hành động mở danh sách cấu hình quỹ -->
+    <record id="action_nav_fund_config" model="ir.actions.act_window">
+        <field name="name">Cấu hình quỹ NAV</field>
+        <field name="res_model">nav.fund.config</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_nav_fund_config_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Tạo cấu hình quỹ mới
+            </p>
+            <p>
+                Cấu hình giá tồn kho ban đầu, số CCQ tồn kho ban đầu và chi phí vốn cho từng quỹ.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item - Menu cấu hình quỹ -->
+    <menuitem id="menu_nav_fund_config"
+        name="Cấu hình quỹ"
+        parent="menu_nav_management_root"
+        action="action_nav_fund_config"
+        sequence="5"/>
+</odoo>

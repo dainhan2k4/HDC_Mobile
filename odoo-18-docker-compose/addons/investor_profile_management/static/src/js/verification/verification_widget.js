@@ -1,100 +1,144 @@
 // Verification Completion Widget Component
+console.log('Loading VerificationWidget component...');
 
 const { Component, xml, useState, onMounted } = owl;
 
 class VerificationWidget extends Component {
     static template = xml`
-        <div class="bg-gray-50 p-6 font-sans">
-          <!-- Odoo Owl template example for a verification completion page -->
-          <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6">
-            <div class="flex flex-col md:flex-row gap-6">
+        <div class="bg-light p-4">
+          <div class="container bg-white rounded-3 shadow-sm p-4">
+            <div class="row g-4">
               <!-- Sidebar -->
-              <aside class="md:w-96 flex-shrink-0 space-y-6">
-                <section class="bg-gray-100 rounded-lg p-4">
-                  <h2 class="font-bold text-lg text-gray-900 mb-2"><t t-esc="state.profile.name || 'Chưa có thông tin'" /></h2>
-                  <p class="text-xs text-gray-600">Số TK: <span class="font-mono"><t t-esc="state.statusInfo.so_tk || 'Chưa có'" /></span></p>
-                  <p class="text-xs text-gray-600">Mã giới thiệu: <span class="font-mono"><t t-esc="state.statusInfo.ma_gioi_thieu || 'Chưa có'" /></span></p>
-                  <p class="text-xs text-gray-600">Trạng thái TK đầu tư: 
-                    <span t-if="state.statusInfo.trang_thai_tk_dau_tu == 'da_duyet'" class="text-green-600 font-semibold">Đã duyệt</span>
-                    <span t-elif="state.statusInfo.trang_thai_tk_dau_tu == 'cho_duyet'" class="text-yellow-600 font-semibold">Chờ duyệt</span>
-                    <span t-elif="state.statusInfo.trang_thai_tk_dau_tu == 'tu_choi'" class="text-red-600 font-semibold">Từ chối</span>
-                    <span t-else="" class="text-gray-600 font-semibold">Chưa có</span>
+              <aside class="col-md-4">
+                <section class="bg-light rounded-3 p-3 mb-3">
+                  <h2 class="fw-bold fs-5 text-dark mb-2"><t t-esc="state.profile.name || 'Chưa có thông tin'" /></h2>
+                  <p class="small text-secondary mb-1">Số TK: <span class="font-monospace"><t t-esc="state.statusInfo.so_tk || 'Chưa có'" /></span></p>
+                  <p class="small text-secondary mb-1">Mã giới thiệu: <span class="font-monospace"><t t-esc="state.statusInfo.ma_gioi_thieu || 'Chưa có'" /></span></p>
+                  <p class="small text-secondary mb-1">Trạng thái TK đầu tư:
+                    <span t-if="state.statusInfo.trang_thai_tk_dau_tu == 'da_duyet'" class="badge rounded-pill px-2 py-1 fw-semibold bg-success">Đã duyệt</span>
+                    <span t-elif="state.statusInfo.trang_thai_tk_dau_tu == 'cho_duyet'" class="badge rounded-pill px-2 py-1 fw-semibold bg-warning text-dark">Chờ duyệt</span>
+                    <span t-elif="state.statusInfo.trang_thai_tk_dau_tu == 'tu_choi'" class="badge rounded-pill px-2 py-1 fw-semibold" style="background-color:#f97316;color:white">Từ chối</span>
+                    <span t-else="" class="badge rounded-pill px-2 py-1 fw-semibold bg-secondary">Chưa có</span>
                   </p>
-                  <p class="text-xs text-gray-600">Hồ sơ gốc: 
-                    <span t-if="state.statusInfo.ho_so_goc == 'da_nhan'" class="text-green-600 font-semibold">Đã nhận</span>
-                    <span t-elif="state.statusInfo.ho_so_goc == 'chua_nhan'" class="text-yellow-600 font-semibold">Chưa nhận</span>
-                    <span t-else="" class="text-gray-600 font-semibold">Chưa có</span>
+                  <p class="small text-secondary mb-1">Hồ sơ gốc:
+                    <span t-if="state.statusInfo.ho_so_goc == 'da_nhan'" class="badge rounded-pill px-2 py-1 fw-semibold bg-success">Đã nhận</span>
+                    <span t-elif="state.statusInfo.ho_so_goc == 'chua_nhan'" class="badge rounded-pill px-2 py-1 fw-semibold bg-warning text-dark">Chưa nhận</span>
+                    <span t-else="" class="badge rounded-pill px-2 py-1 fw-semibold bg-secondary">Chưa có</span>
                   </p>
-                  <p class="text-xs text-gray-600">RM: <t t-esc="state.statusInfo.rm_name || 'N/A'" />-<t t-esc="state.statusInfo.rm_id || 'N/A'" /></p>
-                  <p class="text-xs text-gray-600">BDA: <t t-esc="state.statusInfo.bda_name || 'N/A'" />-<t t-esc="state.statusInfo.bda_id || 'N/A'" /></p>
+                  <t t-if="state.statusInfo.rm_name and state.statusInfo.rm_id">
+                    <p class="small text-secondary mb-1">RM: <t t-esc="state.statusInfo.rm_name" />-<t t-esc="state.statusInfo.rm_id" /></p>
+                  </t>
+                  <t t-if="state.statusInfo.bda_name and state.statusInfo.bda_id">
+                    <p class="small text-secondary mb-1">BDA: <t t-esc="state.statusInfo.bda_name" />-<t t-esc="state.statusInfo.bda_id" /></p>
+                  </t>
                 </section>
-                <nav class="bg-white rounded-lg shadow p-4 text-sm font-semibold text-gray-700 space-y-2 select-none">
-                  <a href="/personal_profile" class="flex items-center gap-2 border-l-4 border-transparent pl-3 py-2 w-full hover:border-indigo-700 hover:text-indigo-700 rounded">Thông tin cá nhân</a>
-                  <a href="/bank_info" class="flex items-center gap-2 border-l-4 border-transparent pl-3 py-2 w-full hover:border-indigo-700 hover:text-indigo-700 rounded">Thông tin tài khoản ngân hàng</a>
-                  <a href="/address_info" class="flex items-center gap-2 border-l-4 border-transparent pl-3 py-2 w-full hover:border-indigo-700 hover:text-indigo-700 rounded">Thông tin địa chỉ</a>
-                  <a href="/verification" class="flex items-center gap-2 border-l-4 border-indigo-700 pl-3 py-2 w-full text-indigo-700 bg-indigo-50 rounded" aria-current="true">Xác thực hoàn tất</a>
+                <nav class="nav nav-pills flex-column bg-white rounded-3 shadow-sm p-3 mb-3 gap-2">
+                  <a href="/personal_profile" class="nav-link py-2 px-3 fw-semibold" t-att-class="window.location.pathname=='/personal_profile' ? 'active text-white shadow-sm' : 'text-dark'" t-att-style="window.location.pathname=='/personal_profile' ? 'background-color:#f97316' : ''">Thông tin cá nhân</a>
+                  <a href="/bank_info" class="nav-link py-2 px-3 fw-semibold" t-att-class="window.location.pathname=='/bank_info' ? 'active text-white shadow-sm' : 'text-dark'" t-att-style="window.location.pathname=='/bank_info' ? 'background-color:#f97316' : ''">Thông tin tài khoản ngân hàng</a>
+                  <a href="/address_info" class="nav-link py-2 px-3 fw-semibold" t-att-class="window.location.pathname=='/address_info' ? 'active text-white shadow-sm' : 'text-dark'" t-att-style="window.location.pathname=='/address_info' ? 'background-color:#f97316' : ''">Thông tin địa chỉ</a>
+                  <a href="/verification" class="nav-link py-2 px-3 fw-semibold" t-att-class="window.location.pathname=='/verification' ? 'active text-white shadow-sm' : 'text-dark'" t-att-style="window.location.pathname=='/verification' ? 'background-color:#f97316' : ''">Xác thực hoàn tất</a>
                 </nav>
               </aside>
               <!-- Main content -->
-              <section class="flex-1 bg-white rounded-lg shadow p-6 text-xs text-gray-600">
-                <h3 class="text-gray-500 font-semibold mb-4">Xác thực hoàn tất</h3>
-                <form class="space-y-8" t-on-submit.prevent="completeVerification">
+              <section class="col-md-8 bg-white rounded-3 shadow-sm p-4">
+                <h3 class="text-secondary fw-semibold mb-4">Xác thực hoàn tất</h3>
+                <form class="row g-3" t-on-submit.prevent="completeVerification">
                   <fieldset>
-                    <legend class="font-bold text-lg">Xác nhận hoàn tất</legend>
-                    <p class="text-sm text-gray-700 mb-4">
+                    <legend class="fw-bold fs-6 mb-3">Xác nhận hoàn tất</legend>
+                    <p class="text-secondary mb-3">
                       Để bắt đầu thực hiện giao dịch, Quý khách cần phải xác nhận thông tin và đồng ý các điều khoản, điều kiện dưới đây:
                     </p>
-                    <p class="text-sm text-gray-700 mb-4">
-                      Sau khi hoàn tất bước xác nhận này thông tin <span class="font-bold text-indigo-700">Hợp đồng mở tài khoản</span> của Quý khách sẽ được gửi tới email <span class="font-bold text-red-600"><t t-esc="state.contractEmail" /></span>.
+                    <p class="text-secondary mb-3">
+                      Sau khi hoàn tất bước xác nhận này thông tin <span class="fw-bold text-primary">Hợp đồng mở tài khoản</span> của Quý khách sẽ được gửi tới email <span class="fw-bold" style="color:#f97316"><t t-esc="state.contractEmail" /></span>.
                     </p>
-                    <p class="text-sm text-gray-700 mb-6">
+                    <p class="text-secondary mb-3">
                       Quý khách vui lòng in, ký xác nhận và gửi thư về địa chỉ của công ty trong phần liên hệ!
                     </p>
-                    <div class="p-4 border border-gray-300 rounded-md bg-gray-50 mb-6 text-sm overflow-y-auto max-h-48">
-                        <p class="mb-2">cần thiết để thực hiện nghĩa vụ thuế của tôi tại nơi đó / Subject to applicable local laws, I hereby consent for Fincorp Investment Management Ltd to share my information with domestic and overseas tax authorities where necessary to establish my tax liability in any jurisdiction.</p>
-                        <p class="mb-2">Khi được yêu cầu bởi luật pháp hay cơ quan thuế nước sở tại hay nước ngoài. Tôi đồng ý và cho phép Fincorp được trực tiếp khấu trừ từ tài khoản của tôi theo đúng pháp luật hiện hành / Where required by domestic or overseas regulators or tax authorities, I consent and agree that Fincorp may withhold such amounts as may be required according to applicable laws, regulations and directives.</p>
-                        <p>Tôi cam kết sẽ thông báo cho Fincorp trong vòng 30 ngày nếu có bất kỳ thay đổi nào đối với thông tin mà tôi đã cung cấp cho Fincorp / I undertake to notify Fincorp within 30 calendar days if there is a change in any information which I have provided to Fincorp.</p>
+                    <div class="p-3 border rounded-3 bg-light mb-3 text-secondary" style="max-height:200px; overflow-y:auto;">
+                      <p class="mb-2">cần thiết để thực hiện nghĩa vụ thuế của tôi tại nơi đó ...</p>
+                      <p class="mb-2">Khi được yêu cầu bởi luật pháp hay cơ quan thuế nước sở tại ...</p>
+                      <p>Tôi cam kết sẽ thông báo cho Fincorp ...</p>
                     </div>
-                    <div class="flex items-center mb-4">
-                      <input type="checkbox" id="agree_terms" t-model="state.agreedToTerms" required="required" class="form-checkbox text-indigo-600 h-4 w-4"/>
-                      <label for="agree_terms" class="ml-2 block text-sm text-gray-900 font-semibold">Tôi đồng ý với các điều khoản và điều kiện trên <span class="text-red-600">*</span></label>
+                    <div class="form-check mb-3">
+                      <input type="checkbox" id="agree_terms" t-model="state.agreedToTerms" required="required" class="form-check-input"/>
+                      <label for="agree_terms" class="form-check-label">Tôi đồng ý với các điều khoản và điều kiện trên <span style="color:#f97316">*</span></label>
                     </div>
                   </fieldset>
-                  <div class="flex justify-end gap-4">
-                    <button type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" t-on-click="onBack">
-                      Quay lại
-                    </button>
-                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                      Hoàn tất
-                    </button>
+                  <div class="col-12 d-flex justify-content-end gap-2 mt-3">
+                    <button type="button" class="btn btn-sm fw-semibold rounded-pill" style="color:#f97316;border-color:#f97316" t-on-click="onBack">Quay lại</button>
+                    <button type="submit" class="btn btn-sm fw-semibold rounded-pill" style="background-color:#f97316;border-color:#f97316;color:white">Hoàn tất</button>
                   </div>
                 </form>
               </section>
             </div>
           </div>
         </div>
+        <div t-if="state.showModal" class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border:2px solid #f97316;">
+              <div class="modal-header" style="border-bottom:1px solid #f97316;">
+                <h5 class="modal-title" style="color:#f97316;"><t t-esc="state.modalTitle" /></h5>
+                <button type="button" class="btn-close" t-on-click="closeModal"></button>
+              </div>
+              <div class="modal-body text-center">
+                <t t-if="state.modalTitle === 'Thành công' || state.modalTitle === 'Xác nhận thành công'">
+                  <div style="font-size:3rem;color:#43a047;">
+                    <i class="fa fa-check-circle"></i>
+                  </div>
+                </t>
+                <p class="mt-3"><t t-esc="state.modalMessage" /></p>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-sm fw-semibold rounded-pill" style="background-color:#f97316;border-color:#f97316;color:white" t-on-click="closeModal">Đóng</button>
+              </div>
+            </div>
+          </div>
+        </div>
     `;
 
     setup() {
-        // Load data from sessionStorage
-        const storedPersonalData = sessionStorage.getItem('personalProfileData');
-        const storedBankData = sessionStorage.getItem('bankInfoData');
-        const storedAddressData = sessionStorage.getItem('addressInfoData');
+        console.log("🎯 VerificationWidget - setup called!");
+
+        this.state = useState({
+            loading: true,
+            profile: {},
+            statusInfo: {},
+            agreedToTerms: false,
+            contractEmail: 'nhaltp7397@gmail.com', // Hardcoded for now, will fetch dynamically later
+            companyAddress: '123 Fincorp St, Financial City, Country', // Hardcoded for now
+            showModal: false,
+            modalTitle: '',
+            modalMessage: '',
+        });
+
+        onMounted(async () => {
+            // Hide loading spinner
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const widgetContainer = document.getElementById('verificationWidget');
             
-        if (storedPersonalData) {
-            this.state.personalProfileData = JSON.parse(storedPersonalData);
+            if (loadingSpinner && widgetContainer) {
+                loadingSpinner.style.display = 'none';
+                widgetContainer.style.display = 'block';
             }
-
-        if (storedBankData) {
-            this.state.bankInfoData = JSON.parse(storedBankData);
-        }
-
-        if (storedAddressData) {
-            this.state.addressInfoData = JSON.parse(storedAddressData);
-        }
-
-        // Load status info
-        this.loadStatusInfo();
+            // Reset storage nếu user đổi
+            const currentUserId = window.currentUserId || (window.odoo && window.odoo.session_info && window.odoo.session_info.uid);
+            const storedUserId = sessionStorage.getItem('personalProfileUserId');
+            if (storedUserId && String(storedUserId) !== String(currentUserId)) {
+                sessionStorage.removeItem('personalProfileData');
+                sessionStorage.removeItem('personalProfileUserId');
+                sessionStorage.removeItem('bankInfoData');
+                sessionStorage.removeItem('bankInfoUserId');
+                sessionStorage.removeItem('addressInfoData');
+                sessionStorage.removeItem('addressInfoUserId');
+            }
+            // Load profile data and status info
+            await this.loadProfileData();
+            this.loadInitialFormData(); // Load form data from sessionStorage
+            await this.loadStatusInfo();
+            await this.checkAllInfoCompleted();
+            
+            this.state.loading = false;
+        });
     }
 
     loadInitialFormData() {
@@ -104,13 +148,19 @@ class VerificationWidget extends Component {
         const storedAddressData = sessionStorage.getItem('addressInfoData');
 
         if (storedPersonalData) {
-            this.state.personalProfileData = JSON.parse(storedPersonalData);
+            console.log("✅ Loaded personalProfileData from sessionStorage:", JSON.parse(storedPersonalData));
+        } else {
+            console.log("ℹ️ No personal profile data in sessionStorage");
         }
         if (storedBankData) {
-            this.state.bankInfoData = JSON.parse(storedBankData);
+            console.log("✅ Loaded bankInfoData from sessionStorage:", JSON.parse(storedBankData));
+        } else {
+            console.log("ℹ️ No bank info data in sessionStorage");
         }
         if (storedAddressData) {
-            this.state.addressInfoData = JSON.parse(storedAddressData);
+            console.log("✅ Loaded addressInfoData from sessionStorage:", JSON.parse(storedAddressData));
+        } else {
+            console.log("ℹ️ No address info data in sessionStorage");
         }
     }
 
@@ -118,49 +168,126 @@ class VerificationWidget extends Component {
         try {
             const response = await fetch('/get_status_info');
             const data = await response.json();
-            
             if (data && data.length > 0) {
                 this.state.statusInfo = data[0];
+            } else {
+                this.state.statusInfo = {};
+            }
+            // Luôn lấy tên user từ profile
+            const profileRes = await fetch('/data_personal_profile');
+            const profileData = await profileRes.json();
+            if (profileData && profileData.length > 0 && profileData[0].name) {
+                this.state.profile.name = profileData[0].name;
+            } else {
+                this.state.profile.name = (window.odoo && window.odoo.session_info && window.odoo.session_info.name) || 'Chưa có thông tin';
             }
         } catch (error) {
-            // Handle error silently
+            this.state.statusInfo = {};
+            this.state.profile.name = (window.odoo && window.odoo.session_info && window.odoo.session_info.name) || 'Chưa có thông tin';
+        }
+    }
+
+    async checkAllInfoCompleted() {
+        // Gọi API kiểm tra đủ thông tin 3 phần
+        try {
+            const [personal, bank, address] = await Promise.all([
+                fetch('/data_personal_profile').then(r => r.json()),
+                fetch('/data_bank_info').then(r => r.json()),
+                fetch('/data_address_info').then(r => r.json()),
+            ]);
+            if (!personal.length) {
+                this.state.modalTitle = 'Thiếu thông tin';
+                this.state.modalMessage = 'Bạn cần nhập đầy đủ thông tin cá nhân trước khi xác thực.';
+                this.state.showModal = true;
+                setTimeout(() => { window.location.href = '/personal_profile'; }, 1800);
+                return;
+            }
+            if (!bank.length) {
+                this.state.modalTitle = 'Thiếu thông tin';
+                this.state.modalMessage = 'Bạn cần nhập đầy đủ thông tin ngân hàng trước khi xác thực.';
+                this.state.showModal = true;
+                setTimeout(() => { window.location.href = '/bank_info'; }, 1800);
+                return;
+            }
+            if (!address.length) {
+                this.state.modalTitle = 'Thiếu thông tin';
+                this.state.modalMessage = 'Bạn cần nhập đầy đủ thông tin địa chỉ trước khi xác thực.';
+                this.state.showModal = true;
+                setTimeout(() => { window.location.href = '/address_info'; }, 1800);
+                return;
+            }
+        } catch (error) {
+            this.state.modalTitle = 'Lỗi';
+            this.state.modalMessage = 'Không kiểm tra được thông tin hồ sơ. Vui lòng thử lại.';
+            this.state.showModal = true;
         }
     }
 
     async completeVerification() {
+        // Kiểm tra xác nhận điều khoản
         if (!this.state.agreedToTerms) {
-            alert("Vui lòng đồng ý với các điều khoản và điều kiện để hoàn tất.");
+            this.state.modalTitle = 'Thiếu xác nhận';
+            this.state.modalMessage = 'Vui lòng đồng ý với các điều khoản và điều kiện để hoàn tất.';
+            this.state.showModal = true;
             return;
         }
 
         try {
-            const allData = {
-                personal_profile: this.state.personalProfileData,
-                bank_info: this.state.bankInfoData,
-                address_info: this.state.addressInfoData
-            };
+            // Kiểm tra thông tin từ các bước trước
+            const personalData = JSON.parse(sessionStorage.getItem('personalProfileData') || '{}');
+            const bankData = JSON.parse(sessionStorage.getItem('bankInfoData') || '{}');
+            const addressData = JSON.parse(sessionStorage.getItem('addressInfoData') || '{}');
 
-            const response = await fetch('/profile/save-all', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(allData)
-            });
+            // Kiểm tra thông tin cá nhân
+            const requiredPersonalFields = ['name', 'birth_date', 'gender', 'nationality', 'id_type', 'id_number', 'id_issue_date', 'id_issue_place'];
+            const missingPersonalFields = requiredPersonalFields.filter(field => !personalData[field]);
             
-            if (response.ok) {
-                // Clear sessionStorage after successful save
-                sessionStorage.removeItem('personalProfileData');
-                sessionStorage.removeItem('bankInfoData');
-                sessionStorage.removeItem('addressInfoData');
-                
-                // Show success message
-                this.showMessage('Verification completed successfully!', 'success');
-            } else {
-                throw new Error('Failed to save verification data');
+            // Kiểm tra thông tin ngân hàng
+            const requiredBankFields = ['bank_name', 'account_number', 'account_holder', 'branch'];
+            const missingBankFields = requiredBankFields.filter(field => !bankData[field]);
+            
+            // Kiểm tra thông tin địa chỉ (chỉ yêu cầu các trường bắt buộc)
+            const requiredAddressFields = ['city', 'district', 'ward'];
+            const missingAddressFields = requiredAddressFields.filter(field => !addressData[field]);
+
+            // Tạo thông báo lỗi nếu có trường bắt buộc bị thiếu
+            let errorMessage = '';
+            
+            if (missingPersonalFields.length > 0) {
+                errorMessage += 'Thiếu thông tin cá nhân: ' + missingPersonalFields.join(', ') + '\n';
             }
+            
+            if (missingBankFields.length > 0) {
+                errorMessage += 'Thiếu thông tin ngân hàng: ' + missingBankFields.join(', ') + '\n';
+            }
+            
+            if (missingAddressFields.length > 0) {
+                errorMessage += 'Thiếu thông tin địa chỉ: ' + missingAddressFields.join(', ');
+            }
+
+            // Nếu có lỗi thiếu thông tin, hiển thị thông báo
+            if (errorMessage) {
+                this.state.modalTitle = 'Thiếu thông tin';
+                this.state.modalMessage = 'Vui lòng điền đầy đủ thông tin trước khi xác thực.\n\n' + errorMessage;
+                this.state.showModal = true;
+                return;
+            }
+
+            // Nếu đã đủ thông tin, hiển thị thông báo hoàn tất
+            this.state.modalTitle = 'Xác nhận hoàn tất';
+            this.state.modalMessage = 'Bạn đã hoàn tất việc xác thực thông tin. Vui lòng đợi hệ thống xử lý.';
+            this.state.showModal = true;
+            
+            // Chuyển hướng về trang chủ sau 3 giây
+            setTimeout(() => { 
+                window.location.href = '/my/home'; 
+            }, 3000);
+            
         } catch (error) {
-            this.showMessage('Error completing verification: ' + error.message, 'error');
+            console.error('Lỗi khi xác thực:', error);
+            this.state.modalTitle = 'Lỗi';
+            this.state.modalMessage = 'Có lỗi xảy ra khi xác thực: ' + error.message;
+            this.state.showModal = true;
         }
     }
 
@@ -168,20 +295,34 @@ class VerificationWidget extends Component {
         window.location.href = '/address_info';
     }
 
+    getCSRFToken() {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        return csrfToken ? csrfToken.getAttribute('content') : '';
+    }
+
     async loadProfileData() {
         try {
+            console.log("🔄 Loading verification profile data from server...");
             const response = await fetch('/data_verification');
             const data = await response.json();
+            console.log("📥 Verification profile data received:", data);
             
             if (data && data.length > 0) {
                 this.state.profile = data[0];
+                console.log("✅ Verification profile data loaded successfully:", this.state.profile);
             } else {
+                console.log("ℹ️ No existing verification profile data found on server");
                 this.state.profile = {};
             }
         } catch (error) {
+            console.error("❌ Error fetching verification profiles:", error);
             this.state.profile = {};
         }
     }
+
+    closeModal = () => {
+        this.state.showModal = false;
+    };
 }
 
 // Make component globally available

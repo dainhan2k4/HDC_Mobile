@@ -1,0 +1,282 @@
+<odoo>
+    <template id="fund_management_control.fund_certificate_list" name="Fund Certificate">
+        <t t-call="web.layout">
+            <t t-set="title" name="Chứng chỉ quỹ" />
+            <t t-call-assets="web.assets_backend" t-js="true"/>
+            <t t-set="head">
+                <!-- Bootstrap 5 CSS -->
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous"/>
+                <!-- Bootstrap 5 JS Bundle -->
+                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+                
+                <!-- Font Awesome for icons -->
+                <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+                
+                <style>
+                    body {
+                        background-color: #f8f9fa;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    
+                    /* Layout Styles */
+                    .app-container {
+                        display: flex;
+                        min-height: 100vh;
+                        position: relative;
+                    }
+                    
+                    .sidebar-container {
+                        position: sticky;
+                        top: 0;
+                        z-index: 1000;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .sidebar-toggle {
+                        position: absolute;
+                        top: 15px;
+                        right: -15px;
+                        background: #fff;
+                        border: 2px solid #667eea;
+                        border-radius: 50%;
+                        width: 30px;
+                        height: 30px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                        z-index: 1001;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .sidebar-toggle:hover {
+                        background: #667eea;
+                        color: #fff;
+                        transform: scale(1.1);
+                    }
+                    
+                    .main-content {
+                        flex: 1;
+                        min-height: 100vh;
+                        transition: all 0.3s ease;
+                        overflow-x: auto;
+                    }
+                    
+                    /* Mobile Responsive */
+                    @media (max-width: 768px) {
+                        .sidebar-container {
+                            position: fixed;
+                            z-index: 1050;
+                        }
+                        
+                        .sidebar-overlay {
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            background: rgba(0,0,0,0.5);
+                            z-index: 1040;
+                            display: none;
+                            opacity: 0;
+                            transition: opacity 0.3s ease;
+                        }
+                        
+                        .sidebar-overlay.show {
+                            display: block;
+                            opacity: 1;
+                        }
+                        
+                        .main-content {
+                            margin-left: 0;
+                        }
+                        
+                        .mobile-header {
+                            display: block !important;
+                        }
+                        
+                        .sidebar-toggle {
+                            display: none !important;
+                        }
+                    }
+                    
+                    @media (min-width: 769px) {
+                        .mobile-header {
+                            display: none !important;
+                        }
+                    }
+                    
+                    /* Card and Table Enhancements */
+                    .card {
+                        border: none;
+                        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+                        border-radius: 0.5rem;
+                    }
+                    
+                    .table th {
+                        border-top: none;
+                        font-weight: 600;
+                        color: #6c757d;
+                        background-color: #f8f9fa;
+                    }
+                    
+                    .table td {
+                        vertical-align: middle;
+                        border-top: 1px solid #dee2e6;
+                    }
+                    
+                    .btn-primary {
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        border: none;
+                        border-radius: 0.5rem;
+                        font-weight: 500;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .btn-primary:hover {
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+                    }
+                    
+                    .search-container {
+                        background: #fff;
+                        border-radius: 0.5rem;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+                    }
+                </style>
+            </t>
+
+            <div class="app-container">
+                <!-- Mobile Overlay -->
+                <div class="sidebar-overlay" id="sidebarOverlay"></div>
+                
+                <!-- Mobile Header -->
+                <div class="mobile-header d-none w-100 bg-white p-3 shadow-sm position-fixed" style="top: 0; left: 0; z-index: 1060;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">Fund Management</h5>
+                        <button class="btn btn-link p-0" id="mobileSidebarToggle">
+                            <i class="fas fa-bars fa-lg text-primary"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sidebar Container -->
+                <div class="sidebar-container" id="sidebarContainer">
+                    <div class="sidebar-toggle d-none d-lg-flex" id="sidebarToggle">
+                        <i class="fas fa-chevron-left text-primary" id="toggleIcon"></i>
+                    </div>
+                    
+                    <!-- Sidebar content will be loaded here -->
+                    <t t-call="fund_management_control.sidebar_template"/>
+                </div>
+
+                <!-- Main Content -->
+                <main class="main-content">
+                    <!-- Mobile content offset -->
+                    <div class="d-block d-md-none" style="height: 70px;"></div>
+                    
+                    <div class="container-fluid p-4">
+                        <!-- Fund Certificate Widget will be mounted here -->
+                        <div id="fundCertificateWidget">
+                            <!-- Loading spinner -->
+                            <div class="d-flex justify-content-center align-items-center" style="height: 20rem;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- Chatbot AI Widget -->
+                <t t-call="fund_management_control.chatbot_ai_template"/>
+            </div>
+
+            <script>
+                <![CDATA[ 
+                // Sidebar functionality
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('DOM loaded, initializing sidebar...');
+                    
+                    const sidebarContainer = document.getElementById('sidebarContainer');
+                    const sidebar = sidebarContainer?.querySelector('.modern-sidebar');
+                    const sidebarToggle = document.getElementById('sidebarToggle');
+                    const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+                    const sidebarOverlay = document.getElementById('sidebarOverlay');
+                    const toggleIcon = document.getElementById('toggleIcon');
+
+                    console.log('Elements found:', {
+                        sidebarContainer: !!sidebarContainer,
+                        sidebar: !!sidebar,
+                        sidebarToggle: !!sidebarToggle,
+                        toggleIcon: !!toggleIcon
+                    });
+
+                    // Desktop sidebar toggle
+                    if (sidebarToggle && sidebar && toggleIcon) {
+                        sidebarToggle.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            console.log('Desktop toggle clicked');
+                            
+                            sidebar.classList.toggle('collapsed');
+                            
+                            if (sidebar.classList.contains('collapsed')) {
+                                toggleIcon.classList.remove('fa-chevron-left');
+                                toggleIcon.classList.add('fa-chevron-right');
+                                console.log('Sidebar collapsed');
+                            } else {
+                                toggleIcon.classList.remove('fa-chevron-right');
+                                toggleIcon.classList.add('fa-chevron-left');
+                                console.log('Sidebar expanded');
+                            }
+                        });
+                    } else {
+                        console.error('Missing elements for desktop toggle');
+                    }
+
+                    // Mobile sidebar toggle
+                    if (mobileSidebarToggle && sidebar && sidebarOverlay) {
+                        mobileSidebarToggle.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            console.log('Mobile toggle clicked');
+                            
+                            sidebar.classList.add('show');
+                            sidebarOverlay.classList.add('show');
+                        });
+                    }
+
+                    // Close mobile sidebar when clicking overlay
+                    if (sidebarOverlay && sidebar) {
+                        sidebarOverlay.addEventListener('click', function() {
+                            console.log('Overlay clicked');
+                            sidebar.classList.remove('show');
+                            sidebarOverlay.classList.remove('show');
+                        });
+                    }
+
+                    // Handle window resize
+                    window.addEventListener('resize', function() {
+                        if (window.innerWidth > 768 && sidebar) {
+                            sidebar.classList.remove('show');
+                            if (sidebarOverlay) {
+                                sidebarOverlay.classList.remove('show');
+                            }
+                        }
+                    });
+
+                    // Debug: Click event test
+                    if (sidebarToggle) {
+                        sidebarToggle.style.cursor = 'pointer';
+                        sidebarToggle.addEventListener('mouseenter', function() {
+                            console.log('Toggle button hover');
+                        });
+                    }
+                });
+                ]]>
+            </script>
+        </t>
+    </template>
+</odoo>

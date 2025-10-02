@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_all_indices_form" model="ir.ui.view">
+        <field name="name">all.indices.form</field>
+        <field name="model">all.indices</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div name="button_box" position="inside">
+                        <button class="oe_stat_button" type="object" name="get_data_nifty" icon="fa-bars" string="Show More">
+                        </button>
+                    </div>
+                    <group string="NSE Indices">
+                        <group >
+                            <field name="key"/>
+                            <field name="index"/>
+                            <field name="high"/>
+                            <field name="low"/>
+                            <field name="yearHigh"/>
+                            <field name="yearLow"/>
+                        </group>
+                        <group>
+                            <field name="last"/>
+                            <field name="open"/>
+                            <field name="previousClose"/>
+                            <field name="variation"/>
+                            <field name="percentChange"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_all_indices_graph" model="ir.ui.view">
+        <field name="name">all.indices.Graph</field>
+        <field name="model">all.indices</field>
+        <field name="arch" type="xml">
+            <graph string="Indices Graph" type="line">
+                <field name="key"/>
+                <field name="index"/>
+                <field name="last"/>
+                <field name="open"/>
+                <field name="high"/>
+                <field name="low"/>
+                <field name="previousClose"/>
+                <field name="yearHigh"/>
+                <field name="yearLow"/>
+                <field name="variation"/>
+                <field name="percentChange"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_all_indices_list" model="ir.ui.view">
+        <field name="name">all.indices.list</field>
+        <field name="model">all.indices</field>
+        <field name="arch" type="xml">
+            <list string="NSE Indices" decoration-success="percentChange &gt; 0" decoration-danger="percentChange &lt; 0" decoration-muted="percentChange == 0">
+                <field name="key" optional="hide"/>
+                <field name="index"/>
+                <field name="last"/>
+                <field name="open"/>
+                <field name="high"/>
+                <field name="low"/>
+                <field name="previousClose"/>
+                <field name="yearHigh" optional="hide"/>
+                <field name="yearLow" optional="hide"/>
+                <field name="variation" optional="show"/>
+                <field name="percentChange" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_all_indices_search" model="ir.ui.view">
+        <field name="name">all.indices.search</field>
+        <field name="model">all.indices</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="index" string="Index"/>
+                <field name="variation" string="Variation"/>
+                <field name="key" string="Key"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_all_indices" model="ir.actions.act_window">
+        <field name="name">All Indices</field>
+        <field name="res_model">all.indices</field>
+        <field name="view_mode">list,graph,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face"> No data yet! </p>
+        </field>
+    </record>
+
+</odoo>

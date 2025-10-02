@@ -1,0 +1,599 @@
+/* Report List Common Styles (merged from report_contract_statistics.css) */
+.report-contract-statistics-container {
+    background: #f8f9fa;
+    min-height: 100vh;
+    padding: 10px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.report-contract-statistics-header {
+    background: linear-gradient(135deg, #ff8c42 0%, #ff6a00 100%);
+    color: #ffffff;
+    padding: 16px 20px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    box-shadow: 0 6px 18px rgba(255, 106, 0, 0.25);
+    border: 0;
+}
+
+.report-contract-statistics-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: #ffffff;
+    letter-spacing: 0.2px;
+}
+
+.report-contract-statistics-subtitle {
+    font-size: 0.92rem;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 0;
+}
+
+.report-contract-statistics-filters {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+    border: 1px solid #dee2e6;
+}
+
+.report-contract-statistics-filter-row {
+    display: flex;
+    gap: 15px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.report-contract-statistics-filter-group {
+    flex: 1;
+    min-width: 150px;
+}
+
+.report-contract-statistics-filter-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 5px;
+    font-size: 0.85rem;
+}
+
+.report-contract-statistics-filter-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    background: #ffffff;
+}
+
+.report-contract-statistics-filter-input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    outline: none;
+}
+
+.report-contract-statistics-btn {
+    padding: 8px 16px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #ffffff;
+    color: #495057;
+}
+
+.report-contract-statistics-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+    color: #495057;
+}
+
+.report-contract-statistics-btn-primary {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.report-contract-statistics-btn-primary:hover {
+    background: #0056b3;
+    border-color: #0056b3;
+    color: white;
+}
+
+.report-contract-statistics-btn-secondary {
+    background: #6c757d;
+    color: white;
+    border-color: #6c757d;
+}
+
+.report-contract-statistics-btn-secondary:hover {
+    background: #545b62;
+    border-color: #545b62;
+    color: white;
+}
+
+.report-contract-statistics-btn-success {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.report-contract-statistics-btn-success:hover {
+    background: #1e7e34;
+    border-color: #1e7e34;
+    color: white;
+}
+
+.report-contract-statistics-table-container {
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+    border: 1px solid #dee2e6;
+    position: relative;
+}
+
+.report-contract-statistics-table-wrapper {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 60vh;
+    position: relative;
+}
+
+.report-contract-statistics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    min-width: 600px;
+    font-size: 0.9rem;
+}
+
+.report-contract-statistics-table thead {
+    background: linear-gradient(180deg, #fff4ec 0%, #ffe9d6 100%);
+    color: #4d3b2f;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.report-contract-statistics-table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 0.85rem;
+    border: 1px solid #f1c7a6;
+    background: transparent;
+    color: #4d3b2f;
+    white-space: nowrap;
+    position: relative;
+}
+
+.report-contract-statistics-table tbody tr {
+    border-bottom: 1px solid #dee2e6;
+    transition: all 0.2s ease;
+}
+
+.report-contract-statistics-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.report-contract-statistics-table tbody tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+.report-contract-statistics-table tbody tr:nth-child(even):hover {
+    background: #e9ecef;
+}
+
+.report-contract-statistics-table td {
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    font-size: 0.85rem;
+    vertical-align: middle;
+    white-space: nowrap;
+    position: relative;
+    text-align: center;
+}
+
+.report-contract-statistics-pagination {
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.report-contract-statistics-pagination-info {
+    color: #6c757d;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.report-contract-statistics-pagination-controls {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.report-contract-statistics-pagination-btn {
+    padding: 6px 12px;
+    border: 1px solid #ced4da;
+    background: white;
+    color: #495057;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
+    font-weight: 500;
+    min-width: 35px;
+    text-align: center;
+}
+
+.report-contract-statistics-pagination-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+    color: #495057;
+}
+
+.report-contract-statistics-pagination-btn.active {
+    background: #ff7a2f;
+    color: #ffffff;
+    border-color: #ff7a2f;
+}
+
+.report-contract-statistics-pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f8f9fa;
+    color: #6c757d;
+}
+
+.report-contract-statistics-pagination-select {
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background: white;
+    color: #495057;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.report-contract-statistics-pagination-select:focus {
+    border-color: #ff7a2f;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 122, 47, 0.25);
+}
+
+.report-contract-statistics-search {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+.report-contract-statistics-search-input {
+    width: 100%;
+    padding: 8px 35px 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    background: #ffffff;
+}
+
+.report-contract-statistics-search-input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    outline: none;
+}
+
+.report-contract-statistics-search-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.report-contract-statistics-loading {
+    text-align: center;
+    padding: 30px;
+    color: #6c757d;
+}
+
+.report-contract-statistics-loading i {
+    font-size: 1.5rem;
+    animation: spin 1s linear infinite;
+    color: #ff7a2f;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.report-contract-statistics-no-data {
+    text-align: center;
+    padding: 30px;
+    color: #6c757d;
+}
+
+.report-contract-statistics-no-data i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    opacity: 0.6;
+    color: #6c757d;
+}
+
+.report-contract-statistics-currency {
+    font-weight: 700;
+    color: #ff6a00;
+    font-size: 0.9rem;
+}
+
+.report-contract-statistics-number {
+    font-weight: 500;
+    color: #495057;
+}
+
+.report-contract-statistics-term {
+    background: #fff1e6;
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #b04a00;
+    text-transform: uppercase;
+    border: 1px solid #ffd3b0;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    border-radius: 999px;
+    line-height: 1;
+    letter-spacing: 0.2px;
+}
+.badge--term { background: #fff1e6; color: #b04a00; border: 1px solid #ffd3b0; }
+.badge--rate { background: #fff7e6; color: #995f00; border: 1px solid #ffe0a6; }
+.badge--order-buy { background: #e9f7ef; color: #0f7a37; border: 1px solid #bfe8cf; }
+.badge--order-sell { background: #fff0f0; color: #b00020; border: 1px solid #ffd6d9; }
+.badge--order-swap { background: #eef4ff; color: #1a56db; border: 1px solid #cddcff; }
+.badge--status-pending { background: #fffbe6; color: #8a6d00; border: 1px solid #ffef99; }
+.badge--status-matched { background: #e9f7ef; color: #0f7a37; border: 1px solid #bfe8cf; }
+.badge--status-cancelled { background: #fff0f0; color: #b00020; border: 1px solid #ffd6d9; }
+
+/* Numeric chips for term, rate, days */
+.chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #e9ecef;
+    background: #f8f9fa;
+    color: #495057;
+}
+.chip-term { background: #fff7ec; border-color: #ffe0c2; color: #b04a00; }
+.chip-rate { background: #fffbe6; border-color: #ffeaa6; color: #8a6d00; }
+.chip-days { background: #eef7ff; border-color: #cfe6ff; color: #0b5ed7; }
+
+/* Customer type chips for CN/TC column */
+.chip-customer-type {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid;
+    text-align: center;
+    min-width: 50px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.chip-cn { 
+    background: #e8f5e8; 
+    border-color: #4caf50; 
+    color: #2e7d32; 
+}
+
+.chip-tc { 
+    background: #fff3e0; 
+    border-color: #ff9800; 
+    color: #e65100; 
+}
+
+/* Subtle row hover */
+.report-contract-statistics-table tbody tr:hover {
+    background: #fff7f0;
+}
+
+/* Extra badges and helpers */
+.badge-buy { background: #e9f7ef; color: #0f7a37; border: 1px solid #bfe8cf; }
+.badge-sell { background: #fff0f0; color: #b00020; border: 1px solid #ffd6d9; }
+.badge-pending { background: #fffbe6; color: #8a6d00; border: 1px solid #ffef99; }
+.badge-approved { background: #e9f7ef; color: #0f7a37; border: 1px solid #bfe8cf; }
+.text-right { text-align: right; }
+.price-cell { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.muted { color: #888; }
+
+.report-contract-statistics-pagination-btn { min-width: 32px; }
+
+.report-contract-statistics-export-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.report-contract-statistics-export-button {
+    background: #28a745;
+    color: white;
+    border: 1px solid #28a745;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
+}
+
+.report-contract-statistics-export-button:hover {
+    background: #1e7e34;
+    border-color: #1e7e34;
+}
+
+.report-contract-statistics-export-button:active {
+    transform: translateY(1px);
+}
+
+.report-contract-statistics-pagination-ellipsis {
+    padding: 6px 8px;
+    color: #6c757d;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Navigation Bar Styles */
+.report-navigation-bar {
+    display: flex;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
+
+.report-nav-item {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 15px 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-right: 1px solid #e9ecef;
+    background: white;
+    color: #6c757d;
+    font-weight: 500;
+    font-size: 0.9rem;
+    text-decoration: none;
+    position: relative;
+}
+
+.report-nav-item:last-child {
+    border-right: none;
+}
+
+.report-nav-item:hover {
+    background: #f8f9fa;
+    color: #495057;
+    transform: translateY(-2px);
+}
+
+.report-nav-item.active {
+    background: linear-gradient(135deg, #ff8c42 0%, #ff6a00 100%);
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
+}
+
+.report-nav-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.report-nav-item i {
+    font-size: 1.1rem;
+    opacity: 0.8;
+}
+
+.report-nav-item.active i {
+    opacity: 1;
+}
+
+.report-nav-item span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .report-contract-statistics-container { padding: 5px; }
+    .report-contract-statistics-header { padding: 10px 15px; margin-bottom: 10px; }
+    .report-contract-statistics-title { font-size: 1.25rem; }
+    .report-contract-statistics-filter-row { flex-direction: column; gap: 10px; }
+    .report-contract-statistics-filter-group { min-width: 100%; }
+    .report-contract-statistics-table-wrapper { overflow-x: auto; overflow-y: auto; max-height: 50vh; }
+    .report-contract-statistics-table { min-width: 600px; }
+    .report-contract-statistics-pagination { flex-direction: column; gap: 10px; text-align: center; padding: 8px 10px; }
+    .report-contract-statistics-pagination-controls { justify-content: center; }
+    
+    /* Navigation responsive */
+    .report-navigation-bar {
+        flex-direction: column;
+        border-radius: 8px;
+    }
+    
+    .report-nav-item {
+        border-right: none;
+        border-bottom: 1px solid #e9ecef;
+        padding: 12px 15px;
+        font-size: 0.85rem;
+    }
+    
+    .report-nav-item:last-child {
+        border-bottom: none;
+    }
+    
+    .report-nav-item span {
+        display: none;
+    }
+    
+    .report-nav-item i {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .report-nav-item {
+        padding: 10px 12px;
+    }
+    
+    .report-nav-item i {
+        font-size: 1rem;
+    }
+}
+
+

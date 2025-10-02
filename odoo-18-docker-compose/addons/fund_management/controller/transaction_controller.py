@@ -1,7 +1,6 @@
 from odoo import http
 from odoo.http import request, Response
 import json  # Dùng thư viện json tiêu chuẩn
-from odoo import fields
 
 
 class TransactionController(http.Controller):

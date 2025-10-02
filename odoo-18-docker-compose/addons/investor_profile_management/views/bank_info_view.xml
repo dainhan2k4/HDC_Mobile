@@ -2,7 +2,7 @@
 <odoo>
     <!-- Bank Account Tree View -->
     <record id="view_investor_bank_account_tree" model="ir.ui.view">
-        <field name="name">investor.bank.account.tree</field>
+        <field name="name">investor.bank.account.list</field>
         <field name="model">investor.bank.account</field>
         <field name="type">list</field>
         <field name="arch" type="xml">

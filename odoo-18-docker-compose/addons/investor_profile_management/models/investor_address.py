@@ -13,7 +13,6 @@ class InvestorAddress(models.Model):
         ('other', 'Other')
     ], string='Address Type', required=True)
     street = fields.Char(string='Số nhà, tên đường', required=True)
-    city = fields.Char(string='City')
     district = fields.Char(string='Quận/Huyện', required=True)
     ward = fields.Char(string='Phường/Xã', required=True)
     state_id = fields.Many2one('res.country.state', string='Tỉnh/Thành', required=True)
@@ -52,7 +51,7 @@ class InvestorAddress(models.Model):
             self.env['status.info']._check_and_update_ho_so_goc(self.partner_id.id)
         return res
 
-    @api.constrains('street', 'city', 'district', 'ward', 'state_id', 'country_id')
+    @api.constrains('street', 'district', 'ward', 'state_id', 'country_id')
     def _check_required_address_fields(self):
         for record in self:
             if record.address_type in ['permanent', 'current']:
@@ -71,8 +70,8 @@ class InvestorAddress(models.Model):
     def _check_zip(self):
         for record in self:
             if record.zip:
-                if not record.zip.isdigit() or len(record.zip) != 5:
-                    raise ValidationError(_('Mã bưu điện phải gồm 5 chữ số.'))
+                if not record.zip.isdigit() or len(record.zip) != 6:
+                    raise ValidationError(_('Mã bưu điện phải gồm 6 chữ số.'))
 
     @api.constrains('address_type')
     def _check_address_type(self):

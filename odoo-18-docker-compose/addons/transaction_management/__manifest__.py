@@ -11,7 +11,8 @@
     'depends': [
         'base',
         'web',
-        'mail'
+        'mail',
+        'portal'
     ],
     'data': [
         # Website Templates - Trang web frontend

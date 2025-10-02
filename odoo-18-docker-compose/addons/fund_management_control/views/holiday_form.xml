@@ -1,0 +1,62 @@
+<odoo>
+    <template id="holiday_form" name="Tạo mới Ngày lễ">
+        <t t-call="web.layout">
+            <t t-set="title">Tạo mới Ngày lễ</t>
+            <t t-call-assets="web.assets_backend" t-js="true"/>
+            <div class="d-flex">
+                <t t-call="fund_management_control.sidebar_template"/>
+                <main class="flex-grow-1 p-4">
+                    <div class="container-fluid">
+                        <div class="mb-4">
+                            <h2 class="h3 fw-bold">Tạo mới Ngày lễ</h2>
+                            <nav aria-label="breadcrumb">
+                              <ol class="breadcrumb small">
+                                <li class="breadcrumb-item"><a href="/holiday_list" class="text-decoration-none">Trở về</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Tạo mới Ngày lễ</li>
+                              </ol>
+                            </nav>
+                        </div>
+                        <div class="card shadow-sm form-container">
+                            <div class="card-body p-5">
+                                <form t-att-action="edit_mode and holiday and '/holiday/update/' + str(holiday.id) or '/holiday/create'" method="POST">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="name" class="form-label">Tên ngày lễ (*)</label>
+                                            <input type="text" class="form-control" name="name" required="1" t-att-value="holiday and holiday.name or ''"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="code" class="form-label">Mã ngày lễ (*)</label>
+                                            <input type="text" class="form-control" name="code" required="1" t-att-value="holiday and holiday.code or ''"/>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="value" class="form-label">Giá trị của ngày lễ (*)</label>
+                                            <input type="text" class="form-control" name="value" required="1" t-att-value="holiday and holiday.value or ''"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="date" class="form-label">Ngày trong năm (*)</label>
+                                            <input type="date" class="form-control" name="date" required="1" t-att-value="holiday and holiday.date or ''"/>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" name="active" t-att-checked="not holiday or holiday.active and 'checked' or False"/>
+                                                <label class="form-check-label">Kích hoạt</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-center mt-4">
+                                        <a href="/holiday_list" class="btn btn-secondary btn-lg px-5">Hủy</a>
+                                        <button type="submit" class="btn btn-primary btn-lg px-5">Lưu</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </t>
+    </template>
+</odoo> 

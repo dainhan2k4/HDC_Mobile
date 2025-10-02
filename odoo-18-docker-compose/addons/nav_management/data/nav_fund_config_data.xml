@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Mock data cho cấu hình quỹ NAV -->
+        
+        <!-- Cấu hình cho VCB Growth Fund -->
+        <record id="nav_config_vcb_growth" model="nav.fund.config">
+            <field name="fund_id" ref="fund_management.fund_vcb_growth"/>
+            <field name="initial_ccq_quantity">10000</field>
+            <field name="capital_cost_percent">1.09</field>
+        </record>
+
+        <!-- Cấu hình cho FPT Income Fund -->
+        <record id="nav_config_fpt_income" model="nav.fund.config">
+            <field name="fund_id" ref="fund_management.fund_fpt_income"/>
+            <field name="initial_ccq_quantity">5000</field>
+            <field name="capital_cost_percent">1.09</field>
+        </record>
+
+        <!-- Cấu hình cho VCB Balanced Fund -->
+        <record id="nav_config_vcb_balanced" model="nav.fund.config">
+            <field name="fund_id" ref="fund_management.fund_vcb_balanced"/>
+            <field name="initial_ccq_quantity">8000</field>
+            <field name="capital_cost_percent">1.09</field>
+        </record>
+
+        <!-- Cấu hình cho VCB Shariah Equity Fund -->
+        <record id="nav_config_vcb_shariah_equity" model="nav.fund.config">
+            <field name="fund_id" ref="fund_management.fund_vcb_shariah_equity"/>
+            <field name="initial_ccq_quantity">12000</field>
+            <field name="capital_cost_percent">1.09</field>
+        </record>
+
+        <!-- Cấu hình bổ sung cho các quỹ khác (nếu có) -->
+        <!-- Có thể thêm nhiều quỹ khác tùy theo nhu cầu -->
+        
+    </data>
+</odoo>

@@ -1,0 +1,53 @@
+/* Kanban View CSS - Scoped for watchlist */
+.stock_market_kanban .oe_kanban_global_click {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stock_market_kanban .o_dropdown_kanban {
+  position: relative;
+  display: inline-block;
+}
+
+.stock_market_kanban .dropdown-toggle:hover {
+  color: #333;
+}
+
+.stock_market_kanban .dropdown-menu a {
+  display: block;
+  padding: 4px 8px;
+  color: #333;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.stock_market_kanban .dropdown-menu a:hover {
+  background-color: #f0f0f0;
+}
+
+.stock_market_kanban .o_kanban_record_title {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.stock_market_kanban .o_kanban_record_subtitle {
+  font-size: 16px;
+  color: #888;
+}
+
+.stock_market_kanban .oe_kanban_footer {
+  margin-top: 10px;
+}
+
+.stock_market_kanban .o_kanban_bottom_left,
+.stock_market_kanban .o_kanban_bottom_right {
+  display: inline-block;
+}
+
+.stock_market_kanban .o_kanban_bottom_right strong {
+  font-weight: bold;
+}

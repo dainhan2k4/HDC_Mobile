@@ -11,12 +11,6 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
         <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-        <style>
-          .profile-container {
-            max-width: 1400px;
-            margin: 0 auto;
-          }
-        </style>
       </t>
 
 
@@ -85,27 +79,52 @@
                         </p>
                       </div>
 
-                      <div class="mb-2 d-flex justify-content-between align-items-center">
-                        <span class="text-muted small">🔢 Số lượng chứng chỉ quỹ đã đầu tư ban đầu:</span>
-                        <div class="fw-semibold text-dark" id="sell-confirm-original-units">--</div>
-                      </div>
-
-                      <div class="mb-3 d-flex justify-content-between align-items-center">
-                        <span class="text-muted small">💰 Tổng giá trị đầu tư ban đầu:</span>
-                        <div class="fw-semibold text-dark" id="sell-confirm-original-amount">--</div>
+                      <div class="mb-4">
+                        <h6 class="fw-semibold mb-3">CCQ ban đầu</h6>
+                        <ul class="list-unstyled small text-muted border rounded-3">
+                          <li class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                            <span>Số lượng chứng chỉ quỹ đã đầu tư ban đầu:</span>
+                            <strong id="sell-confirm-original-units" class="text-dark">--</strong>
+                          </li>
+                          <li class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                            <span>Tổng giá trị đầu tư ban đầu:</span>
+                            <strong id="sell-confirm-original-amount" class="text-dark">--</strong>
+                          </li>
+                        </ul>
                       </div>
 
                       <!-- Thông tin xác nhận -->
                       <div class="mb-4">
                         <h6 class="fw-semibold mb-3">Thông tin lệnh</h6>
-                        <ul class="list-unstyled small text-muted">
-                          <li class="mb-2">Mã đầu tư: <strong id="sell-confirm-investment-id" class="text-dark">--</strong></li>
-                          <li class="mb-2">Quỹ đầu tư: <strong id="sell-confirm-fund-name" class="text-dark">--</strong></li>
-                          <li class="mb-2">Mã quỹ: <strong id="sell-confirm-fund-ticker" class="text-dark">--</strong></li>
-                          <li class="mb-2">Loại lệnh: <strong class="text-dark">Bán</strong></li>
-                          <li class="mb-2">Số lượng bán: <strong id="sell-confirm-quantity" class="text-dark">--</strong></li>
-                          <li class="mb-2">NAV hiện tại: <strong id="sell-confirm-nav" class="text-dark">--</strong></li>
-                          <li class="mb-2">Giá trị tạm tính: <strong id="sell-confirm-value" class="text-dark">--</strong></li>
+                        <ul class="list-unstyled small text-muted border rounded-3">
+                          <li class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                            <span>Mã đầu tư:</span>
+                            <strong id="sell-confirm-investment-id" class="text-dark">--</strong>
+                          </li>
+                          <li class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                            <span>Quỹ đầu tư:</span>
+                            <strong id="sell-confirm-fund-name" class="text-dark">--</strong>
+                          </li>
+                          <li class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                            <span>Mã quỹ:</span>
+                            <strong id="sell-confirm-fund-ticker" class="text-dark">--</strong>
+                          </li>
+                          <li class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                            <span>Loại lệnh:</span>
+                            <strong class="text-dark">Bán</strong>
+                          </li>
+                          <li class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                            <span>Số lượng bán:</span>
+                            <strong id="sell-confirm-quantity" class="text-dark">--</strong>
+                          </li>
+                          <li class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                            <span>NAV hiện tại:</span>
+                            <strong id="sell-confirm-nav" class="text-dark">--</strong>
+                          </li>
+                          <li class="d-flex justify-content-between align-items-center p-2">
+                            <span>Giá trị tạm tính:</span>
+                            <strong id="sell-confirm-value" class="text-dark">--</strong>
+                          </li>
                         </ul>
                       </div>
 

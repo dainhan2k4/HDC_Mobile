@@ -93,8 +93,47 @@
                     <field name="user_id"/>
                     <field name="fund_id"/>
                     <field name="transaction_type"/>
+                    <field name="status"/>
                     <field name="amount"/>
+                    <field name="fee"/>
                 </list>
+            </field>
+        </record>
+
+        <record id="view_portfolio_transaction_form" model="ir.ui.view">
+            <field name="name">portfolio.transaction.form</field>
+            <field name="model">portfolio.transaction</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="user_id"/>
+                                <field name="fund_id"/>
+                                <field name="transaction_type"/>
+                                <field name="status"/>
+                            </group>
+                            <group>
+                                <field name="units"/>
+                                <field name="amount"/>
+                                <field name="fee"/>
+                                <field name="price"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group>
+                                <field name="term_months"/>
+                                <field name="interest_rate"/>
+                                <field name="source"/>
+                            </group>
+                            <group>
+                                <field name="created_at"/>
+                                <field name="date_end"/>
+                                <field name="contract_pdf_path"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
             </field>
         </record>
 

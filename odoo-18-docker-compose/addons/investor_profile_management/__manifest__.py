@@ -12,7 +12,7 @@
     """,
     'author': 'Your Company',
     'website': 'https://www.yourcompany.com',
-    'depends': ['base', 'crm', 'web'],
+    'depends': ['base', 'crm', 'web', 'portal'],
     'data': [
         'security/ir.model.access.csv',
         'views/menu_views.xml',
@@ -29,6 +29,7 @@
         'views/bank_info/bank_info_page.xml',
         'views/address_info/address_info_page.xml',
         'views/verification/verification_page.xml',
+        'views/verification/ekyc_verification_page.xml',
     ],
     'assets': {
         'web.assets_frontend': [

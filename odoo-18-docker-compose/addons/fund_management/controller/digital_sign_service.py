@@ -1,4 +1,5 @@
 # file: digital_sign_service.py
+import os
 from io import BytesIO
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -7,11 +8,21 @@ import requests
 from PIL import Image
 import fitz  # PyMuPDF
 import time
+import datetime, uuid
+
 
 from threading import Thread
 
+# Cấu hình URL Odoo
+ODOO_BASE_URL = "http://localhost:8069"
+
 app = Flask(__name__)
 CORS(app)  # <-- bật CORS cho toàn bộ API
+
+@app.route('/')
+def home():
+    return jsonify({"message": "Digital Signature Service is running!"})
+
 
 
 @app.route('/api/sign', methods=['POST'])
@@ -39,85 +50,123 @@ def sign_document():
 def append_signature():
     print("📥 Nhận request /api/append_signature")
 
-    data = request.json
-    image_data_url = data.get("signature_image")
-    pdf_url = data.get("pdf_url")
-
-    print("🔍 Dữ liệu nhận được:")
-    print(" - image_data_url: ", image_data_url[:30], "...")  # log ngắn
-    print(" - pdf_url: ", pdf_url)
-
-    name = data.get("name")
-    email = data.get("email")
-    print("👤 Người ký:")
-    print(" - name:", name)
-    print(" - email:", email)
-
-    if not image_data_url or not pdf_url:
-        print("❌ Thiếu dữ liệu đầu vào")
-        return jsonify({"error": "Thiếu dữ liệu"}), 400
-
     try:
-        # 🧠 Tách base64 ra khỏi prefix "data:image/png;base64,..."
-        header, encoded = image_data_url.split(",", 1)
-        signature_bytes = base64.b64decode(encoded)
+        image_data_url, pdf_url, name, email, phone, id_number, birth_date = extract_input_data()
+
+        print("👤 Người ký:")
+        print(" - name:", name)
+        print(" - email:", email)
+        print(" - phone:", phone)
+
+
+        signature_bytes = decode_signature_image(image_data_url)
         print("✅ Giải mã base64 chữ ký thành công")
 
-        # 📥 Tải PDF từ URL
-        full_pdf_url = "http://localhost:8069" + pdf_url
-        print(f"🌐 Đang tải PDF từ: {full_pdf_url}")
-        pdf_resp = requests.get(full_pdf_url)
-        pdf_bytes = BytesIO(pdf_resp.content)
+        pdf_bytes = download_pdf(pdf_url)
         print("✅ PDF tải thành công")
 
-        # 🖋️ Mở PDF
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         page = doc[-1]  # Trang cuối
         print(f"📄 Số trang: {len(doc)}, đang thêm vào trang {len(doc)}")
 
-        # 📏 Tính toán vị trí ảnh
-        rect = fitz.Rect(315, 692, 550, 742)
-        rect_name = fitz.Rect(0, 272, 350, 420)
-        rect_email = fitz.Rect(0, 349, 360, 460)  # Email dưới tên 30px
-        print("📐 Vị trí chữ ký:", rect)
-        print("📍 Vị trí name:", rect_name)
-        print("📍 Vị trí email:", rect_email)
-        # Giả sử bạn đã có biến `page` là 1 trang PDF
-        text_name = f"{name}"
-        text_email = f"{email}"
-        print(f"Tên: {name}")
-        print(f"Email: {email}")
-        # 🖼️ Thêm ảnh vào PDF
-        img_stream = BytesIO(signature_bytes)
-        img = Image.open(img_stream)
-        # Xử lý nền trong suốt: chuyển thành nền trắng
-        if img.mode in ('RGBA', 'LA'):
-            background = Image.new("RGB", img.size, (255, 255, 255))  # nền trắng
-            background.paste(img, mask=img.split()[3])  # dán ảnh PNG lên nền trắng
-            background.save("temp_signature.jpg")
-        else:
-            img.convert("RGB").save("temp_signature.jpg")
+        rect_signature, rect_name, rect_email, rect_birth, rect_cccd, rect_phone = get_signature_positions()
 
-        print("🖼️ Lưu ảnh chữ ký tạm vào temp_signature.jpg")
+        # Lưu ảnh tạm và chèn vào PDF
+        signature_path = save_temp_signature(signature_bytes)
+        page.insert_image(rect_signature, filename=signature_path)
+        page.insert_textbox(rect_name, name, fontsize=13, color=(0, 0, 0), align=0)
+        page.insert_textbox(rect_email, email, fontsize=13, color=(0, 0, 0), align=0)
+        page.insert_textbox(rect_birth, birth_date, fontsize=13, color=(0, 0, 0), align=0)
+        page.insert_textbox(rect_cccd, id_number, fontsize=13, color=(0, 0, 0), align=0)
+        page.insert_textbox(rect_phone, phone, fontsize=13, color=(0, 0, 0), align=0)
 
-        page.insert_image(rect, filename="temp_signature.jpg")
-        print("✅ Đã chèn ảnh vào PDF")
-
-        page.insert_textbox(rect_name, text_name, fontsize=13, color=(0, 0, 0), align=1)
-
-        page.insert_textbox(rect_email, text_email, fontsize=13, color=(0, 0, 0), align=1)
-
-        # 💾 Xuất file mới
         output = BytesIO()
         doc.save(output)
         output.seek(0)
         print("💾 PDF đã lưu vào memory stream")
 
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_id = uuid.uuid4().hex[:6]
+        filename = f"signed_{name.replace(' ', '_')}_{timestamp}_{unique_id}.pdf"
+
+        file_path = save_pdf_to_disk(output, filename)
+
+        # Gửi sang Odoo lưu vào session
+        save_file_path_to_odoo_session(file_path)
+
         return send_file(output, mimetype="application/pdf", download_name="signed_hand.pdf")
 
+    except ValueError as ve:
+        print("❌ Dữ liệu thiếu:", str(ve))
+        return jsonify({"error": str(ve)}), 400
     except Exception as e:
         print("❌ Lỗi khi xử lý PDF/chữ ký:", str(e))
         return jsonify({"error": str(e)}), 500
+
+
+
+# Hàm lấy dữ liệu đầu vào từ frontend
+def extract_input_data():
+    data = request.json
+    image_data_url = data.get("signature_image")
+    pdf_url = data.get("pdf_url")
+    name = data.get("name")
+    email = data.get("email")
+    phone = data.get("phone")
+    id_number = data.get("id_number")
+    birth_date = data.get("birth_date")
+
+    if not image_data_url or not pdf_url:
+        raise ValueError("Thiếu dữ liệu đầu vào")
+
+    return image_data_url, pdf_url, name, email, phone, id_number, birth_date
+
+
+# Hàm decode ảnh base64
+def decode_signature_image(image_data_url):
+    header, encoded = image_data_url.split(",", 1)
+    return base64.b64decode(encoded)
+
+
+# Hàm tải PDF từ URL
+def download_pdf(url_path):
+    full_url = ODOO_BASE_URL + url_path
+    resp = requests.get(full_url)
+    return BytesIO(resp.content)
+
+
+# Hàm xử lý và lưu ảnh chữ ký tạm
+def save_temp_signature(signature_bytes):
+    img = Image.open(BytesIO(signature_bytes))
+    if img.mode in ('RGBA', 'LA'):
+        background = Image.new("RGB", img.size, (255, 255, 255))
+        background.paste(img, mask=img.split()[3])
+        background.save("temp_signature.jpg")
+    else:
+        img.convert("RGB").save("temp_signature.jpg")
+    return "temp_signature.jpg"
+
+# Hàm xác định vị trí text/ảnh
+def get_signature_positions():
+    rect_signature = fitz.Rect(315, 662, 550, 700)
+    rect_name = fitz.Rect(180, 272, 600, 420)
+    rect_birth = fitz.Rect(180, 298, 600, 340)
+    rect_cccd = fitz.Rect(180, 324, 600, 370)
+    rect_email = fitz.Rect(180, 349, 600, 470)
+    rect_phone = fitz.Rect(180, 374, 600, 430)
+    return rect_signature, rect_name, rect_email,rect_birth, rect_cccd, rect_phone
+
+# Hàm lưu PDF ra thư mục
+def save_pdf_to_disk(output_stream, filename):
+    folder_path = "signed_pdfs"
+    os.makedirs(folder_path, exist_ok=True)  # Tạo thư mục nếu chưa tồn tại
+
+    file_path = os.path.join(folder_path, filename)
+    with open(file_path, "wb") as f:
+        f.write(output_stream.getbuffer())  # Ghi nội dung từ memory stream ra file
+
+    print(f"💾 Đã lưu PDF vào: {file_path}")
+    return file_path
 
 def get_center_rect(page, width, height, y_offset):
     """Tính toán Rect để đặt phần tử vào giữa trang theo chiều ngang"""
@@ -130,10 +179,29 @@ def get_center_rect(page, width, height, y_offset):
 
 def run_flask_server():
     def start():
-        print("🚀 Flask ký số đang khởi động tại http://127.0.0.1:5000 ...")
-        app.run(debug=False, port=5000, use_reloader=False)
+        app.run(debug=True, port=5000, use_reloader=False, host='0.0.0.0')
 
     # Chạy Flask trên thread riêng để không chặn Odoo
     t = Thread(target=start)
     t.daemon = True
     t.start()
+
+# Thêm main block để có thể chạy trực tiếp
+if __name__ == '__main__':
+    print("🚀 Khởi động Digital Signature Service...")
+    print("📍 Service sẽ chạy trên: http://localhost:5000")
+    print("✍️ Signature endpoint: http://localhost:5000/api/append_signature")
+    app.run(debug=True, port=5000, host='0.0.0.0')
+
+
+def save_file_path_to_odoo_session(file_path):
+    odoo_url = f"{ODOO_BASE_URL}/save_signed_pdf_path"
+
+    print("file_path lấy được:", file_path)
+
+    session_id = request.cookies.get('session_id')
+    cookies = {"session_id": session_id} if session_id else {}
+
+    data = {"file_path": file_path}
+    resp = requests.post(odoo_url, data=data, cookies=cookies)
+    print("📤 Gửi file_path sang Odoo:", resp.status_code, resp.text)

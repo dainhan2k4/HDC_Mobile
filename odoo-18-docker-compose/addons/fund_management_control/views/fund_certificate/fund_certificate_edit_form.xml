@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="fund_management_control.fund_certificate_edit_form" name="Sửa Chứng chỉ quỹ">
+        <t t-call="web.layout">
+            <t t-set="title">Sửa thông tin Chứng chỉ quỹ</t>
+            <t t-call-assets="web.assets_backend" t-js="true"/>
+
+            <!-- Sử dụng lại toàn bộ CSS từ form tạo mới -->
+            <t t-set="head">
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+                <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+                <style>
+                    /* --- General and Layout Styles --- */
+                    body {
+                        background-color: #f8f9fa;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    .app-container {
+                        display: flex;
+                        min-height: 100vh;
+                        position: relative;
+                    }
+                    .sidebar-container {
+                        position: sticky;
+                        top: 0;
+                        height: 100vh; /* Ensure it sticks to the full height */
+                        z-index: 1000;
+                    }
+                    .sidebar-toggle {
+                        position: absolute;
+                        top: 15px;
+                        right: -15px;
+                        background: #fff;
+                        border: 2px solid #667eea;
+                        border-radius: 50%;
+                        width: 30px;
+                        height: 30px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                        z-index: 1001;
+                        transition: all 0.3s ease;
+                    }
+                    .sidebar-toggle:hover {
+                        background: #667eea;
+                        color: #fff !important;
+                        transform: scale(1.1);
+                    }
+                    .main-content {
+                        flex: 1;
+                        min-height: 100vh;
+                        overflow-x: auto;
+                    }
+
+                    /* --- Mobile Responsive --- */
+                    @media (max-width: 768px) {
+                        .sidebar-container {
+                            position: fixed;
+                            z-index: 1050;
+                        }
+                        .sidebar-overlay {
+                            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                            background: rgba(0,0,0,0.5); z-index: 1040;
+                            display: none; opacity: 0; transition: opacity 0.3s ease;
+                        }
+                        .sidebar-overlay.show { display: block; opacity: 1; }
+                        .mobile-header { display: flex !important; }
+                        .sidebar-toggle { display: none !important; }
+                    }
+                    @media (min-width: 769px) {
+                        .mobile-header { display: none !important; }
+                    }
+
+                    /* --- Form Specific Styles --- */
+                    .form-main-container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+                    .form-card { background: white; border-radius: 1rem; box-shadow: 0 8px 25px rgba(0,0,0,0.1); overflow: hidden; margin-bottom: 2rem; }
+                    .card-header-custom { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; text-align: center; }
+                    .form-section { padding: 2rem; border-bottom: 1px solid #f0f0f0; }
+                    .form-section:last-child { border-bottom: none; }
+                    .section-header { display: flex; align-items: center; margin-bottom: 1.5rem; color: #2c3e50; }
+                    .section-icon { width: 45px; height: 45px; border-radius: 12px; background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%); display: flex; align-items: center; justify-content: center; margin-right: 1rem; }
+                    .form-control, .form-select { border: 2px solid #e9ecef; border-radius: 0.75rem; padding: 0.875rem 1rem; font-size: 0.95rem; transition: all 0.3s ease; }
+                    .form-control:focus, .form-select:focus { border-color: #667eea; box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.15); }
+                    .tooltip-icon { color: #6c757d; margin-left: 0.5rem; cursor: help; }
+                    .btn-primary-custom { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 0.75rem; padding: 0.875rem 2rem; font-weight: 600; transition: all 0.3s ease; }
+                    .btn-primary-custom:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3); }
+                    .btn-secondary-custom { background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 0.75rem; padding: 0.875rem 2rem; font-weight: 600; color: #495057; transition: all 0.3s ease; }
+                    .btn-secondary-custom:hover { transform: translateY(-2px); border-color: #6c757d; color: #212529; }
+                </style>
+            </t>
+
+            <div class="app-container">
+                <!-- Mobile Overlay and Header -->
+                <div class="sidebar-overlay" id="sidebarOverlay"></div>
+                <header class="mobile-header w-100 bg-white p-3 shadow-sm align-items-center justify-content-between position-fixed" style="top: 0; left: 0; z-index: 1060;">
+                    <h5 class="mb-0 fw-bold">Fund Management</h5>
+                    <button class="btn btn-link p-0" id="mobileSidebarToggle"><i class="fas fa-bars fa-lg text-primary"></i></button>
+                </header>
+
+                <!-- Sidebar Container -->
+                <div class="sidebar-container" id="sidebarContainer">
+                    <div class="sidebar-toggle d-none d-lg-flex" id="sidebarToggle"><i class="fas fa-chevron-left text-primary" id="toggleIcon"></i></div>
+                    <t t-call="fund_management_control.sidebar_template"/>
+                </div>
+
+                <!-- Main Content -->
+                <main class="main-content">
+                    <div class="d-block d-md-none" style="height: 70px;"></div>
+                    <div class="form-main-container">
+                        <div class="form-card">
+                            <div class="card-header-custom">
+                                <h2 class="mb-2 h3"><i class="fas fa-edit me-2"></i>Sửa thông tin Chứng chỉ quỹ</h2>
+                                <p class="mb-0 opacity-90">Cập nhật thông tin chi tiết cho chứng chỉ quỹ.</p>
+                            </div>
+
+                            <form action="/fund_certificate/update" method="POST" enctype="multipart/form-data" id="fundCertificateEditForm" novalidate="1">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <!-- Thêm trường ẩn để chứa ID của bản ghi -->
+                                <input type="hidden" name="cert_id" t-att-value="cert.id"/>
+                                
+                                <!-- Section 1: Basic Information -->
+                                <div class="form-section">
+                                    <div class="section-header"><div class="section-icon"><i class="fas fa-info-circle fa-lg text-primary"></i></div><div><h5 class="mb-1">Thông tin cơ bản</h5><small class="text-muted">Cập nhật tên và mã định danh của quỹ.</small></div></div>
+                                    <div class="row g-3">
+                                        <div class="col-md-6"><label for="full_name" class="form-label fw-semibold">Tên quỹ đầy đủ <span class="text-danger">*</span></label><input type="text" class="form-control" id="full_name" name="full_name" t-att-value="cert.full_name" required="1"/></div>
+                                        <div class="col-md-6"><label for="english_name" class="form-label fw-semibold">Tên quỹ Tiếng Anh <span class="text-danger">*</span></label><input type="text" class="form-control" id="english_name" name="english_name" t-att-value="cert.english_name" required="1"/></div>
+                                        <div class="col-md-4"><label for="short_name" class="form-label fw-semibold">Mã quỹ (viết tắt) <span class="text-danger">*</span></label><input type="text" class="form-control" id="short_name" name="short_name" t-att-value="cert.short_name" required="1" maxlength="10"/></div>
+                                        <div class="col-md-4"><label for="fund_color" class="form-label fw-semibold">Màu đại diện</label><input type="color" class="form-control form-control-color" id="fund_color" name="fund_color" t-att-value="cert.fund_color"/></div>
+                                        <div class="col-md-4"><label for="current_nav" class="form-label fw-semibold">Giá NAV hiện tại <span class="text-danger">*</span></label><div class="input-group"><input type="number" step="0.01" class="form-control" id="current_nav" name="current_nav" t-att-value="cert.current_nav" required="1"/><span class="input-group-text">VND</span></div></div>
+                                        <div class="col-md-6"><label for="initial_certificate_quantity" class="form-label fw-semibold">Số lượng chứng chỉ quỹ đóng ban đầu</label><div class="input-group"><input type="number" class="form-control" id="initial_certificate_quantity" name="initial_certificate_quantity" t-att-value="cert.initial_certificate_quantity"/><span class="input-group-text">chứng chỉ</span></div></div>
+                                        <div class="col-md-6"><label for="initial_certificate_price" class="form-label fw-semibold">Giá chứng chỉ quỹ ban đầu</label><div class="input-group"><input type="number" step="0.01" class="form-control" id="initial_certificate_price" name="initial_certificate_price" t-att-value="cert.initial_certificate_price"/><span class="input-group-text">VND</span></div></div>
+                                        <div class="col-md-6"><label for="capital_cost" class="form-label fw-semibold">Chi phí vốn</label><div class="input-group"><input type="number" step="0.01" class="form-control" id="capital_cost" name="capital_cost" t-att-value="cert.capital_cost"/><span class="input-group-text">%</span></div></div>
+                                    </div>
+                                </div>
+
+                                <!-- Section 2: Timing Information -->
+                                <div class="form-section">
+                                    <div class="section-header"><div class="section-icon"><i class="fas fa-calendar-alt fa-lg text-info"></i></div><div><h5 class="mb-1">Thông tin thời gian</h5><small class="text-muted">Cập nhật lịch giao dịch và các thời hạn.</small></div></div>
+                                    <div class="row g-3">
+                                        <div class="col-md-6"><label for="inception_date" class="form-label fw-semibold">Thời gian đóng sổ lệnh <span class="text-danger">*</span></label><input type="datetime-local" class="form-control" id="inception_date" name="inception_date" t-att-value="cert.inception_date and cert.inception_date.strftime('%Y-%m-%dT%H:%M')" required="1"/></div>
+                                        <div class="col-md-6"><label for="closure_date" class="form-label fw-semibold">Ngày đóng sổ lệnh <span class="text-danger">*</span></label><input type="date" class="form-control" id="closure_date" name="closure_date" t-att-value="cert.closure_date and cert.closure_date.strftime('%Y-%m-%d')" required="1"/></div>
+                                        <div class="col-md-6"><label for="receive_money_time" class="form-label fw-semibold">Thời điểm ghi nhận tiền <span class="text-danger">*</span></label><input type="datetime-local" class="form-control" id="receive_money_time" name="receive_money_time" t-att-value="cert.receive_money_time and cert.receive_money_time.strftime('%Y-%m-%dT%H:%M')" required="1"/></div>
+                                        <div class="col-md-6"><label for="payment_deadline" class="form-label fw-semibold">Thời hạn thanh toán bán <span class="text-danger">*</span></label><div class="input-group"><input type="number" class="form-control" id="payment_deadline" name="payment_deadline" t-att-value="cert.payment_deadline" required="1"/><span class="input-group-text">ngày</span></div></div>
+                                        <div class="col-md-6"><label for="redemption_time" class="form-label fw-semibold">Thời gian xử lý hoán đổi <span class="text-danger">*</span></label><div class="input-group"><input type="number" class="form-control" id="redemption_time" name="redemption_time" t-att-value="cert.redemption_time" required="1"/><span class="input-group-text">ngày</span></div></div>
+                                        <div class="col-md-6"><label for="report_website" class="form-label fw-semibold">Website báo cáo <span class="text-danger">*</span></label><input type="url" class="form-control" id="report_website" name="report_website" t-att-value="cert.report_website" required="1"/></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Section 3: Product Classification -->
+                                <div class="form-section">
+                                    <div class="section-header"><div class="section-icon"><i class="fas fa-sitemap fa-lg text-warning"></i></div><div><h5 class="mb-1">Phân loại sản phẩm</h5><small class="text-muted">Cập nhật các thuộc tính của quỹ.</small></div></div>
+                                    <div class="row g-3">
+                                        <div class="col-md-3"><label for="fund_type" class="form-label fw-semibold">Loại quỹ <span class="text-danger">*</span></label><select class="form-select" id="fund_type" name="fund_type" required="1"><t t-foreach="fund_types" t-as="ft"><option t-att-value="ft[0]" t-esc="ft[1]" t-att-selected="ft[0] == cert.fund_type"/></t></select></div>
+                                        <div class="col-md-3"><label for="risk_level" class="form-label fw-semibold">Mức độ rủi ro <span class="text-danger">*</span></label><select class="form-select" id="risk_level" name="risk_level" required="1"><t t-foreach="risk_levels" t-as="rl"><option t-att-value="rl[0]" t-esc="rl[1]" t-att-selected="rl[0] == cert.risk_level"/></t></select></div>
+                                        <div class="col-md-3"><label for="product_type" class="form-label fw-semibold">Loại sản phẩm <span class="text-danger">*</span></label><select class="form-select" id="product_type" name="product_type" required="1"><t t-foreach="product_types" t-as="pt"><option t-att-value="pt[0]" t-esc="pt[1]" t-att-selected="pt[0] == cert.product_type"/></t></select></div>
+                                        <div class="col-md-3"><label for="product_status" class="form-label fw-semibold">Trạng thái <span class="text-danger">*</span></label><select class="form-select" id="product_status" name="product_status" required="1"><t t-foreach="product_statuses" t-as="ps"><option t-att-value="ps[0]" t-esc="ps[1]" t-att-selected="ps[0] == cert.product_status"/></t></select></div>
+                                    </div>
+                                </div>
+
+                                <!-- Section 4: Additional Information -->
+                                <div class="form-section">
+                                    <div class="section-header"><div class="section-icon"><i class="fas fa-puzzle-piece fa-lg text-success"></i></div><div><h5 class="mb-1">Thông tin bổ sung</h5><small class="text-muted">Cập nhật mô tả, hình ảnh và lịch giao dịch.</small></div></div>
+                                    <div class="row g-3">
+                                        <div class="col-lg-7"><label for="fund_description" class="form-label fw-semibold">Mô tả chi tiết quỹ</label><textarea class="form-control" id="fund_description" name="fund_description" rows="12" t-esc="cert.fund_description"></textarea></div>
+                                        <div class="col-lg-5">
+                                            <div class="mb-3">
+                                                <label for="fund_image" class="form-label fw-semibold">Thay đổi hình ảnh đại diện</label>
+                                                <input class="form-control" type="file" id="fund_image" name="fund_image" accept="image/png, image/jpeg"/>
+                                                <small class="text-muted">Để trống nếu không muốn thay đổi ảnh hiện tại.</small>
+                                            </div>
+                                            <div>
+                                                <label class="form-label fw-semibold mb-2">Lịch giao dịch trong tuần</label>
+                                                <div class="row g-2 trading-days-grid">
+                                                    <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="monday" name="monday" t-att-checked="cert.monday and 'checked'"/><label class="form-check-label w-100" for="monday">Thứ Hai</label></div></div>
+                                                    <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="tuesday" name="tuesday" t-att-checked="cert.tuesday and 'checked'"/><label class="form-check-label w-100" for="tuesday">Thứ Ba</label></div></div>
+                                                    <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="wednesday" name="wednesday" t-att-checked="cert.wednesday and 'checked'"/><label class="form-check-label w-100" for="wednesday">Thứ Tư</label></div></div>
+                                                    <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="thursday" name="thursday" t-att-checked="cert.thursday and 'checked'"/><label class="form-check-label w-100" for="thursday">Thứ Năm</label></div></div>
+                                                    <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="friday" name="friday" t-att-checked="cert.friday and 'checked'"/><label class="form-check-label w-100" for="friday">Thứ Sáu</label></div></div>
+                                                    <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="saturday" name="saturday" t-att-checked="cert.saturday and 'checked'"/><label class="form-check-label w-100" for="saturday">Thứ Bảy</label></div></div>
+                                                    <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="sunday" name="sunday" t-att-checked="cert.sunday and 'checked'"/><label class="form-check-label w-100" for="sunday">Chủ Nhật</label></div></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Section 5: Action Buttons -->
+                                <div class="form-section">
+                                    <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                                        <a href="/fund_certificate_list" class="btn btn-secondary-custom d-flex align-items-center justify-content-center">
+                                            <i class="fas fa-times me-2"></i>Hủy bỏ
+                                        </a>
+                                        <button type="submit" class="btn btn-primary-custom d-flex align-items-center justify-content-center">
+                                            <i class="fas fa-save me-2"></i>Lưu thay đổi
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <!-- Sử dụng lại JS từ form tạo mới -->
+            <script>
+                <![CDATA[ 
+                document.addEventListener('DOMContentLoaded', function() {
+                    // --- Sidebar Logic (giữ nguyên) ---
+                    const sidebarContainer = document.getElementById('sidebarContainer');
+                    const sidebar = sidebarContainer?.querySelector('.modern-sidebar');
+                    const sidebarToggle = document.getElementById('sidebarToggle');
+                    const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+                    const sidebarOverlay = document.getElementById('sidebarOverlay');
+                    const toggleIcon = document.getElementById('toggleIcon');
+
+                    if (sidebarToggle && sidebar && toggleIcon) {
+                        sidebarToggle.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            sidebar.classList.toggle('collapsed');
+                            toggleIcon.classList.toggle('fa-chevron-left');
+                            toggleIcon.classList.toggle('fa-chevron-right');
+                        });
+                    }
+                    if (mobileSidebarToggle && sidebar && sidebarOverlay) {
+                        mobileSidebarToggle.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            sidebar.classList.add('show');
+                            sidebarOverlay.classList.add('show');
+                        });
+                    }
+                    if (sidebarOverlay && sidebar) {
+                        sidebarOverlay.addEventListener('click', () => {
+                            sidebar.classList.remove('show');
+                            sidebarOverlay.classList.remove('show');
+                        });
+                    }
+                    window.addEventListener('resize', () => {
+                        if (window.innerWidth > 768 && sidebar?.classList.contains('show')) {
+                            sidebar.classList.remove('show');
+                            sidebarOverlay?.classList.remove('show');
+                        }
+                    });
+
+                    // --- Form Specific JS ---
+                    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl); });
+
+                    const form = document.getElementById('fundCertificateEditForm');
+                    if(form) {
+                        form.addEventListener('submit', function (event) {
+                            if (!form.checkValidity()) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                            }
+                            form.classList.add('was-validated');
+                        }, false);
+                    }
+                });
+                ]]>
+            </script>
+        </t>
+    </template>
+</odoo>

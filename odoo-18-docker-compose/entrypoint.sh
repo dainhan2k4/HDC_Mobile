@@ -3,6 +3,15 @@
 # Default to 8069 if PORT is not set (for local execution).
 ODOO_HTTP_PORT=${PORT:-8069}
 
+# Install Python packages from requirements.txt (as non-root inside container)
+echo "Installing Python packages from requirements.txt..."
+if [ -f "/etc/odoo/requirements.txt" ]; then
+    python3 -m pip install --no-input --disable-pip-version-check --root-user-action=ignore -r /etc/odoo/requirements.txt
+    echo "Python packages installed successfully"
+else
+    echo "requirements.txt not found"
+fi
+
 # Resolve database host – if the provided DB_HOST cannot be resolved (e.g. Render hostname on local), fallback to 'db'
 RESOLVED_HOST=${DB_HOST:-}
 if ! getent hosts "$RESOLVED_HOST" >/dev/null 2>&1; then

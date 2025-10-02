@@ -114,3 +114,19 @@ class StatusInfo(models.Model):
             status_info.write({'ho_so_goc': 'da_nhan'})
         else:
             status_info.write({'ho_so_goc': 'chua_nhan'}) 
+
+    def set_approved(self):
+        self.write({'trang_thai_tk_dau_tu': 'da_duyet', 'ho_so_goc': 'da_nhan'}) 
+
+class ResPartner(models.Model):
+    _inherit = 'res.partner'
+
+    def create(self, vals):
+        partner = super(ResPartner, self).create(vals)
+        # Chỉ tạo status info cho partner là user (không phải công ty, không phải contact phụ)
+        if not partner.parent_id and not partner.is_company:
+            status_model = partner.env['status.info']
+            # Kiểm tra đã có chưa, nếu chưa thì tạo
+            if not status_model.search([('partner_id', '=', partner.id)], limit=1):
+                status_model.create({'partner_id': partner.id})
+        return partner 

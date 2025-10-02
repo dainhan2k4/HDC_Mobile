@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_nifty_stockindices_graph" model="ir.ui.view">
+        <field name="name">nifty.stockindices.Graph</field>
+        <field name="model">nifty.stockindices</field>
+        <field name="arch" type="xml">
+            <graph string="NIFTY 50" type="line">
+                <field name="symbol"/>
+                <field name="open" type="measure"/>
+                <field name="dayHigh" type="measure"/>
+                <field name="dayLow" type="measure"/>
+                <field name="previousClose"/>
+                <field name="lastPrice"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_nifty_stockindices_list" model="ir.ui.view">
+        <field name="name">nifty.stockindices.list</field>
+        <field name="model">nifty.stockindices</field>
+        <field name="arch" type="xml">
+            <list string="NIFTY 50" decoration-success="pChange &gt; 0" decoration-danger="pChange &lt; 0" decoration-muted="pChange == 0">
+                <field name="symbol"/>
+                <field name="open"/>
+                <field name="dayHigh"/>
+                <field name="dayLow"/>
+                <field name="previousClose"/>
+                <field name="lastPrice"/>
+                <field name="change"/>
+                <field name="pChange"/>
+                <field name="totalTradedVolume"/>
+                <field name="totalTradedValue"/>
+                <field name="yearHigh"/>
+                <field name="yearLow"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_nifty_stockindices_form" model="ir.ui.view">
+        <field name="name">nifty.stockindices.form</field>
+        <field name="model">nifty.stockindices</field>
+        <field name="arch" type="xml">
+            <form string="NIFTY 50">
+                <sheet>
+                    <group name="name" string="NIFTY 50">
+                        <group>
+                            <field name="symbol"/>
+                            <field name="dayHigh"/>
+                            <field name="previousClose"/>
+                            <field name="change"/>
+                            <field name="totalTradedVolume"/>
+                            <field name="yearLow"/>
+                        </group>
+                        <group>
+                            <field name="open"/>
+                            <field name="dayLow"/>
+                            <field name="lastPrice"/>
+                            <field name="change"/>
+                            <field name="pChange"/>
+                            <field name="totalTradedValue"/>
+                            <field name="yearHigh"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_nifty_totalmarket_graph" model="ir.ui.view">
+        <field name="name">nifty.totalmarket.Graph</field>
+        <field name="model">nifty.totalmarket</field>
+        <field name="arch" type="xml">
+            <graph string="NIFTY TOTAL MARKET" type="line">
+                <field name="symbol"/>
+                <field name="open" type="measure"/>
+                <field name="dayHigh" type="measure"/>
+                <field name="dayLow" type="measure"/>
+                <field name="previousClose"/>
+                <field name="lastPrice"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_nifty_totalmarket_list" model="ir.ui.view">
+        <field name="name">nifty.totalmarket.list</field>
+        <field name="model">nifty.totalmarket</field>
+        <field name="arch" type="xml">
+            <list string="NIFTY TOTAL MARKET" decoration-success="pChange &gt; 0" decoration-danger="pChange &lt; 0" decoration-muted="pChange == 0">
+                <field name="symbol"/>
+                <field name="open"/>
+                <field name="dayHigh"/>
+                <field name="dayLow"/>
+                <field name="previousClose"/>
+                <field name="lastPrice"/>
+                <field name="change"/>
+                <field name="pChange"/>
+                <field name="totalTradedVolume" optional="hide"/>
+                <field name="totalTradedValue" optional="hide"/>
+                <field name="yearHigh" optional="show"/>
+                <field name="yearLow" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_nifty_totalmarket_form" model="ir.ui.view">
+        <field name="name">nifty.totalmarket.form</field>
+        <field name="model">nifty.totalmarket</field>
+        <field name="arch" type="xml">
+            <form string="NIFTY TOTAL MARKET">
+                <sheet>
+                    <group name="name" string="NIFTY 200">
+                        <group>
+                            <field name="symbol"/>
+                            <field name="dayHigh"/>
+                            <field name="previousClose"/>
+                            <field name="change"/>
+                            <field name="totalTradedVolume"/>
+                            <field name="yearLow"/>
+                        </group>
+                        <group>
+                            <field name="open"/>
+                            <field name="dayLow"/>
+                            <field name="lastPrice"/>
+                            <field name="change"/>
+                            <field name="pChange"/>
+                            <field name="totalTradedValue"/>
+                            <field name="yearHigh"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_nifty_totalmarket_search" model="ir.ui.view">
+        <field name="name">nifty.totalmarket.search</field>
+        <field name="model">nifty.totalmarket</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="symbol"/>
+            </search>
+        </field>
+    </record>
+
+
+    <record id="view_nifty_alldata_graph" model="ir.ui.view">
+        <field name="name">nifty.alldata.Graph</field>
+        <field name="model">nifty.alldata</field>
+        <field name="arch" type="xml">
+            <graph string="NIFTY TOTAL MARKET" type="line">
+                <field name="symbol"/>
+                <field name="open" type="measure"/>
+                <field name="dayHigh" type="measure"/>
+                <field name="dayLow" type="measure"/>
+                <field name="previousClose"/>
+                <field name="lastPrice"/>
+            </graph>
+        </field>
+    </record>
+
+
+    <record id="view_nifty_alldata_list" model="ir.ui.view">
+        <field name="name">nifty.alldata.list</field>
+        <field name="model">nifty.alldata</field>
+        <field name="arch" type="xml">
+            <list string="NIFTY TOTAL MARKET" decoration-success="pChange &gt; 0" decoration-danger="pChange &lt; 0" decoration-muted="pChange == 0">
+                <field name="symbol"/>
+                <field name="open"/>
+                <field name="dayHigh"/>
+                <field name="dayLow"/>
+                <field name="previousClose"/>
+                <field name="lastPrice"/>
+                <field name="change"/>
+                <field name="pChange"/>
+                <field name="totalTradedVolume" optional="hide"/>
+                <field name="totalTradedValue" optional="hide"/>
+                <field name="yearHigh" optional="show"/>
+                <field name="yearLow" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_nifty_alldata_form" model="ir.ui.view">
+        <field name="name">nifty.alldata.form</field>
+        <field name="model">nifty.alldata</field>
+        <field name="arch" type="xml">
+            <form string="NIFTY TOTAL MARKET">
+                <sheet>
+                    <group name="name" string="NIFTY 200">
+                        <group>
+                            <field name="symbol"/>
+                            <field name="dayHigh"/>
+                            <field name="previousClose"/>
+                            <field name="change"/>
+                            <field name="totalTradedVolume"/>
+                            <field name="yearLow"/>
+                        </group>
+                        <group>
+                            <field name="open"/>
+                            <field name="dayLow"/>
+                            <field name="lastPrice"/>
+                            <field name="change"/>
+                            <field name="pChange"/>
+                            <field name="totalTradedValue"/>
+                            <field name="yearHigh"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_nifty_alldata" model="ir.actions.act_window">
+        <field name="name">Market Data</field>
+        <field name="res_model">nifty.alldata</field>
+        <field name="view_mode">list,graph,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face"> No data yet! </p>
+        </field>
+    </record>
+
+    <record id="action_nifty_50" model="ir.actions.act_window">
+        <field name="name">Nifty 50</field>
+        <field name="res_model">nifty.stockindices</field>
+        <field name="view_mode">list,graph,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face"> No data yet! </p>
+        </field>
+    </record>
+
+    <record id="action_nifty_totalmarket" model="ir.actions.act_window">
+        <field name="name">Nifty Total Market</field>
+        <field name="res_model">nifty.totalmarket</field>
+        <field name="view_mode">list,graph,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face"> No data yet! </p>
+        </field>
+    </record>
+
+</odoo>

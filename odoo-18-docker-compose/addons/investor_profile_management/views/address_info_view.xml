@@ -2,7 +2,7 @@
 <odoo>
     <!-- Address Tree View -->
     <record id="view_investor_address_tree" model="ir.ui.view">
-        <field name="name">investor.address.tree</field>
+        <field name="name">investor.address.list</field>
         <field name="model">investor.address</field>
         <field name="type">list</field>
         <field name="arch" type="xml">

@@ -8,13 +8,6 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
         <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-
-        <style>
-          .profile-container {
-            max-width: 1400px;
-            margin: 0 auto;
-          }
-        </style>
       </t>
 
 <!--      <t t-call="fund_management.fund_header_template"/>-->
@@ -77,26 +70,56 @@
                           <h5 class="mb-4">Phương thức thanh toán</h5>
 
                           <form id="payment-method-form">
+                            <!-- Select phương thức -->
                             <div class="mb-3">
-                              <div class="form-check">
-                                <input class="form-check-input" type="radio" name="paymentMethod" id="bankTransfer" checked="1"/>
-                                <label class="form-check-label" for="bankTransfer">
-                                  Chuyển khoản qua ngân hàng
-                                </label>
+                              <label for="paymentMethod" class="form-label">Chọn phương thức:</label>
+                              <select class="form-select" id="paymentMethod" name="paymentMethod">
+                                <option value="qr">QR thanh toán</option>
+                                <option value="bank">Chuyển khoản qua ngân hàng</option>
+                                <option value="payos">Thanh toán PayOS</option>
+                              </select>
+                            </div>
+
+                            <!-- Chuyển khoản ngân hàng -->
+                            <div id="bank-transfer-info" style="display:none;">
+                              <div class="form-text mb-3">
+                                Nhà đầu tư vui lòng chuyển tiền trước
+                                <span id="deadline-bank" class="text-primary fw-bold"></span>
                               </div>
-                              <div class="form-text">
-                                Nhà đầu tư vui lòng chuyển tiền trước <span class="text-primary fw-bold">17:00 18/04/2022</span>
+                              <div class="bg-light rounded-3 p-3">
+                                <h6 class="fw-semibold mb-3">Thông tin chuyển khoản:</h6>
+                                <div class="row small text-muted">
+                                  <div class="col-6 mb-2">Tên thụ hưởng: <strong class="text-dark">FFC2</strong></div>
+                                  <div class="col-6 mb-2">Số tài khoản: <strong class="text-dark">8888888888</strong></div>
+                                  <div class="col-6 mb-2">Ngân hàng: <strong class="text-dark">NH Standard Chartered VN</strong></div>
+                                  <div class="col-6 mb-2">Nội dung: <strong class="text-dark">911CL39541 - FFC2N003</strong></div>
+                                </div>
                               </div>
                             </div>
 
-                            <div class="bg-light rounded-3 p-3">
-                              <h6 class="fw-semibold mb-3">Thông tin chuyển khoản:</h6>
-                              <div class="row small text-muted">
-                                <div class="col-6 mb-2">Tên thụ hưởng: <strong class="text-dark">FFC2</strong></div>
-                                <div class="col-6 mb-2">Số tài khoản: <strong class="text-dark">8888888888</strong></div>
-                                <div class="col-6 mb-2">Ngân hàng: <strong class="text-dark">NH Standard Chartered VN</strong></div>
-                                <div class="col-6 mb-2">Nội dung: <strong class="text-dark">911CL39541 - FFC2N003</strong></div>
+                            <!-- Quét QR -->
+                            <div id="qr-payment-info" >
+                              <div class="text-center">
+                                <p class="text-muted fs-6 mb-3">
+                                  Quét mã QR để thanh toán nhanh.<br></br>
+                                  Vui lòng hoàn tất thanh toán trước <span id="deadline-qr" class="text-primary fw-bold"></span>
+                                </p>
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=DEMO-QR-PAYMENT"
+                                     alt="QR Code"
+                                     class="img-fluid rounded shadow-sm mx-auto d-block" />
+                                <p class="small mt-2 text-muted">Mã QR demo - chỉ sử dụng thử nghiệm</p>
                               </div>
+                            </div>
+
+                            <!-- PayOS -->
+                            <div id="payos-payment-info" style="display:none;">
+                              <div class="form-text mb-3">
+                                Thanh toán trực tuyến qua PayOS (thẻ/QR/ví). Sau khi bấm thanh toán, bạn sẽ được chuyển đến trang PayOS hoặc hiển thị QR.
+                              </div>
+                              <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-primary" id="payos-payment-btn">Thanh toán với PayOS</button>
+                              </div>
+                              <div id="payos-error" class="alert alert-danger mt-3" style="display:none;"><span id="payos-error-message">Có lỗi xảy ra. Vui lòng thử lại.</span></div>
                             </div>
                           </form>
                         </div>
@@ -106,20 +129,48 @@
                      <!-- Thông tin đầu tư -->
                       <div class="col-md-5">
                         <div class="card p-4 shadow-sm rounded-4">
-                          <h6 class="fw-semibold mb-3">Thông tin đầu tư</h6>
-                          <div class="mb-2 small text-muted">Quỹ đầu tư: <strong id="confirm-fund-name" class="text-dark">Quỹ Đầu tư Cổ phiếu FC2</strong></div>
-                          <div class="mb-2 small text-muted">Chương trình: <strong id="confirm-program" class="text-dark">FFC2 - FFlex</strong></div>
-                          <div class="mb-2 small text-muted">Loại lệnh: <strong id="confirm-order-type" class="text-dark">Mua</strong></div>
-                          <div class="mb-3 small text-muted">Ngày đặt lệnh: <strong class="text-dark" id="confirm-order-date">...</strong></div>
-                          <div class="mb-2 small text-muted">Số tiền cổ phiếu: <strong id="confirm-amount" class="text-dark fs-5">30,000,000đ</strong></div>
-                          <div class="mb-2 small text-muted">Tổng cộng thanh toán: <strong id="confirm-total-amount" class="text-dark fs-5">30,000,000đ</strong></div>
-                          <div class="mb-4 small text-muted">Tổng số cổ phiếu đang mua: <strong id="confirm-units" class="text-dark fs-5">0</strong></div>
-                          <div class="d-flex justify-content-between">
+                          <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Thông tin đầu tư</h5>
+                          </div>
+
+                          <ul class="list-group list-group-flush border rounded-3">
+                            <li class="list-group-item d-flex justify-content-between">
+                              <span>Quỹ đầu tư</span>
+                              <strong id="confirm-fund-name">Quỹ Đầu tư Cổ phiếu FC2</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                              <span>Chương trình</span>
+                              <strong id="confirm-program">FFC2 - FFlex</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                              <span>Loại lệnh</span>
+                              <strong id="confirm-order-type">Mua</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                              <span>Ngày đặt lệnh</span>
+                              <strong id="confirm-order-date">...</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                              <span>Số tiền cổ phiếu</span>
+                              <strong id="confirm-amount">30,000,000đ</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                              <span>Tổng cộng thanh toán</span>
+                              <strong id="confirm-total-amount">30,000,000đ</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                              <span>Tổng số cổ phiếu đang mua</span>
+                              <strong id="confirm-units">0</strong>
+                            </li>
+                          </ul>
+
+                          <div class="d-flex justify-content-between mt-4">
                             <button type="button" class="btn btn-pill btn-sell" id="back-payment-btn">Quay lại</button>
                             <button type="submit" class="btn btn-pill btn-buy" id="payment-confirm-btn">Xác nhận thanh toán</button>
                           </div>
                         </div>
                       </div>
+
                 </div>
             </div>
 

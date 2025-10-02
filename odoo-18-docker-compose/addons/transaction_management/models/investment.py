@@ -49,11 +49,13 @@ class Investment(models.Model):
             if record.amount < 0:
                 raise ValidationError(_('Amount cannot be negative'))
 
-    @api.depends('units', 'fund_id.current_nav')
+    @api.depends('units', 'amount')
     def _compute_current_value(self):
         for record in self:
-            if record.fund_id and record.units > 0:
-                record.current_value = record.units * record.fund_id.current_nav
+            # Sử dụng giá trị thực tế từ form thay vì current_nav
+            if record.units > 0:
+                # Tính từ amount thực tế thay vì current_nav
+                record.current_value = record.amount
             else:
                 record.current_value = 0.0
 
@@ -116,17 +118,4 @@ class Investment(models.Model):
     @api.model
     def create(self, vals):
         investment = super(Investment, self).create(vals)
-        if not self.env.context.get('from_transaction'):
-            self.env['portfolio.transaction'].create({
-                'user_id': investment.user_id.id,
-                'fund_id': investment.fund_id.id,
-                'transaction_type': 'purchase',
-                'units': investment.units,
-                'amount': investment.amount,
-                'currency_id': investment.currency_id.id,
-                'status': 'completed',
-                'investment_type': investment.investment_type,
-                'transaction_date': fields.Date.today(),
-                'description': 'Initial transaction automatically created.'
-            })
         return investment

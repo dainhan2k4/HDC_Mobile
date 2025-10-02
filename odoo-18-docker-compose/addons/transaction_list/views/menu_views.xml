@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Action for matched orders -->
+    <record id="action_transaction_matched_orders" model="ir.actions.act_window">
+        <field name="name">Danh sách lệnh thỏa thuận</field>
+        <field name="res_model">transaction.matched.orders</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_transaction_matched_orders_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_transaction_matched_orders_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No matched orders found
+            </p>
+            <p>
+                Create your first matched order.
+            </p>
+        </field>
+    </record>
+
+    <!-- Root Menu moved to transaction_list_views.xml to ensure load order -->
+
+    <!-- Submenu for matched orders -->
+    <menuitem id="menu_transaction_matched_orders"
+              name="Danh sách lệnh thỏa thuận"
+              parent="menu_transaction_list_root"
+              action="action_transaction_matched_orders"
+              sequence="20"/>
+</odoo>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_dashboard" model="ir.actions.client">
+        <field name="name">Dashboard</field>
+        <field name="tag">stock_market_data.dashboard</field>
+        <field name="target">main</field>
+    </record>
+
+    <record id="action_dashboard_all" model="ir.actions.client">
+        <field name="name">Dashboard (All)</field>
+        <field name="tag">stock_market_data.dashboard</field>
+        <field name="target">main</field>
+        <field name="context">{"show_all": true}</field>
+    </record>
+</odoo>

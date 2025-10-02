@@ -1,0 +1,72 @@
+<odoo>
+    <template id="bank_form" name="Tạo mới Ngân hàng">
+        <t t-call="web.layout">
+            <t t-set="title">Tạo mới Ngân hàng</t>
+            <t t-call-assets="web.assets_backend" t-js="true"/>
+            <div class="d-flex">
+                <t t-call="fund_management_control.sidebar_template"/>
+                <main class="flex-grow-1 p-4">
+                    <div class="container-fluid">
+                        <div class="mb-4">
+                            <h2 class="h3 fw-bold">Tạo mới Ngân hàng</h2>
+                            <nav aria-label="breadcrumb">
+                              <ol class="breadcrumb small">
+                                <li class="breadcrumb-item"><a href="/bank_list" class="text-decoration-none">Trở về</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Tạo mới Ngân hàng</li>
+                              </ol>
+                            </nav>
+                        </div>
+                        <div class="card shadow-sm form-container">
+                            <div class="card-body p-5">
+                                <form t-att-action="edit_mode and bank and '/bank/update/' + str(bank.id) or '/bank/create'" method="POST">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="name" class="form-label">Tên ngân hàng (*)</label>
+                                            <input type="text" class="form-control" name="name" required="1" t-att-value="bank and bank.name or ''"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="english_name" class="form-label">Tiếng Tiếng Anh (*)</label>
+                                            <input type="text" class="form-control" name="english_name" required="1" t-att-value="bank and bank.english_name or ''"/>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="short_name" class="form-label">Tên viết tắt (*)</label>
+                                            <input type="text" class="form-control" name="short_name" required="1" t-att-value="bank and bank.short_name or ''"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="code" class="form-label">Mã giao dịch (*)</label>
+                                            <input type="text" class="form-control" name="code" required="1" t-att-value="bank and bank.code or ''"/>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="swift_code" class="form-label">Swift Code (*)</label>
+                                            <input type="text" class="form-control" name="swift_code" required="1" t-att-value="bank and bank.swift_code or ''"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="website" class="form-label">Website (*)</label>
+                                            <input type="text" class="form-control" name="website" required="1" t-att-value="bank and bank.website or ''"/>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" name="active" t-att-checked="not bank or bank.active and 'checked' or False"/>
+                                                <label class="form-check-label">Kích hoạt</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-center mt-4">
+                                        <a href="/bank_list" class="btn btn-secondary btn-lg px-5">Hủy</a>
+                                        <button type="submit" class="btn btn-primary btn-lg px-5">Lưu</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </t>
+    </template>
+</odoo> 

@@ -12,7 +12,9 @@ function renderResultPageData() {
     'result-total-amount': sessionStorage.getItem('result_total_amount'),
     'result-program': sessionStorage.getItem('result_program'),
     'result-order-type': sessionStorage.getItem('result_order_type'),
-    'result-units': sessionStorage.getItem('result_units')
+    'result-units': sessionStorage.getItem('result_units'),
+    'result-term-months': sessionStorage.getItem('selected_term_months'),
+    'result-interest-rate': sessionStorage.getItem('selected_interest_rate')
   };
 
   Object.entries(dataMap).forEach(([id, value]) => {
@@ -36,6 +38,8 @@ function setupFinishButton() {
     const amountText = document.getElementById('result-total-amount')?.textContent.trim() || '';
     const unitsText = document.getElementById('result-units')?.textContent.trim() || '';
     const fundId = sessionStorage.getItem('selectedFundId');
+    const termMonths = sessionStorage.getItem('selected_term_months');
+    const interestRate = sessionStorage.getItem('selected_interest_rate');
 
     const amount = parseVNDString(amountText);
     const units = parseFloat(unitsText.replace(/[^\d.-]/g, '')) || 0;
@@ -44,12 +48,16 @@ function setupFinishButton() {
     console.log('fund_id:', fundId);
     console.log('amount:', amount);
     console.log('units:', units);
+    console.log('term_months:', termMonths);
+    console.log('interest_rate:', interestRate);
 
     try {
       const formData = new FormData();
       formData.append('fund_id', fundId);
       formData.append('amount', amount);
       formData.append('units', units);
+      if (termMonths) formData.append('term_months', termMonths);
+      if (interestRate) formData.append('interest_rate', interestRate);
 
       const res = await fetch('/create_investment', {
         method: 'POST',
