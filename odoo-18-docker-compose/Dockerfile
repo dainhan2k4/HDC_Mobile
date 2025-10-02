@@ -21,8 +21,9 @@ COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh \
     && sed -i 's/\r$//' /usr/local/bin/entrypoint.sh
 
-# Give ownership of the /etc/odoo directory to the odoo user
-RUN chown -R odoo:odoo /etc/odoo
+# Ensure writable data directories exist and owned by odoo
+RUN mkdir -p /var/lib/odoo/sessions \
+    && chown -R odoo:odoo /etc/odoo /var/lib/odoo
 
 USER odoo
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

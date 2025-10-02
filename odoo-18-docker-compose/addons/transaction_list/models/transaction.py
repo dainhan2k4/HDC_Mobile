@@ -51,10 +51,14 @@ class TransactionList(models.Model):
     sent_to_exchange = fields.Boolean(string="Đã gửi lên sàn", default=False, help="Giao dịch đã được gửi lên sàn")
     sent_to_exchange_at = fields.Datetime(string="Thời gian gửi lên sàn", help="Thời điểm giao dịch được gửi lên sàn")
 
+
+
+    units = fields.Float(string="Số lượng", required=True)
     @api.depends('units', 'matched_units')
     def _compute_remaining_units(self):
         for record in self:
-            record.remaining_units = record.units - record.matched_units
+            record.remaining_units = max(0, (record.units or 0) - (record.matched_units or 0))
+
 
     @api.depends('user_id', 'user_id.partner_id')
     def _compute_account_number(self):

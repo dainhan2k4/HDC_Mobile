@@ -59,17 +59,41 @@ class MatchedOrders(models.Model):
     # In/Out times per side
     buy_in_time = fields.Datetime(string='Buy In Time', compute='_compute_in_out_times', store=True)
     sell_in_time = fields.Datetime(string='Sell In Time', compute='_compute_in_out_times', store=True)
-    buy_out_time = fields.Datetime(related='buy_order_id.approved_at', string='Buy Out Time', store=True)
-    sell_out_time = fields.Datetime(related='sell_order_id.approved_at', string='Sell Out Time', store=True)
+    buy_out_time = fields.Datetime(related='buy_order_id.create_date', string='Buy Out Time', store=True)
+    sell_out_time = fields.Datetime(related='sell_order_id.create_date', string='Sell Out Time', store=True)
 
     # Additional quantitative fields for UI reporting
     buy_units = fields.Float(related='buy_order_id.units', string='Buy Units', store=True)
     sell_units = fields.Float(related='sell_order_id.units', string='Sell Units', store=True)
     buy_price = fields.Float(related='buy_order_id.current_nav', string='Buy Price', store=True)
     sell_price = fields.Float(related='sell_order_id.current_nav', string='Sell Price', store=True)
-    buy_remaining_units = fields.Float(related='buy_order_id.remaining_units', string='Buy Remaining Units', store=True)
-    sell_remaining_units = fields.Float(related='sell_order_id.remaining_units', string='Sell Remaining Units', store=True)
 
+    buy_remaining_units = fields.Float(
+        string='Buy Remaining Units',
+        compute='_compute_remaining_units',
+        store=True
+    )
+
+    sell_remaining_units = fields.Float(
+        string='Sell Remaining Units',
+        compute='_compute_remaining_units',
+        store=True
+    )
+
+    @api.depends('buy_order_id.units', 'sell_order_id.units')
+    def _compute_remaining_units(self):
+        for record in self:
+            # Compute buy remaining units
+            buy_total = record.buy_order_id.units if record.buy_order_id else 0
+            buy_matched = getattr(record.buy_order_id, 'matched_units', 0) if record.buy_order_id else 0
+            record.buy_remaining_units = max(0, buy_total - buy_matched)
+
+            # Compute sell remaining units
+            sell_total = record.sell_order_id.units if record.sell_order_id else 0
+            sell_matched = getattr(record.sell_order_id, 'matched_units', 0) if record.sell_order_id else 0
+            record.sell_remaining_units = max(0, sell_total - sell_matched)
+
+            
     @api.depends('buy_order_id.user_id', 'sell_order_id.user_id', 'buy_source', 'sell_source')
     def _compute_user_types(self):
         for record in self:
