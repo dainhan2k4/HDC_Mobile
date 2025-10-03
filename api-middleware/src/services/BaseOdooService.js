@@ -74,7 +74,7 @@ class BaseOdooService {
    * Make authenticated API call
    */
   async apiCall(endpoint, options = {}) {
-    const { method = 'GET', data, params, requireAuth = false } = options;
+    const { method = 'GET', data, params, requireAuth = false, headers = {} } = options;
     
     try {
       // Ensure valid session for authenticated calls
@@ -82,16 +82,26 @@ class BaseOdooService {
         await this.authService.getValidSession();
       }
 
+      // Merge custom headers với default headers
+      const requestHeaders = {
+        'ngrok-skip-browser-warning': 'true',
+        'Cookie': `session_id=${this.getSessionId()}`,
+        ...headers // Custom headers từ options
+      };
+
+      console.log(`🔗 [BaseOdooService] ${method} ${endpoint}`);
+      console.log(`📦 [BaseOdooService] Headers:`, requestHeaders);
+      console.log(`📦 [BaseOdooService] Data:`, data);
+
       const response = await this.client.request({
-        headers: {
-          'ngrok-skip-browser-warning': 'true',
-          'Cookie': `session_id=${this.getSessionId()}`
-        },
+        headers: requestHeaders,
         url: endpoint,
         method,
         data,
         params
       });
+      
+      console.log(`✅ [BaseOdooService] ${endpoint} - Response:`, response.data);
       return response.data;
     } catch (error) {
       console.error(`❌ [BaseOdooService] API call failed: ${endpoint}`, error.message);

@@ -8,7 +8,7 @@ class InvestmentService extends BaseOdooService {
   }
 
   /**
-   * Get user investments with caching
+   * Get user investments with caching - gọi trực tiếp HTTP endpoint /data_investment
    */
   async getInvestments() {
     const cacheKey = 'investments_data';
@@ -20,7 +20,10 @@ class InvestmentService extends BaseOdooService {
     }
 
     try {
+      console.log('🔗 [InvestmentService] Calling /data_investment endpoint (requires auth)...');
+      // Endpoint /data_investment yêu cầu auth theo Odoo controller
       const data = await this.apiCall('/data_investment', { requireAuth: true });
+      console.log('📊 [InvestmentService] Raw investments response:', typeof data, Array.isArray(data));
       
       // Transform data to consistent format
       const investments = Array.isArray(data) ? data.map(inv => ({

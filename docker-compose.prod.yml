@@ -3,7 +3,9 @@ version: '3.8'
 services:
   # Odoo Backend
   odoo:
-    image: odoo:18.0
+    build:
+      context: ./odoo-18-docker-compose
+      dockerfile: Dockerfile
     depends_on:
       - db
     ports:

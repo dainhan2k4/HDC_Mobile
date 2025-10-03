@@ -96,14 +96,20 @@ const TransactionManagementScreen: React.FC = () => {
     }
   }, []);
 
-  const filterOrdersByDate = useCallback(( from: Date, to: Date) => {
-    console.log(`🔍 [Filter] Filtering with date range: ${from.toLocaleDateString()} - ${to.toLocaleDateString()}`);
+  // Hàm chỉ để update date state khi user chọn từ DatePicker
+  const handleDateFilterChange = useCallback((from: Date, to: Date) => {
+    console.log(`📅 [DatePicker] User changed date range: ${from.toLocaleDateString()} - ${to.toLocaleDateString()}`);
     setFromDate(from);
     setToDate(to);
+  }, []);
+
+  // useEffect tự động filter khi data hoặc date range thay đổi
+  useEffect(() => {
+    console.log(`🔍 [Filter] Auto-filtering with range: ${fromDate.toLocaleDateString()} - ${toDate.toLocaleDateString()}`);
+    
     const isInRange = (dateStr: string) => {
       const d = parseDate(dateStr);
-      const inRange = d >= from && d <= to;
-      return inRange;
+      return d >= fromDate && d <= toDate;
     };
     
     const filteredBuy = allBuyOrders.filter(order => isInRange(order.session_date));
@@ -115,12 +121,7 @@ const TransactionManagementScreen: React.FC = () => {
     setBuyOrders(filteredBuy);
     setSellOrders(filteredSell);
     setTransactionHistory(filteredHistory);
-    
-  }, [allBuyOrders, allSellOrders, allTransactionHistory]);
-
-  useEffect(() => {
-    filterOrdersByDate(fromDate, toDate);
-  }, [allBuyOrders, allSellOrders, allTransactionHistory, filterOrdersByDate, fromDate, toDate]);
+  }, [allBuyOrders, allSellOrders, allTransactionHistory, fromDate, toDate]);
 
   
 
@@ -200,7 +201,7 @@ const TransactionManagementScreen: React.FC = () => {
           refreshing={refreshing}
           fromDate={fromDate}
           toDate={toDate}
-          onDateFilterChange={filterOrdersByDate}
+          onDateFilterChange={handleDateFilterChange}
         />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.light.tint} />
@@ -223,7 +224,7 @@ const TransactionManagementScreen: React.FC = () => {
         refreshing={refreshing}
         fromDate={fromDate}
         toDate={toDate}
-        onDateFilterChange={filterOrdersByDate}
+        onDateFilterChange={handleDateFilterChange}
       />
       
       <FlatList

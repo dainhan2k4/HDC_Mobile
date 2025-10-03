@@ -8,23 +8,30 @@ class FundService extends BaseOdooService {
   }
 
   /**
-   * Get funds data with caching
+   * Get funds data with caching - gọi trực tiếp HTTP endpoint
    */
   async getFunds() {
     const cacheKey = 'funds_data';
     const cachedData = this.getCachedData(cacheKey);
     
     if (cachedData) {
+      console.log('📦 [FundService] Returning cached funds data');
       return cachedData;
     }
 
     try {
-      const data = await this.apiCall('/data_fund', { requireAuth: true });
+      console.log('🔗 [FundService] Calling /data_fund endpoint...');
+      // Endpoint /data_fund là public theo Odoo controller
+      const data = await this.apiCall('/data_fund', { requireAuth: false });
+      console.log('📊 [FundService] Raw funds response:', typeof data, Array.isArray(data));
+      
       const funds = Array.isArray(data) ? data : [];
+      console.log(`✅ [FundService] Got ${funds.length} funds from Odoo`);
 
       this.setCachedData(cacheKey, funds);
       return funds;
     } catch (error) {
+      console.error('❌ [FundService] Failed to get funds:', error.message);
       throw error;
     }
   }
@@ -107,97 +114,113 @@ class FundService extends BaseOdooService {
   }
 
   /**
-   * Buy fund using direct create method
+   * Buy fund using Odoo HTTP endpoint /create_investment
    */
   async buyFundDirect(fundId, amount, units) {
     try {
-      console.log(`🔄 [FundService] Creating buy transaction using direct create for fund ${fundId}:`, { amount, units });
+      console.log(`🔄 [FundService] Creating buy transaction via /create_investment for fund ${fundId}:`, { amount, units });
       
-      // Ensure valid session and get user ID
-      const session = await this.authService.getValidSession();
-      const userId = session.uid || 2;
+      // Ensure valid session
+      await this.authService.getValidSession();
 
-      const transactionData = {
-        user_id: userId,
-        fund_id: fundId,
-        transaction_type: 'purchase',
-        units: units,
-        amount: amount,
-        status: 'pending',
-        investment_type: 'fund_certificate',
-        transaction_date: new Date().toISOString().split('T')[0]
-      };
+      // Gọi trực tiếp Odoo endpoint /create_investment
+      const response = await this.apiCall('/create_investment', {
+        method: 'POST',
+        requireAuth: true,
+        data: new URLSearchParams({
+          fund_id: fundId.toString(),
+          units: units.toString(),
+          amount: amount.toString()
+        }).toString(),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
 
-      const transactionId = await this.createRecord("portfolio.transaction", transactionData);
-      console.log('✅ [FundService] Direct buy transaction created:', transactionId);
+      console.log('📊 [FundService] /create_investment response:', response);
 
-      // Complete the transaction to update investment portfolio
-      console.log(`🔄 [FundService] Completing transaction ${transactionId} to update portfolio...`);
-      
-      await this.callModelMethod(
-        "portfolio.transaction",
-        "action_complete",
-        [transactionId]
-      );
-
-      console.log('✅ [FundService] Transaction completed');
-      
-      // Clear portfolio-related cache to force refresh
-      this.clearPortfolioCache();
-      
-      return transactionId;
+      // Kiểm tra response từ Odoo
+      if (response && response.success) {
+        console.log('✅ [FundService] Investment created successfully, ID:', response.id);
+        
+        // Clear portfolio-related cache to force refresh
+        this.clearPortfolioCache();
+        
+        return {
+          investmentId: response.id,
+          transactionId: response.tx_id,
+          message: response.message
+        };
+      } else {
+        throw new Error(response.message || 'Failed to create investment');
+      }
     } catch (error) {
-      console.error('❌ [FundService] Failed to create direct buy transaction:', error.message);
+      console.error('❌ [FundService] Failed to create buy transaction via /create_investment:', error.message);
       throw error;
     }
   }
 
   /**
-   * Sell fund using direct create method
+   * Sell fund using Odoo HTTP endpoint /submit_fund_sell
    */
   async sellFundDirect(fundId, units) {
     try {
-      console.log(`🔄 [FundService] Creating sell transaction using direct create for fund ${fundId}:`, { units });
+      console.log(`🔄 [FundService] Creating sell transaction via /submit_fund_sell for fund ${fundId}:`, { units });
       
       // Ensure valid session and get user ID
       const session = await this.authService.getValidSession();
       const userId = session.uid || 2;
 
-      // Calculate amount based on current NAV
+      // Get user investment để lấy investment_id
+      const investments = await this.apiCall('/data_investment', { requireAuth: true });
+      const investment = investments.find(inv => inv.fund_id === fundId);
+      
+      if (!investment) {
+        throw new Error(`No investment found for fund ${fundId}. Cannot sell fund you don't own.`);
+      }
+
+      // Calculate estimated value based on current NAV
       const fund = await this.getFundById(fundId);
-      const amount = units * fund.current_nav;
+      const estimatedValue = units * fund.current_nav;
 
-      const transactionData = {
-        user_id: userId,
-        fund_id: fundId,
-        transaction_type: 'sale',
-        units: units,
-        amount: amount,
-        status: 'pending',
-        investment_type: 'fund_certificate',
-        transaction_date: new Date().toISOString().split('T')[0]
-      };
+      console.log(`📊 [FundService] Investment found: ID=${investment.id}, available units=${investment.units}`);
 
-      const transactionId = await this.createRecord("portfolio.transaction", transactionData);
-      console.log('✅ [FundService] Direct sell transaction created:', transactionId);
+      if (investment.units < units) {
+        throw new Error(`Insufficient units. You have ${investment.units} units but trying to sell ${units} units.`);
+      }
 
-      // Complete the transaction to update investment portfolio
-      console.log(`🔄 [FundService] Completing sell transaction ${transactionId} to update portfolio...`);
-      
-      await this.callModelMethod(
-        "portfolio.transaction",
-        "action_complete",
-        [transactionId]
-      );
+      // Gọi trực tiếp Odoo endpoint /submit_fund_sell
+      const response = await this.apiCall('/submit_fund_sell', {
+        method: 'POST',
+        requireAuth: true,
+        data: new URLSearchParams({
+          investment_id: investment.id.toString(),
+          quantity: units.toString(),
+          estimated_value: estimatedValue.toString()
+        }).toString(),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
 
-      console.log('✅ [FundService] Sell transaction completed');
-      
-      // Clear portfolio-related cache to force refresh
-      this.clearPortfolioCache();
-      
-      return transactionId;
+      console.log('📊 [FundService] /submit_fund_sell response:', response);
+
+      // Kiểm tra response từ Odoo
+      if (response && response.success) {
+        console.log('✅ [FundService] Sell transaction created successfully');
+        
+        // Clear portfolio-related cache to force refresh
+        this.clearPortfolioCache();
+        
+        return {
+          success: true,
+          message: response.message
+        };
+      } else {
+        throw new Error(response.message || 'Failed to submit fund sell');
+      }
     } catch (error) {
-      console.error('❌ [FundService] Failed to create direct sell transaction:', error.message);
+      console.error('❌ [FundService] Failed to create sell transaction via /submit_fund_sell:', error.message);
       throw error;
     }
   }

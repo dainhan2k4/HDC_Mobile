@@ -26,4 +26,4 @@ RUN mkdir -p /var/lib/odoo/sessions \
     && chown -R odoo:odoo /etc/odoo /var/lib/odoo
 
 USER odoo
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/entrypoint.sh"]

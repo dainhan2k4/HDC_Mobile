@@ -28,47 +28,73 @@ const DatePickerCustom: React.FC<DatePickerCustomProps> = ({
     return `${day}/${month}/${year}`;
   };
 
-  return (
-    <View>
-        <View style={styles.dateTextContainer}>
-            <Text style={styles.dateText}>{startDateText} </Text>
-        </View>
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    // Trên Android, dismiss picker khi user chọn hoặc cancel
+    if (Platform.OS === 'android') {
+      setShowPicker(false);
+    }
+    
+    // Chỉ update date nếu user chọn (không phải cancel)
+    if (event.type === 'set' && selectedDate) {
+      setDate(selectedDate);
+      // Trên iOS, dismiss sau khi chọn
+      if (Platform.OS === 'ios') {
+        setShowPicker(false);
+      }
+    } else if (event.type === 'dismissed') {
+      // User cancel
+      setShowPicker(false);
+    }
+  };
 
+  return (
+    <View style={styles.container}>
+      <Text style={styles.dateText}>{startDateText}</Text>
+      
+      <TouchableOpacity 
+        style={styles.dateButton}
+        onPress={() => setShowPicker(true)}
+      >
+        <Text style={styles.dateValue}>{formatDate(date)}</Text>
+      </TouchableOpacity>
+
+      {showPicker && (
         <DateTimePicker
           value={date}
           mode="date"
-          display={'default'}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           textColor={GlobalStyles.textPrimary.color}
           minimumDate={minimumDate}
           maximumDate={maximumDate}
-          style={{ backgroundColor: 'transparent', 
-            width: '100%', borderRadius: 10,
-            height: 40,
-            padding: 0,
-            margin: 0,
-            }}
-          onChange={(event, selectedDate) => {
-            setShowPicker(false);
-            if (selectedDate) setDate(selectedDate);
-          }}
+          onChange={handleDateChange}
         />
-      
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-    dateText: {
-        fontSize: 16,
-        fontWeight: '400',
-        color: GlobalStyles.textPrimary.color,
-        textAlign: 'center',
+    container: {
+        flex: 1,
     },
-    dateTextContainer: {
-        width: '100%',
-        backgroundColor: 'transparent',
-        paddingLeft: 10,
-        
+    dateText: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#666666',
+        marginBottom: 4,
+    },
+    dateButton: {
+        backgroundColor: '#F8F9FA',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E9ECEF',
+    },
+    dateValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333333',
     },
 });
 
