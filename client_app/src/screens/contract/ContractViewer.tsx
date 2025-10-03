@@ -20,7 +20,9 @@ export default function ContractViewer() {
   const [isLoading, setIsLoading] = useState(false);
 
   
-  console.log('fundContract in ContractViewer :', fundContract);
+  console.log('📄 [ContractViewer] fundContract:', fundContract);
+  console.log('📄 [ContractViewer] signedHtml length:', signedHtml?.length);
+  console.log('📄 [ContractViewer] signedHtml preview:', signedHtml?.substring(0, 200));
   const executeBuyOrder = async () => {
     try {
       setIsLoading(true);

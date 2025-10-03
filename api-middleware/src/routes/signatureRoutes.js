@@ -5,6 +5,22 @@ const SignatureController = require('../controllers/SignatureController');
 const signatureController = new SignatureController();
 
 /**
+ * POST /api/v1/signature/digital
+ * Thực hiện ký số
+ */
+router.post('/digital', async (req, res) => {
+  await signatureController.performDigitalSignature(req, res);
+});
+
+/**
+ * POST /api/v1/signature/hand
+ * Xử lý ký tay
+ */
+router.post('/hand', async (req, res) => {
+  await signatureController.processHandSignature(req, res);
+});
+
+/**
  * POST /api/v1/signature/validate
  * Validate chữ ký (tay hoặc số)
  */

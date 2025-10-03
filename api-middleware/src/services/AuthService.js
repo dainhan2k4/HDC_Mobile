@@ -6,14 +6,20 @@ class AuthService extends BaseOdooService {
   }
 
   setSessionId(sessionId) {
+    // Lưu vào cache chung của BaseOdooService để các service khác đọc được
+    super.setSessionId(sessionId);
+    // Giữ tương thích với nơi đang dùng global
     global.sessionId = sessionId;
   }
 
   getSessionId() {
-    return global.sessionId;
+    // Ưu tiên lấy từ cache chung, fallback global
+    return super.getSessionId() || global.sessionId;
   }
 
   clearSession() {
+    // Xóa cả cache chung và global
+    super.clearSession();
     global.sessionId = null;
   }
 

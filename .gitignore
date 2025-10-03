@@ -1,3 +1,33 @@
+# General
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+
+# Node
+node_modules/
+
+# Odoo runtime data (do not commit DB/files/session data)
+odoo-18-docker-compose/data/**
+odoo-18-docker-compose/etc/filestore/**
+odoo-18-docker-compose/etc/sessions/**
+odoo-18-docker-compose/postgresql/**
+odoo-18-docker-compose/etc/odoo-server.log
+
+# Docker local state
+**/.env.local
+**/.env.development.local
+**/.env.production.local
+
+# OS
+.DS_Store
+Thumbs.db
 # Dependencies
 node_modules/
 */node_modules/
