@@ -11,6 +11,7 @@ const portfolioRoutes = require('./routes/portfolioRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const assetRoutes = require('./routes/assetRoutes');
+const signatureRoutes = require('./routes/signatureRoutes');
 
 // Function to kill process using port
 const killPort = (port) => {
@@ -278,6 +279,7 @@ app.use(`${config.server.apiPrefix}/portfolio`, cacheMiddleware(portfolioCacheDu
 app.use(`${config.server.apiPrefix}/profile`, cacheMiddleware(profileCacheDuration), profileRoutes);  
 app.use(`${config.server.apiPrefix}/transaction`, cacheMiddleware(transactionCacheDuration), transactionRoutes);
 app.use(`${config.server.apiPrefix}/asset`, cacheMiddleware(assetCacheDuration), assetRoutes);
+app.use(`${config.server.apiPrefix}/signature`, signatureRoutes); // No caching for signature validation
 
 // Root endpoint
 app.get('/', (req, res) => {

@@ -116,7 +116,7 @@ class FundService extends BaseOdooService {
   /**
    * Buy fund using Odoo HTTP endpoint /create_investment
    */
-  async buyFundDirect(fundId, amount, units) {
+  async buyFundDirect(fundId, amount, units, signature = {}) {
     try {
       console.log(`🔄 [FundService] Creating buy transaction via /create_investment for fund ${fundId}:`, { amount, units });
       
@@ -124,14 +124,22 @@ class FundService extends BaseOdooService {
       await this.authService.getValidSession();
 
       // Gọi trực tiếp Odoo endpoint /create_investment
+      const form = new URLSearchParams({
+        fund_id: fundId.toString(),
+        units: units.toString(),
+        amount: amount.toString()
+      });
+
+      // Optional chữ ký số / ký tay
+      if (signature.signature_type) form.append('signature_type', String(signature.signature_type));
+      if (signature.signature_value) form.append('signature_value', String(signature.signature_value));
+      if (signature.signed_pdf_path) form.append('signed_pdf_path', String(signature.signed_pdf_path));
+      if (signature.signer_email) form.append('signer_email', String(signature.signer_email));
+
       const response = await this.apiCall('/create_investment', {
         method: 'POST',
         requireAuth: true,
-        data: new URLSearchParams({
-          fund_id: fundId.toString(),
-          units: units.toString(),
-          amount: amount.toString()
-        }).toString(),
+        data: form.toString(),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
@@ -163,7 +171,7 @@ class FundService extends BaseOdooService {
   /**
    * Sell fund using Odoo HTTP endpoint /submit_fund_sell
    */
-  async sellFundDirect(fundId, units) {
+  async sellFundDirect(fundId, units, signature = {}) {
     try {
       console.log(`🔄 [FundService] Creating sell transaction via /submit_fund_sell for fund ${fundId}:`, { units });
       
@@ -190,14 +198,22 @@ class FundService extends BaseOdooService {
       }
 
       // Gọi trực tiếp Odoo endpoint /submit_fund_sell
+      const form = new URLSearchParams({
+        investment_id: investment.id.toString(),
+        quantity: units.toString(),
+        estimated_value: estimatedValue.toString()
+      });
+
+      // Optional chữ ký số / ký tay
+      if (signature.signature_type) form.append('signature_type', String(signature.signature_type));
+      if (signature.signature_value) form.append('signature_value', String(signature.signature_value));
+      if (signature.signed_pdf_path) form.append('signed_pdf_path', String(signature.signed_pdf_path));
+      if (signature.signer_email) form.append('signer_email', String(signature.signer_email));
+
       const response = await this.apiCall('/submit_fund_sell', {
         method: 'POST',
         requireAuth: true,
-        data: new URLSearchParams({
-          investment_id: investment.id.toString(),
-          quantity: units.toString(),
-          estimated_value: estimatedValue.toString()
-        }).toString(),
+        data: form.toString(),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }

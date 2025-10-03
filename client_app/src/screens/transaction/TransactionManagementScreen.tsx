@@ -16,6 +16,8 @@ import { transactionApi, Transaction } from '../../api/transactionApi';
 import OrderItem from '../../components/transaction/OrderItem';
 import OrderTabHeader from '../../components/transaction/OrderTabHeader';
 import parseDate from '../../hooks/parseDate';
+import SignatureSelector from '../../components/signature/SignatureSelector';
+import SignatureModal from '../../components/signature/SignatureModal';
 
 type TabType = 'buy' | 'sell' | 'history';
 
@@ -24,6 +26,19 @@ const TransactionManagementScreen: React.FC = () => {
   
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Signature states
+  const [showSignatureSelector, setShowSignatureSelector] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [signatureType, setSignatureType] = useState<'hand' | 'digital' | null>(null);
+  const [pendingTransaction, setPendingTransaction] = useState<{
+    type: 'buy' | 'sell';
+    fundId: number;
+    fundName: string;
+    amount?: number;
+    units: number;
+  } | null>(null);
+  const [userEmail, setUserEmail] = useState('user@example.com');
 
   const [allBuyOrders, setAllBuyOrders] = useState<Transaction[]>([]);
   const [allSellOrders, setAllSellOrders] = useState<Transaction[]>([]);
@@ -144,9 +159,123 @@ const TransactionManagementScreen: React.FC = () => {
     console.log('Order pressed:', transaction);
   };
 
- 
+  // === Signature Handlers ===
+  
+  const handleBuyPress = (fundId: number, fundName: string, amount: number, units: number) => {
+    setPendingTransaction({
+      type: 'buy',
+      fundId,
+      fundName,
+      amount,
+      units,
+    });
+    setShowSignatureSelector(true);
+  };
 
- 
+  const handleSellPress = (fundId: number, fundName: string, units: number) => {
+    setPendingTransaction({
+      type: 'sell',
+      fundId,
+      fundName,
+      units,
+    });
+    setShowSignatureSelector(true);
+  };
+
+  const handleSignatureTypeSelected = (type: 'hand' | 'digital') => {
+    setSignatureType(type);
+    setShowSignatureSelector(false);
+    setShowSignatureModal(true);
+  };
+
+  const handleSignatureComplete = async (signature: {
+    type: 'hand' | 'digital';
+    value: string;
+    timestamp: string;
+  }) => {
+    setShowSignatureModal(false);
+
+    if (!pendingTransaction) {
+      Alert.alert('Lỗi', 'Không tìm thấy thông tin giao dịch');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const endpoint =
+        pendingTransaction.type === 'buy'
+          ? 'http://localhost:3000/api/v1/transaction/buy'
+          : 'http://localhost:3000/api/v1/transaction/sell';
+
+      const body =
+        pendingTransaction.type === 'buy'
+          ? {
+              fundId: pendingTransaction.fundId,
+              amount: pendingTransaction.amount,
+              units: pendingTransaction.units,
+              signature: {
+                signature_type: signature.type,
+                signature_value: signature.value,
+                signer_email: userEmail,
+              },
+            }
+          : {
+              fundId: pendingTransaction.fundId,
+              units: pendingTransaction.units,
+              signature: {
+                signature_type: signature.type,
+                signature_value: signature.value,
+                signer_email: userEmail,
+              },
+            };
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const action = pendingTransaction.type === 'buy' ? 'mua' : 'bán';
+        Alert.alert(
+          '✅ Thành công',
+          `Đã ${action} ${pendingTransaction.units} CCQ thành công!\n\nChữ ký: ${
+            signature.type === 'hand' ? 'Ký tay' : 'Ký số'
+          }\nThời gian: ${new Date(signature.timestamp).toLocaleString('vi-VN')}`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                loadOrders(false, true);
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert('❌ Lỗi', result.error || 'Giao dịch thất bại');
+      }
+    } catch (error: any) {
+      console.error('❌ [Transaction] Error:', error);
+      Alert.alert('❌ Lỗi', error.message || 'Không thể thực hiện giao dịch');
+    } finally {
+      setLoading(false);
+      setPendingTransaction(null);
+      setSignatureType(null);
+    }
+  };
+
+  const handleSignatureSelectorClose = () => {
+    setShowSignatureSelector(false);
+    setPendingTransaction(null);
+  };
+
+  const handleSignatureModalClose = () => {
+    setShowSignatureModal(false);
+    setSignatureType(null);
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -242,6 +371,24 @@ const TransactionManagementScreen: React.FC = () => {
         }
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
+      />
+
+      {/* Signature Modals */}
+      <SignatureSelector
+        visible={showSignatureSelector}
+        onClose={handleSignatureSelectorClose}
+        onConfirm={handleSignatureTypeSelected}
+        transactionType={pendingTransaction?.type || 'buy'}
+        fundName={pendingTransaction?.fundName}
+        amount={pendingTransaction?.amount}
+      />
+
+      <SignatureModal
+        visible={showSignatureModal}
+        onClose={handleSignatureModalClose}
+        onSignatureComplete={handleSignatureComplete}
+        transactionType={pendingTransaction?.type || 'buy'}
+        userEmail={userEmail}
       />
     </SafeAreaView>
   );

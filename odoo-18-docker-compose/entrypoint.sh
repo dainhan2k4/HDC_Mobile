@@ -57,11 +57,30 @@ if last_err:
 sys.exit(1)
 PY
 
-# --- DEBUGGING STEP ---
-# We are temporarily disabling ALL custom module installations.
-# The goal is to verify if the basic Odoo service can start correctly.
-# If this deploy succeeds, it confirms the problem is within one of the custom modules.
+# Auto-install/update custom addons
+ADDONS_TO_INSTALL="fund_management,investor_profile_management,asset_management,custom_auth,fund_management_control,investor_list,nav_management,overview_fund_management,report_list,sign_oca,stock_market_data,transaction_list,transaction_management"
+DB_NAME="${DB_NAME:-p2p}"
+
+echo "[entrypoint] Installing/updating custom addons in database '$DB_NAME'..."
+echo "[entrypoint] Addons: $ADDONS_TO_INSTALL"
+
+# Install/update addons (will skip if DB doesn't exist)
 odoo -c /etc/odoo/odoo.conf \
+     -d $DB_NAME \
+     -i $ADDONS_TO_INSTALL \
+     --http-port $ODOO_HTTP_PORT \
+     --http-interface 0.0.0.0 \
+     --db_host ${DB_HOST:-localhost} \
+     --db_port ${DB_PORT:-5432} \
+     --db_user ${DB_USER:-odoo} \
+     --db_password ${DB_PASSWORD:-odoo} \
+     --stop-after-init || echo "[entrypoint] Warning: Addons installation may have failed, continuing..."
+
+echo "[entrypoint] Addons installation completed"
+
+# Start Odoo server
+echo "[entrypoint] Starting Odoo server..."
+exec odoo -c /etc/odoo/odoo.conf \
      --http-port $ODOO_HTTP_PORT \
      --http-interface 0.0.0.0 \
      --db_host ${DB_HOST:-localhost} \
