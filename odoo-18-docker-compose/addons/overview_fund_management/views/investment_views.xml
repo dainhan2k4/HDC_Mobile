@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Investment Form View -->
+    <record id="view_investment_form" model="ir.ui.view">
+        <field name="name">investment.form</field>
+        <field name="model">portfolio.investment</field>
+        <field name="arch" type="xml">
+            <form string="Investment">
+                <header>
+                    <button name="action_update_investment" string="Update Investment" type="object" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="fund_id"/>
+                            <field name="user_id"/>
+                            <field name="investment_type" widget="selection"/>
+                            <field name="status" widget="badge" decoration-success="status == 'active'" decoration-warning="status == 'inactive'" decoration-danger="status == 'closed'"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="units" widget="float"/>
+                            <field name="amount" widget="monetary"/>
+                            <field name="average_price" widget="monetary"/>
+                            <field name="current_value" widget="monetary"/>
+                            <field name="profit_loss" widget="monetary" decoration-success="profit_loss &gt; 0" decoration-danger="profit_loss &lt; 0"/>
+                            <field name="profit_loss_percentage" widget="percentage" decoration-success="profit_loss_percentage &gt; 0" decoration-danger="profit_loss_percentage &lt; 0"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Description">
+                            <field name="description" widget="html"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Investment List View -->
+    <record id="view_investment_list" model="ir.ui.view">
+        <field name="name">investment.list</field>
+        <field name="model">portfolio.investment</field>
+        <field name="arch" type="xml">
+            <list string="Investments" decoration-success="profit_loss &gt; 0" decoration-danger="profit_loss &lt; 0">
+                <field name="fund_id"/>
+                <field name="user_id"/>
+                <field name="investment_type" widget="selection"/>
+                <field name="units" sum="Total Units" widget="float"/>
+                <field name="amount" sum="Total Amount" widget="monetary"/>
+                <field name="current_value" sum="Total Current Value" widget="monetary"/>
+                <field name="profit_loss" sum="Total Profit/Loss" widget="monetary"/>
+                <field name="profit_loss_percentage" widget="percentage"/>
+                <field name="status" widget="badge" decoration-success="status == 'active'" decoration-warning="status == 'inactive'" decoration-danger="status == 'closed'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Investment Search View -->
+    <record id="view_investment_search" model="ir.ui.view">
+        <field name="name">investment.search</field>
+        <field name="model">portfolio.investment</field>
+        <field name="arch" type="xml">
+            <search string="Investments">
+                <field name="name"/>
+                <field name="fund_id"/>
+                <field name="user_id"/>
+                <field name="investment_type"/>
+                <filter string="Active" name="active" domain="[('status','=','active')]"/>
+                <filter string="Inactive" name="inactive" domain="[('status','=','inactive')]"/>
+                <filter string="Closed" name="closed" domain="[('status','=','closed')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Fund" name="groupby_fund" context="{'group_by':'fund_id'}"/>
+                    <filter string="User" name="groupby_user" context="{'group_by':'user_id'}"/>
+                    <filter string="Investment Type" name="groupby_investment_type" context="{'group_by':'investment_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Investment Action -->
+    <record id="action_investment" model="ir.actions.act_window">
+        <field name="name">Investments</field>
+        <field name="res_model">portfolio.investment</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first investment!
+            </p>
+        </field>
+    </record>
+
+    <!-- Investment Menu -->
+    <menuitem id="menu_investment"
+              name="Investments"
+              action="action_investment"
+              parent="menu_portfolio_root"
+              sequence="20"/>
+</odoo> 

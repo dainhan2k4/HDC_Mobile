@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Transaction Form View -->
+    <record id="view_transaction_form" model="ir.ui.view">
+        <field name="name">transaction.form</field>
+        <field name="model">portfolio.transaction</field>
+        <field name="arch" type="xml">
+            <form string="Transaction">
+                <header>
+                    <field name="status" widget="statusbar" statusbar_visible="pending,completed,cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="fund_id" placeholder="Select Fund"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="transaction_type" widget="selection"/>
+                            <field name="investment_type" widget="selection"/>
+                            <field name="created_at" widget="datetime"/>
+                            <field name="transaction_date" widget="date"/>
+                            <field name="status" widget="selection"/>
+                            <field name="contract_pdf_path"/>
+                        </group>
+                        <group>
+                            <field name="units"/>
+                            <field name="price" widget="monetary" string="Giá đơn vị"/>
+                            <field name="amount" widget="monetary" string="Tổng số tiền"/>
+                            <field name="fee" widget="monetary" string="Phí mua"/>
+                            <field name="calculated_amount" widget="monetary" string="Số tiền tính toán"/>
+                            <field name="currency_id" widget="selection"/>
+                            <field name="reference"/>
+                            <field name="description"/>
+                        </group>
+                    </group>
+                    
+                    <!-- Exchange Transaction Fields -->
+                    <group string="Exchange Details" invisible="transaction_type != 'exchange'">
+                        <group>
+                            <field name="destination_fund_id"/>
+                            <field name="destination_units"/>
+                            <field name="destination_price" widget="monetary" string="Giá đơn vị đích"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Transaction List View -->
+    <record id="view_transaction_list" model="ir.ui.view">
+        <field name="name">transaction.list</field>
+        <field name="model">portfolio.transaction</field>
+        <field name="arch" type="xml">
+            <list string="Transactions" decoration-info="status == 'pending'" decoration-success="status == 'completed'" decoration-danger="status == 'cancelled'">
+                <field name="created_at" widget="datetime"/>
+                <field name="transaction_date" widget="date"/>
+                <field name="fund_id"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="transaction_type" widget="selection"/>
+                <field name="units" sum="Total Units"/>
+                <field name="price" widget="monetary"/>
+                <field name="amount" sum="Total Amount" widget="monetary"/>
+                <field name="fee" sum="Total Fee" widget="monetary"/>
+                <field name="calculated_amount" sum="Total Calculated Amount" widget="monetary"/>
+                <field name="investment_type" widget="selection"/>
+                <field name="status" widget="selection"/>
+                <field name="reference"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Transaction Search View -->
+    <record id="view_transaction_search" model="ir.ui.view">
+        <field name="name">transaction.search</field>
+        <field name="model">portfolio.transaction</field>
+        <field name="arch" type="xml">
+            <search string="Transactions">
+                <field name="fund_id"/>
+                <field name="user_id"/>
+                <field name="transaction_type"/>
+                <field name="investment_type"/>
+                <field name="price"/>
+                <field name="amount"/>
+                <field name="reference"/>
+                <filter string="Pending" name="pending" domain="[('status','=','pending')]"/>
+                <filter string="Completed" name="completed" domain="[('status','=','completed')]"/>
+                <filter string="Cancelled" name="cancelled" domain="[('status','=','cancelled')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Fund" name="groupby_fund" context="{'group_by':'fund_id'}"/>
+                    <filter string="User" name="groupby_user" context="{'group_by':'user_id'}"/>
+                    <filter string="Transaction Type" name="groupby_transaction_type" context="{'group_by':'transaction_type'}"/>
+                    <filter string="Investment Type" name="groupby_investment_type" context="{'group_by':'investment_type'}"/>
+                    <filter string="Status" name="groupby_status" context="{'group_by':'status'}"/>
+                    <filter string="Transaction Date" name="groupby_date" context="{'group_by':'transaction_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Transaction Action -->
+    <record id="action_transaction" model="ir.actions.act_window">
+        <field name="name">Transactions</field>
+        <field name="res_model">portfolio.transaction</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first transaction!
+            </p>
+        </field>
+    </record>
+
+    <!-- Transaction Menu -->
+    <menuitem id="menu_transaction"
+              name="Transactions"
+              action="action_transaction"
+              parent="menu_portfolio_root"
+              sequence="30"/>
+</odoo> 

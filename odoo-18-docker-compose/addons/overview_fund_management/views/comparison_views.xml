@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Comparison Form View -->
+    <record id="view_comparison_form" model="ir.ui.view">
+        <field name="name">comparison.form</field>
+        <field name="model">portfolio.comparison</field>
+        <field name="arch" type="xml">
+            <form string="Comparison">
+                <header>
+                    <button name="action_update_comparison" string="Update Comparison" type="object" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="fund_ids" widget="many2many_tags"/>
+                            <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="comparison_type" widget="selection"/>
+                            <field name="status" widget="selection"/>
+                        </group>
+                        <group>
+                            <field name="start_date" widget="date"/>
+                            <field name="end_date" widget="date"/>
+                            <field name="total_investment" widget="monetary"/>
+                            <field name="total_return" widget="monetary"/>
+                            <field name="return_percentage" widget="percentage"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Description">
+                            <field name="description"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Comparison List View -->
+    <record id="view_comparison_list" model="ir.ui.view">
+        <field name="name">comparison.list</field>
+        <field name="model">portfolio.comparison</field>
+        <field name="arch" type="xml">
+            <list string="Comparisons">
+                <field name="name"/>
+                <field name="fund_ids" widget="many2many_tags"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="comparison_type" widget="selection"/>
+                <field name="start_date" widget="date"/>
+                <field name="end_date" widget="date"/>
+                <field name="total_investment" sum="Total Investment" widget="monetary"/>
+                <field name="total_return" sum="Total Return" widget="monetary"/>
+                <field name="return_percentage" sum="Return %" widget="percentage"/>
+                <field name="status" widget="selection"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Comparison Search View -->
+    <record id="view_comparison_search" model="ir.ui.view">
+        <field name="name">comparison.search</field>
+        <field name="model">portfolio.comparison</field>
+        <field name="arch" type="xml">
+            <search string="Comparisons">
+                <field name="name"/>
+                <field name="fund_ids"/>
+                <field name="user_id"/>
+                <field name="comparison_type"/>
+                <filter string="Active" name="active" domain="[('status','=','active')]"/>
+                <filter string="Inactive" name="inactive" domain="[('status','=','inactive')]"/>
+                <filter string="Closed" name="closed" domain="[('status','=','closed')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Fund" name="groupby_fund" context="{'group_by':'fund_ids'}"/>
+                    <filter string="User" name="groupby_user" context="{'group_by':'user_id'}"/>
+                    <filter string="Comparison Type" name="groupby_comparison_type" context="{'group_by':'comparison_type'}"/>
+                    <filter string="Status" name="groupby_status" context="{'group_by':'status'}"/>
+                    <filter string="Start Date" name="groupby_start_date" context="{'group_by':'start_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Comparison Action -->
+    <record id="action_comparison" model="ir.actions.act_window">
+        <field name="name">Comparisons</field>
+        <field name="res_model">portfolio.comparison</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first comparison!
+            </p>
+        </field>
+    </record>
+
+    <!-- Comparison Menu -->
+    <menuitem id="menu_comparison"
+              name="Comparisons"
+              action="action_comparison"
+              parent="menu_portfolio_root"
+              sequence="40"/>
+</odoo> 

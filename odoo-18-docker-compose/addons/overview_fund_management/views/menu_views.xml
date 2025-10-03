@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main Menu -->
+    <menuitem id="menu_portfolio_root"
+        name="Portfolio Management"
+        web_icon="overview_fund_management,static/description/icon.png"
+        sequence="10"/>
+</odoo> 

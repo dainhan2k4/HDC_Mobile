@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_portfolio_fund_tree" model="ir.ui.view">
+        <field name="name">portfolio.fund.list</field>
+        <field name="model">portfolio.fund</field>
+        <field name="type">list</field>
+        <field name="arch" type="xml">
+            <list string="Funds" decoration-success="profit_loss &gt; 0" decoration-danger="profit_loss &lt; 0">
+                <field name="ticker"/>
+                <field name="name"/>
+                <field name="current_nav" widget="monetary"/>
+                <field name="previous_nav" widget="monetary"/>
+                <field name="current_ytd" widget="monetary"/>
+                <field name="investment_count" sum="Total Investments" widget="number"/>
+                <field name="total_units" sum="Total Units" widget="float"/>
+                <field name="total_investment" sum="Total Investment" widget="monetary"/>
+                <field name="current_value" sum="Current Value" widget="monetary"/>
+                <field name="profit_loss" sum="Profit/Loss" widget="monetary"/>
+                <field name="profit_loss_percentage" widget="percentage"/>
+                <field name="status" widget="badge" decoration-success="status == 'active'" decoration-warning="status == 'inactive'" decoration-danger="status == 'closed'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_portfolio_fund_form" model="ir.ui.view">
+        <field name="name">portfolio.fund.form</field>
+        <field name="model">portfolio.fund</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <form string="Fund">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Fund Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="ticker"/>
+                            <field name="inception_date" widget="date"/>
+                            <field name="investment_type" widget="selection"/>
+                            <field name="is_shariah" widget="boolean_toggle"/>
+                            <field name="status" widget="badge" decoration-success="status == 'active'" decoration-warning="status == 'inactive'" decoration-danger="status == 'closed'"/>
+                            <field name="currency_id"/>
+                        </group>
+                        <group>
+                            <field name="current_nav" widget="monetary"/>
+                            <field name="previous_nav" widget="monetary"/>
+                            <field name="current_ytd" widget="monetary"/>
+                            <field name="launch_price" widget="monetary"/>
+                            <field name="last_update" widget="datetime"/>
+                            <field name="color" widget="selection" options="{'style': 'color-palette'}"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Investment Details" name="investment_details">
+                            <group>
+                                <group>
+                                    <field name="investment_count" widget="number"/>
+                                    <field name="total_units" widget="float"/>
+                                    <field name="flex_units" widget="float"/>
+                                    <field name="sip_units" widget="float"/>
+                                </group>
+                                <group>
+                                    <field name="total_investment" widget="monetary"/>
+                                    <field name="current_value" widget="monetary"/>
+                                    <field name="profit_loss" widget="monetary" decoration-success="profit_loss &gt; 0" decoration-danger="profit_loss &lt; 0"/>
+                                    <field name="profit_loss_percentage" widget="percentage" decoration-success="profit_loss_percentage &gt; 0" decoration-danger="profit_loss_percentage &lt; 0"/>
+                                </group>
+                            </group>
+                            <field name="investment_ids" readonly="1">
+                                <list decoration-success="profit_loss &gt; 0" decoration-danger="profit_loss &lt; 0">
+                                    <field name="name"/>
+                                    <field name="investment_type" widget="selection"/>
+                                    <field name="units" widget="float"/>
+                                    <field name="amount" widget="monetary"/>
+                                    <field name="current_value" widget="monetary"/>
+                                    <field name="profit_loss" widget="monetary"/>
+                                    <field name="profit_loss_percentage" widget="percentage"/>
+                                    <field name="status" widget="badge" decoration-success="status == 'active'" decoration-warning="status == 'inactive'" decoration-danger="status == 'closed'"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Description">
+                            <field name="description" widget="html"/>
+                        </page>
+                        <page string="History">
+                            <field name="ytd_history_json" widget="ace" options="{'mode': 'json'}"/>
+                            <field name="nav_history_json" widget="ace" options="{'mode': 'json'}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_portfolio_fund_search" model="ir.ui.view">
+        <field name="name">portfolio.fund.search</field>
+        <field name="model">portfolio.fund</field>
+        <field name="type">search</field>
+        <field name="arch" type="xml">
+            <search string="Funds">
+                <field name="name"/>
+                <field name="ticker"/>
+                <field name="investment_type"/>
+                <filter string="Active" name="active" domain="[('status','=','active')]"/>
+                <filter string="Inactive" name="inactive" domain="[('status','=','inactive')]"/>
+                <filter string="Closed" name="closed" domain="[('status','=','closed')]"/>
+                <filter string="Shariah" name="shariah" domain="[('is_shariah','=',True)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Investment Type" name="groupby_investment_type" context="{'group_by':'investment_type'}"/>
+                    <filter string="Status" name="groupby_status" context="{'group_by':'status'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_portfolio_fund" model="ir.actions.act_window">
+        <field name="name">Funds</field>
+        <field name="res_model">portfolio.fund</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_portfolio_fund_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first fund!
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_portfolio_fund"
+        name="Funds"
+        action="action_portfolio_fund"
+        parent="menu_portfolio_root"
+        sequence="10"/>
+</odoo> 
