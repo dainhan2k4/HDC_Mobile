@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Backtest Views -->
+    <record id="view_backtest_tree" model="ir.ui.view">
+        <field name="name">ssi.backtest.tree</field>
+        <field name="model">ssi.backtest</field>
+        <field name="arch" type="xml">
+            <list string="Backtest Data">
+                <field name="name"/>
+                <field name="symbol"/>
+                <field name="selected_date"/>
+                <field name="security_id" optional="show"/>
+                <field name="fetch_date" widget="datetime"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_backtest_form" model="ir.ui.view">
+        <field name="name">ssi.backtest.form</field>
+        <field name="model">ssi.backtest</field>
+        <field name="arch" type="xml">
+            <form string="Backtest Data">
+                <header>
+                    <button name="action_fetch_backtest" string="Fetch Backtest" type="object" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="security_id"/>
+                            <field name="symbol" required="1"/>
+                            <field name="selected_date" required="1"/>
+                        </group>
+                        <group>
+                            <field name="fetch_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="API Response">
+                            <field name="raw_response" widget="text" nolabel="1" readonly="1"/>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes" widget="text" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_backtest_search" model="ir.ui.view">
+        <field name="name">ssi.backtest.search</field>
+        <field name="model">ssi.backtest</field>
+        <field name="arch" type="xml">
+            <search string="Backtest Data">
+                <field name="symbol"/>
+                <field name="selected_date"/>
+                <field name="security_id"/>
+                <filter string="Today" name="today" domain="[('selected_date','=',context_today().strftime('%%Y-%%m-%%d'))]"/>
+                <filter string="This Week" name="this_week" domain="[('selected_date','>=',(context_today() - datetime.timedelta(days=7)).strftime('%%Y-%%m-%%d'))]"/>
+                <group expand="1" string="Group By">
+                    <filter string="Symbol" name="group_symbol" context="{'group_by':'symbol'}"/>
+                    <filter string="Selected Date" name="group_date" context="{'group_by':'selected_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_backtest" model="ir.actions.act_window">
+        <field name="name">Backtest Data</field>
+        <field name="res_model">ssi.backtest</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_backtest_search"/>
+    </record>
+</odoo>
+
+

@@ -35,11 +35,21 @@ function setupFinishButton() {
     console.log('📌 Bắt đầu xử lý sự kiện click nút Hoàn tất');
 
     const fundName = document.getElementById('result-fund-name')?.textContent.trim() || '';
-    const amountText = document.getElementById('result-total-amount')?.textContent.trim() || '';
+    const amountText = document.getElementById('result-amount')?.textContent.trim() || '';
     const unitsText = document.getElementById('result-units')?.textContent.trim() || '';
     const fundId = sessionStorage.getItem('selectedFundId');
-    const termMonths = sessionStorage.getItem('selected_term_months');
-    const interestRate = sessionStorage.getItem('selected_interest_rate');
+    let termMonths = sessionStorage.getItem('selected_term_months');
+    let interestRate = sessionStorage.getItem('selected_interest_rate');
+    
+    // ✅ Fallback: Nếu dữ liệu chính bị mất, dùng backup
+    if (!termMonths || termMonths === '0' || termMonths === '') {
+      termMonths = sessionStorage.getItem('backup_term_months') || '0';
+      console.log('🔄 Sử dụng backup term_months:', termMonths);
+    }
+    if (!interestRate || interestRate === '0' || interestRate === '') {
+      interestRate = sessionStorage.getItem('backup_interest_rate') || '0';
+      console.log('🔄 Sử dụng backup interest_rate:', interestRate);
+    }
 
     const amount = parseVNDString(amountText);
     const units = parseFloat(unitsText.replace(/[^\d.-]/g, '')) || 0;
@@ -48,8 +58,13 @@ function setupFinishButton() {
     console.log('fund_id:', fundId);
     console.log('amount:', amount);
     console.log('units:', units);
-    console.log('term_months:', termMonths);
-    console.log('interest_rate:', interestRate);
+    console.log('term_months:', termMonths, '(type:', typeof termMonths, ')');
+    console.log('interest_rate:', interestRate, '(type:', typeof interestRate, ')');
+    
+    // Debug sessionStorage
+    console.log('🔍 SessionStorage debug:');
+    console.log('- selected_term_months:', sessionStorage.getItem('selected_term_months'));
+    console.log('- selected_interest_rate:', sessionStorage.getItem('selected_interest_rate'));
 
     try {
       const formData = new FormData();
@@ -75,7 +90,7 @@ function setupFinishButton() {
       if (result.success) {
         Swal.fire({
           title: "Thành công!",
-          text: "Xác nhận mua cổ phiếu thành công!",
+          text: "Xác nhận mua CCQ thành công!",
           icon: "success",
           confirmButtonText: "Xem danh mục đầu tư",
           confirmButtonColor: "#28a745"

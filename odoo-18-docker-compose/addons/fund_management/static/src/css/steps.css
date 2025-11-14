@@ -1,4 +1,4 @@
-.step-circle {
+.fm .step-circle {
   width: 36px;
   height: 36px;
   line-height: 36px;
@@ -10,7 +10,7 @@
   display: inline-block;
 }
 
-.step-circle.active {
+.fm .step-circle.active {
   background-color: #dc3545; /* đỏ đậm */
   color: white;
 }

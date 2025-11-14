@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Dimensions } from 'react-native';
-import ScrollingChartWithPointer from '../common/ScrollingChartWithPointer';
+import CandlestickChart from '../common/CandlestickChart';
 import { TimeRangeSelector } from './TimeRangeSelector';
+import { FundComparisonModal } from './FundComparisonModal';
+import { ComparisonLineChart } from './ComparisonLineChart';
+import { apiService } from '../../config/apiService';
 import formatVND from '../../hooks/formatCurrency';
 import { Fund } from '../../types/fund';
 
-type TimeRange = '1M' | '3M' | '6M' | '1Y';
+type TimeRange = '1D' | '5D' | '1M' | '3M';
 
 interface FundDetailsProps {
   fund: Fund | null;
@@ -26,6 +29,41 @@ export const FundDetails: React.FC<FundDetailsProps> = ({
   onBuyFund,
   onSellFund,
 }) => {
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
+  const [comparisonFundIds, setComparisonFundIds] = useState<number[]>([]);
+  const [comparisonFunds, setComparisonFunds] = useState<Array<{ id: number; name: string; ticker: string; color?: string }>>([]);
+
+  const handleCompareClick = () => {
+    setShowComparisonModal(true);
+  };
+
+  const handleCompareFunds = async (selectedFundIds: number[]) => {
+    if (selectedFundIds.length < 2) {
+      Alert.alert('Thông báo', 'Vui lòng chọn ít nhất 2 quỹ để so sánh');
+      return;
+    }
+
+    try {
+      // Lấy thông tin các quỹ được chọn
+      const response = await apiService.getFundComparison(selectedFundIds);
+      if (response.success && response.data) {
+        const fundsData = response.data as Fund[];
+        setComparisonFunds(
+          fundsData.map((f, index) => ({
+            id: f.id,
+            name: f.name,
+            ticker: f.ticker,
+            color: CHART_COLORS[index % CHART_COLORS.length],
+          }))
+        );
+        setComparisonFundIds(selectedFundIds);
+      }
+    } catch (error) {
+      console.error('❌ [FundDetails] Failed to get comparison data:', error);
+      Alert.alert('Lỗi', 'Không thể lấy dữ liệu so sánh');
+    }
+  };
+
   if (!fund) {
     return (
       <View style={[styles.container, isMobile && styles.mobileContainer]}>
@@ -77,6 +115,7 @@ export const FundDetails: React.FC<FundDetailsProps> = ({
           Thông tin quỹ
         </Text>
         <View style={[styles.metricsGrid, isMobile && styles.mobileMetricsGrid]}>
+          {/* NAV hiện tại */}
           <View style={[styles.metricCard, isMobile && styles.mobileMetricCard]}>
             <Text style={[styles.metricLabel, isMobile && styles.mobileMetricLabel]}>
               NAV hiện tại
@@ -86,46 +125,34 @@ export const FundDetails: React.FC<FundDetailsProps> = ({
             </Text>
           </View>
           
+          {/* Giá mở cửa */}
           <View style={[styles.metricCard, isMobile && styles.mobileMetricCard]}>
             <Text style={[styles.metricLabel, isMobile && styles.mobileMetricLabel]}>
-              NAV trước đó
+              Giá mở cửa
             </Text>
-            <Text style={[styles.metricValue, styles.previousValue, isMobile && styles.mobileMetricValue]}>
-              {formatVND(fund.previous_nav)}
+            <Text style={[styles.metricValue, styles.openPrice, isMobile && styles.mobileMetricValue]}>
+              {formatVND(fund.open_price || 0)}
             </Text>
           </View>
           
+          {/* Giá cao nhất */}
           <View style={[styles.metricCard, isMobile && styles.mobileMetricCard]}>
             <Text style={[styles.metricLabel, isMobile && styles.mobileMetricLabel]}>
-              YTD
+              Giá cao nhất
             </Text>
-            <Text style={[styles.metricValue, styles.ytdValue, isMobile && styles.mobileMetricValue]}>
-              {formatVND(fund.current_ytd)}
+            <Text style={[styles.metricValue, styles.highPrice, isMobile && styles.mobileMetricValue]}>
+              {formatVND(fund.high_price || 0)}
             </Text>
           </View>
 
-          {/* Performance Change */}
-          <View style={[styles.metricCard, styles.performanceCard, isMobile && styles.mobileMetricCard]}>
+          {/* Giá thấp nhất */}
+          <View style={[styles.metricCard, isMobile && styles.mobileMetricCard]}>
             <Text style={[styles.metricLabel, isMobile && styles.mobileMetricLabel]}>
-              Thay đổi
+              Giá thấp nhất
             </Text>
-            <View style={styles.performanceRow}>
-              <Text style={[
-                styles.performanceValue, 
-                isMobile && styles.mobilePerformanceValue,
-                { color: (fund.current_nav - fund.previous_nav) >= 0 ? '#10B981' : '#EF4444' }
-              ]}>
-                {(fund.current_nav - fund.previous_nav) >= 0 ? '+' : ''}{formatVND(fund.current_nav - fund.previous_nav)}
-              </Text>
-              <View style={[
-                styles.performanceIndicator,
-                (fund.current_nav - fund.previous_nav) >= 0 ? styles.positiveIndicator : styles.negativeIndicator
-              ]}>
-                <Text style={styles.performanceIcon}>
-                  {(fund.current_nav - fund.previous_nav) >= 0 ? '↗' : '↘'}
+            <Text style={[styles.metricValue, styles.lowPrice, isMobile && styles.mobileMetricValue]}>
+              {formatVND(fund.low_price || 0)}
                 </Text>
-              </View>
-            </View>
           </View>
         </View>
       </View>
@@ -190,8 +217,16 @@ export const FundDetails: React.FC<FundDetailsProps> = ({
         </View>
       )}
 
-      {/* Action Buttons */}
+      {/* Action Buttons - Giống Odoo với So sánh CCQ */}
       <View style={[styles.actionsSection, isMobile && styles.mobileActionsSection]}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.compareButton, isMobile && styles.mobileActionButton]}
+          onPress={handleCompareClick}
+        >
+          <Text style={[styles.actionButtonText, isMobile && styles.mobileActionButtonText]}>
+            So sánh CCQ
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionButton, styles.buyButton, isMobile && styles.mobileActionButton]}
           onPress={onBuyFund}
@@ -218,18 +253,59 @@ export const FundDetails: React.FC<FundDetailsProps> = ({
         />
       </View>
 
-      {/* Performance Chart */}
+      {/* Comparison Chart - Hiển thị khi có so sánh */}
+      {comparisonFundIds.length >= 2 && (
+        <View style={[styles.chartSection, isMobile && styles.mobileChartSection]}>
+          <View style={[styles.chartContainer, isMobile && styles.mobileChartContainer]}>
+            <ComparisonLineChart
+              fundIds={comparisonFundIds}
+              timeRange={selectedTimeRange}
+              funds={comparisonFunds}
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.clearComparisonButton}
+            onPress={() => {
+              setComparisonFundIds([]);
+              setComparisonFunds([]);
+            }}
+          >
+            <Text style={styles.clearComparisonText}>Hủy so sánh</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Performance Chart - Candlestick Chart như Odoo (chỉ hiển thị khi không có so sánh) */}
+      {comparisonFundIds.length < 2 && (
       <View style={[styles.chartSection, isMobile && styles.mobileChartSection]}>
-        <Text style={[styles.chartTitle, isMobile && styles.mobileChartTitle]}>
-          Biểu đồ hiệu suất
-        </Text>
         <View style={[styles.chartContainer, isMobile && styles.mobileChartContainer]}>
-          <ScrollingChartWithPointer timeRange={selectedTimeRange} />
+            <CandlestickChart 
+              timeRange={selectedTimeRange} 
+              fundId={fund.id}
+            />
         </View>
       </View>
+      )}
+
+      {/* Comparison Modal */}
+      <FundComparisonModal
+        visible={showComparisonModal}
+        currentFund={fund}
+        onClose={() => setShowComparisonModal(false)}
+        onCompare={handleCompareFunds}
+      />
     </View>
   );
 };
+
+// Chart colors for comparison
+const CHART_COLORS = [
+  '#2B4BFF', // Blue
+  '#10B981', // Green
+  '#EF4444', // Red
+  '#F59E0B', // Orange
+  '#8B5CF6', // Purple
+];
 
 const styles = StyleSheet.create({
   container: {
@@ -399,11 +475,14 @@ const styles = StyleSheet.create({
   currentValue: {
     color: '#10B981',
   },
-  previousValue: {
-    color: '#64748B',
+  openPrice: {
+    color: '#8B5CF6',
   },
-  ytdValue: {
-    color: '#2B4BFF',
+  highPrice: {
+    color: '#EF4444',
+  },
+  lowPrice: {
+    color: '#EF4444',
   },
   performanceCard: {
     borderColor: '#E2E8F0',
@@ -535,11 +614,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
   },
+  compareButton: {
+    backgroundColor: '#EF4444',
+  },
   buyButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#FF6B35',
   },
   sellButton: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#FF6B35',
   },
   actionButtonText: {
     fontSize: 14,
@@ -586,5 +668,37 @@ const styles = StyleSheet.create({
   mobileChartContainer: {
     minHeight: 180,
     borderRadius: 8,
+  },
+
+  // Comparison Section
+  comparisonSection: {
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  mobileComparisonSection: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  comparisonNote: {
+    fontSize: 14,
+    color: '#64748B',
+    fontStyle: 'italic',
+    marginTop: 8,
+  },
+  mobileComparisonNote: {
+    fontSize: 12,
+  },
+  clearComparisonButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  clearComparisonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
   },
 }); 

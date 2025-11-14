@@ -70,11 +70,41 @@ export class Header extends Component {
             <i class="fas fa-users"></i> 
             <span>NHÀ ĐẦU TƯ</span>
           </a>
-          <a t-attf-class="hd-menu-item #{state.currentPage === 'transaction' ? 'active' : ''}" href="/transaction-list">
-            <i class="fas fa-exchange-alt"></i> 
-            <span>GIAO DỊCH</span>
-          </a>
-          <div t-attf-class="hd-menu-item dropdown position-relative #{state.currentPage === 'nav' ? 'active' : ''} #{state.isNavDropdownOpen ? 'active' : ''}" t-on-click="toggleNavDropdown">
+          <div t-attf-class="hd-menu-item dropdown position-relative #{state.currentPage === 'transaction' ? 'active' : ''} #{state.isTransactionDropdownOpen ? 'active' : ''}" t-on-click="toggleTransactionDropdown" data-menu="transaction">
+            <a href="#" class="d-flex align-items-center gap-2" t-on-click.stop="toggleTransactionDropdown">
+              <i class="fas fa-exchange-alt"></i> 
+              <span>GIAO DỊCH</span>
+              <i class="fas fa-chevron-down ms-1 hd-chevron-down"></i>
+            </a>
+            
+            <!-- Transaction Dropdown Menu -->
+            <div class="report-dropdown-menu" t-on-click.stop="" t-attf-style="display: #{state.isTransactionDropdownOpen ? 'block' : 'none'};">
+              <div class="dropdown-header p-3">
+                <i class="fas fa-exchange-alt me-2"></i>Giao dịch
+              </div>
+              <div class="dropdown-body">
+                <a href="/transaction-list" class="dropdown-item d-flex align-items-center gap-3 p-3 rounded-3" t-attf-class="#{state.currentPage === 'transaction' ? 'active-submenu' : ''}" t-on-click="closeTransactionDropdown">
+                  <div class="icon-wrapper d-flex align-items-center justify-content-center rounded-circle">
+                    <i class="fas fa-list"></i>
+                  </div>
+                  <div>
+                    <div class="fw-bold" style="font-size:0.85rem;">Danh sách giao dịch</div>
+                    <div class="text-muted small" style="font-size:0.75rem;">Quản lý danh sách giao dịch</div>
+                  </div>
+                </a>
+                <a href="/order-book" class="dropdown-item d-flex align-items-center gap-3 p-3 rounded-3" t-attf-class="#{state.currentPage === 'order-book' ? 'active-submenu' : ''}" t-on-click="closeTransactionDropdown">
+                  <div class="icon-wrapper icon-wrapper-green d-flex align-items-center justify-content-center rounded-circle">
+                    <i class="fas fa-book"></i>
+                  </div>
+                  <div>
+                    <div class="fw-bold" style="font-size:0.85rem;">Sổ lệnh</div>
+                    <div class="text-muted small" style="font-size:0.75rem;">Sổ lệnh giao dịch real-time</div>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div t-attf-class="hd-menu-item dropdown position-relative #{state.currentPage === 'nav' ? 'active' : ''} #{state.isNavDropdownOpen ? 'active' : ''}" t-on-click="toggleNavDropdown" data-menu="nav">
             <a href="#" class="d-flex align-items-center gap-2" t-on-click.stop="toggleNavDropdown">
               <i class="fas fa-chart-line"></i> 
               <span>NAV</span>
@@ -108,7 +138,7 @@ export class Header extends Component {
               </div>
             </div>
           </div>
-          <div t-attf-class="hd-menu-item dropdown position-relative #{state.currentPage === 'report' ? 'active' : ''} #{state.isReportDropdownOpen ? 'active' : ''}" t-on-click="toggleReportDropdown">
+          <div t-attf-class="hd-menu-item dropdown position-relative #{state.currentPage === 'report' ? 'active' : ''} #{state.isReportDropdownOpen ? 'active' : ''}" t-on-click="toggleReportDropdown" data-menu="report">
             <a href="#" class="d-flex align-items-center gap-2" t-on-click.stop="toggleReportDropdown">
               <i class="fas fa-file-alt"></i> 
               <span>BÁO CÁO</span>
@@ -263,6 +293,7 @@ export class Header extends Component {
             isLoggedIn: false,
             isReportDropdownOpen: false,
             isNavDropdownOpen: false,
+            isTransactionDropdownOpen: false,
         });
         this.fetchUserInfo();
 
@@ -286,13 +317,17 @@ export class Header extends Component {
             // Add click outside listener for dropdowns
             if (!this.dropdownListenerAdded) {
                 this.dropdownClickHandler = (e) => {
-                    const reportDropdown = document.querySelector('.hd-menu-item.dropdown');
-                    const navDropdown = document.querySelector('.hd-menu-item.dropdown');
+                    const reportDropdown = document.querySelector('[data-menu="report"]');
+                    const navDropdown = document.querySelector('[data-menu="nav"]');
+                    const transactionDropdown = document.querySelector('[data-menu="transaction"]');
                     if (reportDropdown && !reportDropdown.contains(e.target)) {
                         this.closeReportDropdown();
                     }
                     if (navDropdown && !navDropdown.contains(e.target)) {
                         this.closeNavDropdown();
+                    }
+                    if (transactionDropdown && !transactionDropdown.contains(e.target)) {
+                        this.closeTransactionDropdown();
                     }
                 };
                 document.addEventListener('click', this.dropdownClickHandler);
@@ -336,6 +371,14 @@ export class Header extends Component {
 
     closeNavDropdown() {
         this.state.isNavDropdownOpen = false;
+    }
+
+    toggleTransactionDropdown() {
+        this.state.isTransactionDropdownOpen = !this.state.isTransactionDropdownOpen;
+    }
+
+    closeTransactionDropdown() {
+        this.state.isTransactionDropdownOpen = false;
     }
 
     async fetchUserInfo() {
@@ -408,6 +451,7 @@ export class Header extends Component {
         
         // Xác định trang hiện tại theo thứ tự ưu tiên
         if (path.includes('/investor_list')) return 'investor';
+        if (path.includes('/order-book')) return 'order-book';
         if (path.includes('/transaction-list')) return 'transaction';
         if (path.includes('/nav_management/nav_transaction')) return 'nav-transaction';
         if (path.includes('/nav_management/nav_monthly')) return 'nav-monthly';

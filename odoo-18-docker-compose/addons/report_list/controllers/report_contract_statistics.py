@@ -85,6 +85,20 @@ class ReportContractStatisticsController(http.Controller):
             # Format data for frontend
             data = []
             for i, record in enumerate(records, 1):
+                # Sử dụng các field NAV đã tính toán sẵn từ transaction record
+                nav_maturity_date = getattr(record, 'nav_maturity_date', False)
+                nav_sell_date = getattr(record, 'nav_sell_date', False)
+                
+                # Format ngày đến hạn: ưu tiên nav_maturity_date, fallback về tính toán cũ nếu không có
+                ngay_den_han = ''
+                if nav_maturity_date:
+                    ngay_den_han = nav_maturity_date.strftime('%d/%m/%Y')
+                elif record.create_date and record.term_months:
+                    # Fallback: tính từ created_at + term_months (sử dụng relativedelta logic)
+                    from dateutil.relativedelta import relativedelta
+                    maturity_date = record.create_date.date() + relativedelta(months=record.term_months)
+                    ngay_den_han = maturity_date.strftime('%d/%m/%Y')
+                
                 data.append({
                     'id': record.id,
                     'stt': i,
@@ -95,7 +109,7 @@ class ReportContractStatisticsController(http.Controller):
                     'ky_han': record.term_months or 0,
                     'so_tien': record.amount or 0,
                     'ngay_hop_dong': record.create_date.strftime('%d/%m/%Y') if record.create_date else '',
-                    'ngay_den_han': (record.create_date + timedelta(days=record.term_months * 30)).strftime('%d/%m/%Y') if record.create_date and record.term_months else '',
+                    'ngay_den_han': ngay_den_han,
                     'nvcs': record.approved_by.name if record.approved_by else '',
                     'don_vi': 'HDCapital',  # Default company
                 })
@@ -240,12 +254,12 @@ class ReportContractStatisticsController(http.Controller):
             if contract:
                 domain.append(['name', 'ilike', contract])
             if from_date:
-                domain.append(['transaction_date', '>=', from_date])
+                domain.append(['created_at', '>=', f"{from_date} 00:00:00"])
             if to_date:
-                domain.append(['transaction_date', '<=', to_date])
+                domain.append(['created_at', '<=', f"{to_date} 23:59:59"])
             
             # Get all records for XLSX export (no pagination)
-            records = report_model.search(domain, order='transaction_date desc')
+            records = report_model.search(domain, order='created_at desc')
             
             # Create XLSX content
             import io
@@ -356,6 +370,19 @@ class ReportContractStatisticsController(http.Controller):
             
             # Write data rows
             for i, record in enumerate(records, 1):
+                # Sử dụng các field NAV đã tính toán sẵn từ transaction record
+                nav_maturity_date = getattr(record, 'nav_maturity_date', False)
+                
+                # Format ngày đến hạn: ưu tiên nav_maturity_date, fallback về tính toán cũ nếu không có
+                ngay_den_han = ''
+                if nav_maturity_date:
+                    ngay_den_han = nav_maturity_date.strftime('%d/%m/%Y')
+                elif record.create_date and record.term_months:
+                    # Fallback: tính từ created_at + term_months (sử dụng relativedelta logic)
+                    from dateutil.relativedelta import relativedelta
+                    maturity_date = record.create_date.date() + relativedelta(months=record.term_months)
+                    ngay_den_han = maturity_date.strftime('%d/%m/%Y')
+                
                 writer.writerow([
                     i,
                     record.reference or '',
@@ -365,7 +392,7 @@ class ReportContractStatisticsController(http.Controller):
                     f"{record.term_months} tháng" if record.term_months else '',
                     self._format_currency(record.amount) if record.amount else '0',
                     record.create_date.strftime('%d/%m/%Y') if record.create_date else '',
-                    (record.create_date + timedelta(days=record.term_months * 30)).strftime('%d/%m/%Y') if record.create_date and record.term_months else '',
+                    ngay_den_han,
                     record.approved_by.name if record.approved_by else '',
                     'HDCapital'  # Default company
                 ])

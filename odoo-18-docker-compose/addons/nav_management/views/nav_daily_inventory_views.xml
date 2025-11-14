@@ -6,7 +6,7 @@
         <field name="model">nav.daily.inventory</field>
         <field name="arch" type="xml">
             <list string="Tồn kho CCQ hàng ngày" create="true" edit="false" multi_edit="true">
-                <field name="fund_id" widget="many2one_tags" string="Quỹ"/>
+                <field name="fund_id" string="Quỹ"/>
                 <field name="inventory_date" widget="date" string="Ngày tồn kho"/>
                 <field name="opening_ccq" widget="float" digits="[16,2]" string="CCQ đầu ngày"/>
                 <field name="closing_ccq" widget="float" digits="[16,2]" string="CCQ cuối ngày"/>
@@ -29,7 +29,7 @@
         <field name="arch" type="xml">
             <list string="Tồn kho CCQ hàng ngày" create="true" edit="false" multi_edit="true">
                 <button name="action_create_today_inventory" string="Tự động tạo tồn kho thiếu" type="object" class="btn-primary" icon="fa-magic"/>
-                <field name="fund_id" widget="many2one_tags" string="Quỹ"/>
+                <field name="fund_id" widget="many2one" string="Quỹ"/>
                 <field name="inventory_date" widget="date" string="Ngày tồn kho"/>
                 <field name="opening_ccq" widget="float" digits="[16,2]" string="CCQ đầu ngày"/>
                 <field name="closing_ccq" widget="float" digits="[16,2]" string="CCQ cuối ngày"/>

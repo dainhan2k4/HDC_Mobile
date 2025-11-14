@@ -9,7 +9,7 @@ class NavMonthly(models.Model):
     _order = 'period desc'
 
     # Thông tin cơ bản
-    fund_id = fields.Many2one('portfolio.fund', string='Quỹ', required=True, ondelete='cascade')
+    fund_id = fields.Many2one('portfolio.fund', string='Quỹ', required=True)
     period = fields.Char(string='Thời gian', required=True, help='Format: MM/YYYY (ví dụ: 12/2021)')
     nav_beginning = fields.Float(string='NAV đầu kỳ', required=True, digits=(16, 2))
     nav_ending = fields.Float(string='NAV cuối kỳ', required=True, digits=(16, 2))

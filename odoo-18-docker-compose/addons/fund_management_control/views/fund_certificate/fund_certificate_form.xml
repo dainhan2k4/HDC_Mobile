@@ -491,41 +491,51 @@
                                             <div class="row g-4">
                                                 <!-- REFACTOR: Enhanced required field styling with better visual hierarchy -->
                                                 <div class="col-md-6 required-field">
-                                                    <label for="full_name" class="form-label">Tên quỹ đầy đủ
-                                                        <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" title="Tên chính thức của quỹ, sẽ hiển thị trên tài liệu pháp lý."></i>
+                                                    <label for="symbol" class="form-label">Mã chứng khoán
+                                                        <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" title="Mã định danh chứng khoán trên sàn giao dịch (VD: VCB, VIC, VNM)."></i>
                                                     </label>
-                                                    <input type="text" class="form-control" id="full_name" name="full_name" 
-                                                           placeholder="Ví dụ: Quỹ Đầu tư Cổ phiếu Việt Nam" required="1"/>
-                                                    <div class="field-error" id="full_name_error" style="display: none;">
+                                                    <input type="text" class="form-control" id="symbol" name="symbol" 
+                                                           placeholder="Ví dụ: VCB" required="1" maxlength="10"/>
+                                                    <div class="field-error" id="symbol_error" style="display: none;">
                                                         <i class="fas fa-exclamation-circle"></i>
                                                         <span>Trường này là bắt buộc</span>
                                                     </div>
                                                 </div>
                                                 
                                                 <div class="col-md-6 required-field">
-                                                    <label for="english_name" class="form-label">Tên quỹ Tiếng Anh
-                                                        <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" title="Tên tiếng Anh cho báo cáo và giao dịch quốc tế."></i>
+                                                    <label for="market" class="form-label">Sàn giao dịch
+                                                        <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" title="Sàn giao dịch chứng khoán: HOSE, HNX hoặc UPCOM."></i>
                                                     </label>
-                                                    <input type="text" class="form-control" id="english_name" name="english_name" 
-                                                           placeholder="Ví dụ: Vietnam Equity Fund" required="1"/>
-                                                    <div class="field-error" id="english_name_error" style="display: none;">
+                                                    <select class="form-select" id="market" name="market" required="1">
+                                                        <option value="" selected="1" disabled="1">-- Chọn sàn giao dịch --</option>
+                                                        <option value="HOSE">HOSE</option>
+                                                        <option value="HNX">HNX</option>
+                                                        <option value="UPCOM">UPCOM</option>
+                                                    </select>
+                                                    <div class="field-error" id="market_error" style="display: none;">
                                                         <i class="fas fa-exclamation-circle"></i>
-                                                        <span>Trường này là bắt buộc</span>
+                                                        <span>Vui lòng chọn sàn giao dịch</span>
                                                     </div>
                                                 </div>
                                                 
                                                 <!-- REFACTOR: Responsive field layout for better mobile experience -->
-                                                <div class="col-xl-4 col-lg-6 col-md-6 required-field">
-                                                    <label for="short_name" class="form-label">Mã quỹ (viết tắt)
-                                                        <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" title="Mã ngắn gọn để nhận diện quỹ (tối đa 10 ký tự)."></i>
+                                                <div class="col-xl-6 col-lg-6 col-md-6">
+                                                    <label for="short_name_vn" class="form-label">Tên viết tắt (VN)
+                                                        <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" title="Tên viết tắt bằng tiếng Việt của chứng khoán."></i>
                                                     </label>
-                                                    <input type="text" class="form-control" id="short_name" name="short_name" 
-                                                           placeholder="Ví dụ: VCBF" required="1" maxlength="10"/>
-                                                    <div class="field-error" id="short_name_error" style="display: none;">
-                                                        <i class="fas fa-exclamation-circle"></i>
-                                                        <span>Trường này là bắt buộc</span>
-                                                    </div>
+                                                    <input type="text" class="form-control" id="short_name_vn" name="short_name_vn" 
+                                                           placeholder="Ví dụ: Ngân hàng TMCP Ngoại Thương"/>
                                                 </div>
+                                                
+                                                <div class="col-xl-6 col-lg-6 col-md-6">
+                                                    <label for="short_name_en" class="form-label">Tên viết tắt (EN)
+                                                        <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" title="Tên viết tắt bằng tiếng Anh của chứng khoán."></i>
+                                                    </label>
+                                                    <input type="text" class="form-control" id="short_name_en" name="short_name_en" 
+                                                           placeholder="Ví dụ: Bank for Foreign Trade"/>
+                                                </div>
+                                                
+                                                <!-- Bỏ Loại chứng khoán và Mã sàn -->
                                                 
                                                 <div class="col-xl-4 col-lg-6 col-md-6">
                                                     <label for="fund_color" class="form-label">Màu đại diện
@@ -534,20 +544,51 @@
                                                     <input type="color" class="form-control form-control-color" id="fund_color" name="fund_color" value="#667eea"/>
                                                 </div>
                                                 
-                                                <div class="col-xl-4 col-lg-12 col-md-12 required-field">
-                                                    <label for="current_nav" class="form-label">Giá NAV ban đầu
-                                                        <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" title="Giá trị tài sản ròng trên một chứng chỉ quỹ tại thời điểm phát hành."></i>
+                                                <div class="col-xl-4 col-lg-6 col-md-6">
+                                                    <label for="current_price" class="form-label">Giá hiện tại
+                                                        <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" title="Giá giao dịch hiện tại của chứng khoán."></i>
                                                     </label>
                                                     <div class="input-group">
-                                                        <input type="number" step="0.01" class="form-control" id="current_nav" name="current_nav" 
-                                                               placeholder="10000" required="1"/>
+                                                        <input type="number" step="0.01" class="form-control" id="current_price" name="current_price" 
+                                                               placeholder="10000"/>
                                                         <span class="input-group-text">VND</span>
                                                     </div>
-                                                    <div class="field-error" id="current_nav_error" style="display: none;">
-                                                        <i class="fas fa-exclamation-circle"></i>
-                                                        <span>Trường này là bắt buộc</span>
+                                                </div>
+                                                
+                                                <div class="col-xl-4 col-lg-6 col-md-6">
+                                                    <label for="reference_price" class="form-label">Giá tham chiếu
+                                                        <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" title="Giá tham chiếu để tính giá trần và giá sàn."></i>
+                                                    </label>
+                                                    <div class="input-group">
+                                                        <input type="number" step="0.01" class="form-control" id="reference_price" name="reference_price" 
+                                                               placeholder="10000"/>
+                                                        <span class="input-group-text">VND</span>
                                                     </div>
                                                 </div>
+                                                
+                                                <div class="col-xl-4 col-lg-6 col-md-6">
+                                                    <label for="ceiling_price" class="form-label">Giá trần
+                                                        <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" title="Giá cao nhất có thể giao dịch trong ngày."></i>
+                                                    </label>
+                                                    <div class="input-group">
+                                                        <input type="number" step="0.01" class="form-control" id="ceiling_price" name="ceiling_price" 
+                                                               placeholder="11000"/>
+                                                        <span class="input-group-text">VND</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="col-xl-4 col-lg-6 col-md-6">
+                                                    <label for="floor_price" class="form-label">Giá sàn
+                                                        <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" title="Giá thấp nhất có thể giao dịch trong ngày."></i>
+                                                    </label>
+                                                    <div class="input-group">
+                                                        <input type="number" step="0.01" class="form-control" id="floor_price" name="floor_price" 
+                                                               placeholder="9000"/>
+                                                        <span class="input-group-text">VND</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Bỏ Khối lượng: volume được tính từ initial_certificate_quantity -->
                                                 
                                                 <!-- Trường mới cho quỹ đóng -->
                                                 <div class="col-xl-6 col-lg-6 col-md-12">
@@ -1178,16 +1219,16 @@
                         });
                     }
 
-                    // REFACTOR: Smart field dependencies - Auto-generate English name
-                    const fullNameField = document.getElementById('full_name');
-                    const englishNameField = document.getElementById('english_name');
+                    // REFACTOR: Smart field dependencies - Auto-generate English name from Vietnamese name
+                    const shortNameVnField = document.getElementById('short_name_vn');
+                    const shortNameEnField = document.getElementById('short_name_en');
                     
-                    if (fullNameField && englishNameField) {
-                        fullNameField.addEventListener('input', function() {
-                            if (englishNameField.value === '' && this.value.trim() !== '') {
+                    if (shortNameVnField && shortNameEnField) {
+                        shortNameVnField.addEventListener('input', function() {
+                            if (shortNameEnField.value === '' && this.value.trim() !== '') {
                                 // Simple transliteration (basic implementation)
                                 const transliterated = transliterate(this.value);
-                                englishNameField.value = transliterated;
+                                shortNameEnField.value = transliterated;
                             }
                         });
                     }

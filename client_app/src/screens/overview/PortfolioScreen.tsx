@@ -16,7 +16,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { PortfolioOverview } from '../../types/portfolio';
 import { Investment } from '../../types/fund';
 import { API_CONFIG } from '../../config/apiConfig';
-import { middlewareApiService } from '../../services/MiddlewareApiService';
 import { apiService } from '../../config/apiService';
 import { useAuth } from '../../context/AuthContext';
 import { PieChartCustom } from '../../components/common/PieChartCustom';
@@ -90,6 +89,16 @@ export const PortfolioScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Sync session ID from AuthContext to apiService
+  useEffect(() => {
+    if (sessionId) {
+      apiService.setSessionId(sessionId);
+      console.log('✅ [Portfolio] Synced session ID to apiService:', sessionId.substring(0, 10) + '...');
+    } else {
+      console.log('⚠️ [Portfolio] No session ID in AuthContext');
+    }
+  }, [sessionId]);
   
   // Cache và rate limiting
   const lastLoadTime = useRef<number>(0);
@@ -171,24 +180,84 @@ export const PortfolioScreen: React.FC = () => {
       }
 
       console.log('✅ [Portfolio] User authenticated, loading portfolio data...');
+      console.log('🔐 [Portfolio] Session ID in context:', sessionId ? sessionId.substring(0, 10) + '...' : 'NONE');
+      console.log('🔐 [Portfolio] Session ID in apiService:', apiService.getSessionId() ? apiService.getSessionId()!.substring(0, 10) + '...' : 'NONE');
       
-      // Check if using middleware
-      if (API_CONFIG.USE_MIDDLEWARE) {
-        console.log('🔄 [Portfolio] Using middleware API for data loading...');
+      // Test connection với health endpoint trước (không cần auth)
+      // Health endpoint không có /api/v1 prefix, nên cần gọi trực tiếp
+      try {
+        console.log('🏥 [Portfolio] Testing middleware connection...');
+        // Health endpoint is at root level, not under /api/v1
+        const healthUrl = `http://${API_CONFIG.LOCAL_HOST}:3001/health`;
+        const healthResponse = await fetch(healthUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
+        const healthData = await healthResponse.json();
+        console.log('✅ [Portfolio] Middleware health check:', healthData.success);
+      } catch (healthError) {
+        console.error('❌ [Portfolio] Middleware health check failed:', healthError);
+        setError('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+        return;
+      }
+      
+      // Luôn dùng middleware API
+      console.log('🔄 [Portfolio] Using middleware API for data loading...');
+      
+      try {
+        // Lấy portfolio overview từ middleware
+        const overviewResponse = await apiService.getPortfolioOverview();
+        console.log('📊 [Portfolio] Portfolio overview response:', overviewResponse);
         
-        try {
-          const { portfolio, investments } = await middlewareApiService.getLegacyPortfolioData();
-          setPortfolio(portfolio);
-          setInvestments(investments);
+        if (overviewResponse.success && overviewResponse.data) {
+          const overviewData = overviewResponse.data as any;
+          
+          // Transform data từ middleware format
+          const portfolioData: PortfolioOverview = {
+            total_investment: overviewData.totalInvestment || overviewData.total_investment || 0,
+            total_current_value: overviewData.totalCurrentValue || overviewData.total_current_value || 0,
+            total_profit_loss: overviewData.totalProfitLoss || overviewData.total_profit_loss || 0,
+            total_profit_loss_percentage: overviewData.totalProfitLossPercentage || overviewData.total_profit_loss_percentage || 0,
+            funds: overviewData.funds || [],
+            allocation: overviewData.allocation || [],
+            last_updated: overviewData.lastUpdated || new Date().toISOString()
+          };
+          
+          setPortfolio(portfolioData);
+          
+          // Lấy investments riêng
+          try {
+            const investmentsResponse = await apiService.getInvestments();
+            if (investmentsResponse.success && investmentsResponse.data) {
+              const investments = (investmentsResponse.data as any[]).map((record: any) => ({
+                id: record.id,
+                fund_id: record.fund_id || record.id,
+                fund_name: record.fund_name || record.name || `Fund ${record.id}`,
+                fund_ticker: record.fund_ticker || record.ticker || `F${record.id}`,
+                units: safeNumber(record.units || 100),
+                amount: safeNumber(record.amount || 1000000),
+                current_nav: safeNumber(record.current_nav || 10000),
+                investment_type: record.investment_type || 'equity',
+              }));
+              setInvestments(investments);
+              console.log('✅ [Portfolio] Investments loaded:', investments.length, 'items');
+            }
+          } catch (investmentError) {
+            console.log('⚠️ [Portfolio] Failed to load investments:', investmentError);
+          }
+          
           console.log('✅ [Portfolio] Middleware data loaded successfully');
           return;
-        } catch (middlewareError) {
-          console.error('❌ [Portfolio] Middleware API failed:', middlewareError);
-          console.log('🔄 [Portfolio] Falling back to direct Odoo calls...');
         }
+      } catch (middlewareError) {
+        console.error('❌ [Portfolio] Middleware API failed:', middlewareError);
       }
 
-      console.log('🔄 [Portfolio] Using direct Odoo calls...');
+      // Fallback: thử lấy từ các endpoint riêng lẻ
+      console.log('🔄 [Portfolio] Trying individual endpoints...');
 
       // Call authenticated endpoints
       let realInvestments: Investment[] = [];
@@ -197,46 +266,32 @@ export const PortfolioScreen: React.FC = () => {
       try {
         console.log('📊 [Portfolio] Fetching data using actual backend endpoints...');
         
-        const fundResponse = await apiService.getFundData();
-        console.log('📊 [Portfolio] Fund endpoint response:', fundResponse);
+        // Dùng getFundData từ fundApi (đã map đến middleware)
+        const { getFundData } = await import('../../api/fundApi');
+        const fundData = await getFundData();
+        console.log('📊 [Portfolio] Fund data:', fundData.length, 'funds');
         
-        let investmentResponse = null;
-        const isSessionValid = await apiService.testSessionValidity();
-        
-        if (isSessionValid) {
-          try {
-            investmentResponse = await apiService.getInvestments();
-            console.log('📊 [Portfolio] Investment endpoint response:', investmentResponse);
-          } catch (investmentError) {
-            console.log('❌ [Portfolio] Investment endpoint failed despite valid session:', investmentError);
+        // Lấy investments từ middleware
+        try {
+          const investmentResponse = await apiService.getInvestments();
+          if (investmentResponse.success && investmentResponse.data) {
+            const investmentData = investmentResponse.data as any;
+            if (Array.isArray(investmentData)) {
+              realInvestments = investmentData.map((record: any) => ({
+                id: record.id,
+                fund_id: record.fund_id || record.id,
+                fund_name: record.fund_name || record.name || `Fund ${record.id}`,
+                fund_ticker: record.fund_ticker || record.ticker || `F${record.id}`,
+                units: safeNumber(record.units || 100),
+                amount: safeNumber(record.amount || 1000000),
+                current_nav: safeNumber(record.current_nav || 10000),
+                investment_type: record.investment_type || 'equity',
+              }));
+              console.log('✅ [Portfolio] Got real investment data from middleware:', realInvestments.length, 'items');
+            }
           }
-        } else {
-          console.log('⚠️ [Portfolio] Session invalid, skipping investment data call');
-        }
-
-        // Parse investment data if available
-        if (investmentResponse) {
-          const investmentData = investmentResponse?.data as any;
-          if (Array.isArray(investmentData)) {
-            realInvestments = investmentData.map((record: any) => ({
-              id: record.id,
-              fund_id: record.fund_id || record.id,
-              fund_name: record.fund_name || record.name || `Fund ${record.id}`,
-              fund_ticker: record.fund_ticker || record.ticker || `F${record.id}`,
-              units: safeNumber(record.units || 100),
-              amount: safeNumber(record.amount || 1000000),
-              current_nav: safeNumber(record.current_nav || 10000),
-              investment_type: record.investment_type || 'equity',
-            }));
-            console.log('✅ [Portfolio] Got real investment data from backend:', realInvestments.length, 'items');
-          }
-        } else {
-          console.log('⚠️ [Portfolio] No investment data - session may be invalid or user has no investments');
-        }
-
-        const fundData = fundResponse?.data as any;
-        if (Array.isArray(fundData)) {
-          console.log('✅ [Portfolio] Got fund data from backend:', fundData.length, 'funds');
+        } catch (investmentError) {
+          console.log('⚠️ [Portfolio] Failed to load investments:', investmentError);
         }
 
       } catch (error) {

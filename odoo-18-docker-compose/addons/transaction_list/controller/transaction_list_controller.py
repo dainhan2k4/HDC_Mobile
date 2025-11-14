@@ -9,6 +9,21 @@ from odoo import fields
 
 class TransactionListController(http.Controller):
 
+    def _make_secure_response(self, data, status=200):
+        """Tạo response với security headers"""
+        headers = [
+            ('Content-Type', 'application/json'),
+            ('X-Content-Type-Options', 'nosniff'),
+            ('Cache-Control', 'no-cache, no-store, must-revalidate'),
+            ('Pragma', 'no-cache'),
+            ('Expires', '0')
+        ]
+        return request.make_response(
+            json.dumps(data, ensure_ascii=False),
+            headers=headers,
+            status=status
+        )
+
     @http.route('/transaction-list', type='http', auth='user', website=True)
     def transaction_list_page(self, **kwargs):
         """Render transaction list page"""
@@ -53,6 +68,15 @@ class TransactionListController(http.Controller):
                     'message': 'Transaction not found'
                 })
             
+            # Helper: amount without fee
+            def _amount_ex_fee(tx):
+                try:
+                    fee = getattr(tx, 'fee', 0) or 0
+                    amt = tx.amount or 0
+                    return max(amt - fee, 0)
+                except Exception:
+                    return tx.amount or 0
+
             # Return transaction details
             return request.make_json_response({
                 'success': True,
@@ -64,7 +88,7 @@ class TransactionListController(http.Controller):
                     'account_number': transaction.account_number or '',
                     'transaction_type': transaction.transaction_type,
                     'fund_name': transaction.fund_id.name if transaction.fund_id else '',
-                    'amount': transaction.amount,
+                    'amount': _amount_ex_fee(transaction),
                     'units': transaction.units,
                     'current_nav': transaction.current_nav or 0,
                     'status': transaction.status
@@ -72,11 +96,75 @@ class TransactionListController(http.Controller):
             })
             
         except Exception as e:
-            print(f"Error getting transaction details: {e}")
+            pass
             return request.make_json_response({
                 'success': False,
                 'message': str(e)
             })
+
+    @http.route('/api/transaction-list/get-investor-name/<int:transaction_id>', type='http', auth='user', methods=['GET'])
+    def get_investor_name(self, transaction_id, **kwargs):
+        """API endpoint to get investor name for a transaction"""
+        try:
+            # Get transaction from database
+            transaction = request.env['portfolio.transaction'].browse(transaction_id)
+            
+            if not transaction.exists():
+                return request.make_json_response({
+                    'success': False,
+                    'message': 'Transaction not found'
+                })
+            
+            # Get investor name using the same logic as in matched_orders_controller
+            investor_name = self._get_investor_name(transaction)
+            
+            return self._make_secure_response({
+                'success': True,
+                'investor_name': investor_name
+            })
+            
+        except Exception as e:
+            return request.make_json_response({
+                'success': False,
+                'message': str(e)
+            })
+    
+    def _get_investor_name(self, tx):
+        """Lấy tên nhà đầu tư từ transaction - same logic as matched_orders_controller"""
+        try:
+            if hasattr(tx, 'investor_name') and tx.investor_name:
+                return tx.investor_name
+            
+            # Kiểm tra nếu là Market Maker transaction
+            if hasattr(tx, 'source') and tx.source == 'market_maker':
+                return 'Market Maker'
+            
+            # Kiểm tra nếu user là internal user (Market Maker)
+            if tx.user_id and tx.user_id.has_group('base.group_system'):
+                return 'Market Maker'
+            
+            # Kiểm tra nếu user là internal user (Market Maker) - kiểm tra thêm
+            if tx.user_id and tx.user_id.has_group('base.group_user'):
+                return 'Market Maker'
+            
+            # Lấy tên từ partner hoặc user
+            if tx.user_id and tx.user_id.partner_id:
+                partner_name = tx.user_id.partner_id.name
+                if partner_name and partner_name != 'N/A' and partner_name.strip():
+                    return partner_name
+            
+            if tx.user_id:
+                user_name = tx.user_id.name
+                if user_name and user_name != 'N/A' and user_name.strip():
+                    return user_name
+                    
+            # Fallback: sử dụng reference hoặc ID
+            if hasattr(tx, 'reference') and tx.reference:
+                return f"User #{tx.id}"
+                
+        except Exception as e:
+            pass
+        return f"User #{tx.id if hasattr(tx, 'id') else 'N/A'}"
 
     @http.route('/api/transaction-list/data', type='json', auth='user')
     def get_transaction_data(self, **kwargs):
@@ -86,12 +174,9 @@ class TransactionListController(http.Controller):
             status_filter = kwargs.get('status_filter')
             source_filter = kwargs.get('source_filter')
             
-            print(f"API called with status_filter: {status_filter}, source_filter: {source_filter}")
-            print(f"All kwargs: {kwargs}")
             
             # Check if portfolio.transaction model exists
             if not request.env['ir.model'].search([('model', '=', 'portfolio.transaction')]):
-                print("ERROR: portfolio.transaction model not found!")
                 return {
                     'success': False,
                     'data': [],
@@ -100,12 +185,9 @@ class TransactionListController(http.Controller):
             
             # Get data directly from portfolio.transaction using the extended model
             transaction_model = request.env['portfolio.transaction']
-            print(f"Transaction model: {transaction_model}")
-            print(f"Transaction model methods: {dir(transaction_model)}")
             
             # Check if get_transaction_data method exists
             if not hasattr(transaction_model, 'get_transaction_data'):
-                print("WARNING: get_transaction_data method not found, using fallback!")
                 # Fallback: lấy dữ liệu trực tiếp từ portfolio.transaction
                 domain = []
                 if status_filter:
@@ -115,6 +197,13 @@ class TransactionListController(http.Controller):
                 
                 transactions = transaction_model.search(domain, order='create_date desc', limit=1000)
                 data = []
+                def _amount_ex_fee(tx):
+                    try:
+                        fee = getattr(tx, 'fee', 0) or 0
+                        amt = tx.amount or 0
+                        return max(amt - fee, 0)
+                    except Exception:
+                        return tx.amount or 0
                 for tx in transactions:
                     data.append({
                         'id': tx.id,
@@ -129,17 +218,27 @@ class TransactionListController(http.Controller):
                         'target_fund': '',
                         'target_fund_ticker': '',
                         'units': tx.units or 0,
-                        'unit_price': tx.current_nav or 0,
+                        # Giá đơn vị: ưu tiên price (giá giao dịch), fallback current_nav
+                        'unit_price': (getattr(tx, 'price', 0) or (tx.current_nav or 0)),
                         'matched_units': getattr(tx, 'matched_units', 0) or 0,
                         'destination_units': 0,
-                        'amount': tx.amount or 0,
-                        'calculated_amount': tx.amount or 0,
+                        'amount': _amount_ex_fee(tx),
+                        'calculated_amount': _amount_ex_fee(tx),
                         'currency': tx.currency_id.symbol if tx.currency_id else 'VND',
                         'investment_type': '',
                         'status': tx.status or '',
                         'source': getattr(tx, 'source', '') or '',
-                        'created_at': tx.create_date.strftime('%Y-%m-%d %H:%M:%S') if tx.create_date else '',
-                        'transaction_date': tx.transaction_date.strftime('%Y-%m-%d') if tx.transaction_date else '',
+                        'created_at': (tx.created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(tx, 'created_at') and tx.created_at else (tx.create_date.strftime('%Y-%m-%d %H:%M:%S') if tx.create_date else '')),
+                        'date_end': (tx.date_end.strftime('%Y-%m-%d %H:%M:%S') if hasattr(tx, 'date_end') and tx.date_end else ''),
+                        # transaction_date: Ưu tiên date_end (thời gian khớp), nếu không có thì dùng created_at (thời gian vào)
+                        'transaction_date': (tx.date_end.strftime('%Y-%m-%d') if hasattr(tx, 'date_end') and tx.date_end else (tx.created_at.strftime('%Y-%m-%d') if hasattr(tx, 'created_at') and tx.created_at else (tx.create_date.strftime('%Y-%m-%d') if tx.create_date else ''))),
+                        # first_in_time và in_time: Dùng created_at (thời gian vào lệnh)
+                        'first_in_time': (tx.created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(tx, 'created_at') and tx.created_at else (tx.create_date.strftime('%Y-%m-%d %H:%M:%S') if tx.create_date else '')),
+                        'in_time': (tx.created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(tx, 'created_at') and tx.created_at else (tx.create_date.strftime('%Y-%m-%d %H:%M:%S') if tx.create_date else '')),
+                        # out_time: Dùng date_end (thời gian khớp lệnh)
+                        'out_time': (tx.date_end.strftime('%Y-%m-%d %H:%M:%S') if hasattr(tx, 'date_end') and tx.date_end else ''),
+                        'has_contract': False,
+                        'fund_id': tx.fund_id.id if tx.fund_id else False,
                         'approved_by': tx.approved_by.name if tx.approved_by else '',
                         'approved_at': tx.approved_at.strftime('%Y-%m-%d %H:%M:%S') if tx.approved_at else '',
                         'description': tx.description or ''
@@ -147,10 +246,6 @@ class TransactionListController(http.Controller):
             else:
                 data = transaction_model.get_transaction_data(status_filter, source_filter)
             
-            print(f"Found {len(data)} transactions after filter")
-            if data:
-                print(f"Sample data: {data[0]}")
-                print(f"Sample transaction status: {data[0].get('status')}")
             
             return {
                 'success': True,
@@ -158,9 +253,7 @@ class TransactionListController(http.Controller):
                 'message': 'Dữ liệu được tải thành công'
             }
         except Exception as e:
-            print(f"Error in get_transaction_data: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            pass
             return {
                 'success': False,
                 'data': [],
@@ -216,7 +309,7 @@ class TransactionListController(http.Controller):
                 'portfolio_total': total_pending + total_approved + total_cancelled,
             }
         except Exception as e:
-            print(f"Error getting portfolio transaction stats: {str(e)}")
+            pass
             return {
                 'total_pending': 0,
                 'total_approved': 0,
@@ -250,7 +343,7 @@ class TransactionListController(http.Controller):
                 'message': 'Giao dịch đã được duyệt thành công'
             }
         except Exception as e:
-            print(f"Error approving transaction {transaction_id}: {str(e)}")
+            pass
             return {
                 'success': False,
                 'message': f'Lỗi: {str(e)}'
@@ -279,7 +372,7 @@ class TransactionListController(http.Controller):
                 'message': 'Giao dịch đã được hủy thành công'
             }
         except Exception as e:
-            print(f"Error cancelling transaction {transaction_id}: {str(e)}")
+            pass
             return {
                 'success': False,
                 'message': f'Lỗi: {str(e)}'
@@ -289,13 +382,9 @@ class TransactionListController(http.Controller):
     def delete_transaction(self, transaction_id, **kwargs):
         """API endpoint to delete a transaction"""
         try:
-            print(f"Delete transaction called with ID: {transaction_id}")
-            print(f"Transaction ID type: {type(transaction_id)}")
-            print(f"All kwargs: {kwargs}")
             
             # Validate transaction_id
             if not transaction_id:
-                print("Transaction ID is empty or None")
                 return {
                     'success': False,
                     'message': 'ID giao dịch không hợp lệ'
@@ -304,17 +393,14 @@ class TransactionListController(http.Controller):
             try:
                 transaction_id_int = int(transaction_id)
             except (ValueError, TypeError):
-                print(f"Cannot convert transaction_id '{transaction_id}' to int")
                 return {
                     'success': False,
                     'message': 'ID giao dịch không hợp lệ'
                 }
             
-            print(f"Converted transaction ID: {transaction_id_int}")
             
             # Check if model exists
             if not request.env['ir.model'].search([('model', '=', 'portfolio.transaction')]):
-                print("portfolio.transaction model not found")
                 return {
                     'success': False,
                     'message': 'Model portfolio.transaction không tồn tại'
@@ -322,42 +408,29 @@ class TransactionListController(http.Controller):
             
             # Use sudo() to bypass access rights
             transaction = request.env['portfolio.transaction'].sudo().browse(transaction_id_int)
-            print(f"Transaction browse result: {transaction}")
             
             if not transaction.exists():
-                print(f"Transaction {transaction_id_int} not found")
                 return {
                     'success': False,
                     'message': 'Không tìm thấy giao dịch'
                 }
             
-            print(f"Found transaction: {transaction.name}, status: {transaction.status}")
-            print(f"Transaction ID: {transaction.id}")
             
             # Try to delete with sudo() to bypass access rights
             transaction_name = transaction.name
             try:
                 # First try to unlink normally
-                print("Attempting normal unlink...")
                 transaction.unlink()
-                print(f"Successfully deleted transaction: {transaction_name}")
             except Exception as unlink_error:
-                print(f"Normal unlink failed: {str(unlink_error)}")
-                print(f"Error type: {type(unlink_error)}")
                 # If normal unlink fails, try with sudo
-                print("Attempting sudo unlink...")
                 transaction.sudo().unlink()
-                print(f"Successfully deleted transaction with sudo: {transaction_name}")
             
             return {
                 'success': True,
                 'message': 'Giao dịch đã được xóa thành công'
             }
         except Exception as e:
-            print(f"Error deleting transaction {transaction_id}: {str(e)}")
-            print(f"Error type: {type(e)}")
-            import traceback
-            traceback.print_exc()
+            pass
             return {
                 'success': False,
                 'message': f'Lỗi: {str(e)}'
@@ -368,7 +441,6 @@ class TransactionListController(http.Controller):
         """Simple HTTP endpoint to delete a transaction"""
         try:
             transaction_id = kwargs.get('transaction_id')
-            print(f"Simple delete called with ID: {transaction_id}")
             
             if not transaction_id:
                 return json.dumps({'success': False, 'message': 'ID giao dịch không hợp lệ'})
@@ -393,85 +465,13 @@ class TransactionListController(http.Controller):
                 'message': 'Giao dịch đã được xóa thành công'
             })
         except Exception as e:
-            print(f"Error in simple delete: {str(e)}")
+            pass
             return json.dumps({'success': False, 'message': f'Lỗi: {str(e)}'})
 
-    @http.route('/api/transaction-list/funds', type='json', auth='user')
-    def get_funds(self, **kwargs):
-        """API endpoint to get fund options for filter dropdown"""
-        try:
-            # Get funds from portfolio.fund model
-            fund_model = request.env['portfolio.fund']
-            funds = fund_model.search([])
-            
-            fund_data = []
-            for fund in funds:
-                ticker = ''
-                symbol = ''
-                
-                # Try to get ticker field first
-                if hasattr(fund, 'ticker') and fund.ticker:
-                    ticker = fund.ticker
-                elif hasattr(fund, 'symbol') and fund.symbol:
-                    ticker = fund.symbol
-                
-                # Try to get symbol field
-                if hasattr(fund, 'symbol') and fund.symbol:
-                    symbol = fund.symbol
-                elif hasattr(fund, 'ticker') and fund.ticker:
-                    symbol = fund.ticker
-                
-                fund_data.append({
-                    'id': fund.id,
-                    'name': fund.name or '',
-                    'ticker': ticker,
-                    'symbol': symbol,
-                })
-            
-            print(f"[DEBUG] Found {len(fund_data)} funds")
-            if fund_data:
-                print(f"[DEBUG] Sample fund: {fund_data[0]}")
-            
-            return {
-                'success': True,
-                'data': fund_data,
-                'message': f'Lấy được {len(fund_data)} quỹ'
-            }
-        except Exception as e:
-            print(f"Error getting funds: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            
-            # Fallback: extract funds from transactions
-            try:
-                transaction_model = request.env['portfolio.transaction']
-                transactions = transaction_model.search([])
-                
-                funds_dict = {}
-                for tx in transactions:
-                    if tx.fund_id:
-                        funds_dict[tx.fund_id.id] = {
-                            'id': tx.fund_id.id,
-                            'name': tx.fund_id.name or '',
-                            'ticker': getattr(tx.fund_id, 'ticker', '') or getattr(tx.fund_id, 'symbol', '') or '',
-                            'symbol': getattr(tx.fund_id, 'symbol', '') or getattr(tx.fund_id, 'ticker', '') or '',
-                        }
-                
-                fund_data = list(funds_dict.values())
-                print(f"[DEBUG] Fallback: Found {len(fund_data)} funds from transactions")
-                
-                return {
-                    'success': True,
-                    'data': fund_data,
-                    'message': f'Lấy được {len(fund_data)} quỹ (từ giao dịch)'
-                }
-            except Exception as fallback_error:
-                print(f"Fallback also failed: {str(fallback_error)}")
-                return {
-                    'success': False,
-                    'data': [],
-                    'message': f'Lỗi: {str(e)}'
-                }
+    # API get_funds đã được chuyển sang order_book_controller.py
+    # @http.route('/api/transaction-list/funds', type='json', auth='user')
+    # def get_funds(self, **kwargs):
+        # Method đã được chuyển sang order_book_controller.py
 
     @http.route('/api/transaction-list/export', type='json', auth='user')
     def export_transactions(self, status_filter=None, source_filter=None, **kwargs):
@@ -514,8 +514,17 @@ class TransactionListController(http.Controller):
                         'investment_type': '',
                         'status': tx.status or '',
                         'source': getattr(tx, 'source', '') or '',
-                        'created_at': tx.create_date.strftime('%Y-%m-%d %H:%M:%S') if tx.create_date else '',
-                        'transaction_date': tx.transaction_date.strftime('%Y-%m-%d') if tx.transaction_date else '',
+                        'created_at': (tx.created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(tx, 'created_at') and tx.created_at else (tx.create_date.strftime('%Y-%m-%d %H:%M:%S') if tx.create_date else '')),
+                        'date_end': (tx.date_end.strftime('%Y-%m-%d %H:%M:%S') if hasattr(tx, 'date_end') and tx.date_end else ''),
+                        # transaction_date: Ưu tiên date_end (thời gian khớp), nếu không có thì dùng created_at (thời gian vào)
+                        'transaction_date': (tx.date_end.strftime('%Y-%m-%d') if hasattr(tx, 'date_end') and tx.date_end else (tx.created_at.strftime('%Y-%m-%d') if hasattr(tx, 'created_at') and tx.created_at else (tx.create_date.strftime('%Y-%m-%d') if tx.create_date else ''))),
+                        # first_in_time và in_time: Dùng created_at (thời gian vào lệnh)
+                        'first_in_time': (tx.created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(tx, 'created_at') and tx.created_at else (tx.create_date.strftime('%Y-%m-%d %H:%M:%S') if tx.create_date else '')),
+                        'in_time': (tx.created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(tx, 'created_at') and tx.created_at else (tx.create_date.strftime('%Y-%m-%d %H:%M:%S') if tx.create_date else '')),
+                        # out_time: Dùng date_end (thời gian khớp lệnh)
+                        'out_time': (tx.date_end.strftime('%Y-%m-%d %H:%M:%S') if hasattr(tx, 'date_end') and tx.date_end else ''),
+                        'has_contract': False,
+                        'fund_id': tx.fund_id.id if tx.fund_id else False,
                         'approved_by': tx.approved_by.name if tx.approved_by else '',
                         'approved_at': tx.approved_at.strftime('%Y-%m-%d %H:%M:%S') if tx.approved_at else '',
                         'description': tx.description or ''
@@ -660,7 +669,7 @@ class TransactionListController(http.Controller):
             return request.make_response(file_content, headers=headers)
             
         except Exception as e:
-            print(f"Error downloading contract: {str(e)}")
+            pass
             return f"Lỗi khi tải file: {str(e)}"
 
  

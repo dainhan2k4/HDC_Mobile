@@ -21,9 +21,8 @@
                             <field name="transaction_type" widget="selection"/>
                             <field name="investment_type" widget="selection"/>
                             <field name="created_at" widget="datetime"/>
-                            <field name="transaction_date" widget="date"/>
                             <field name="status" widget="selection"/>
-                            <field name="contract_pdf_path"/>
+                            <field name="contract_file" filename="contract_filename"/>
                         </group>
                         <group>
                             <field name="units"/>
@@ -42,7 +41,6 @@
                         <group>
                             <field name="destination_fund_id"/>
                             <field name="destination_units"/>
-                            <field name="destination_price" widget="monetary" string="Giá đơn vị đích"/>
                         </group>
                     </group>
                 </sheet>
@@ -57,7 +55,6 @@
         <field name="arch" type="xml">
             <list string="Transactions" decoration-info="status == 'pending'" decoration-success="status == 'completed'" decoration-danger="status == 'cancelled'">
                 <field name="created_at" widget="datetime"/>
-                <field name="transaction_date" widget="date"/>
                 <field name="fund_id"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
                 <field name="transaction_type" widget="selection"/>
@@ -95,7 +92,7 @@
                     <filter string="Transaction Type" name="groupby_transaction_type" context="{'group_by':'transaction_type'}"/>
                     <filter string="Investment Type" name="groupby_investment_type" context="{'group_by':'investment_type'}"/>
                     <filter string="Status" name="groupby_status" context="{'group_by':'status'}"/>
-                    <filter string="Transaction Date" name="groupby_date" context="{'group_by':'transaction_date'}"/>
+                    <filter string="Created At" name="groupby_date" context="{'group_by':'created_at'}"/>
                 </group>
             </search>
         </field>

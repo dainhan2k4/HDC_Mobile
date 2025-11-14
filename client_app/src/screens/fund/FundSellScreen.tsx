@@ -14,32 +14,60 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import formatVND from '../../hooks/formatCurrency';
 import { fundApi } from '../../api/fundApi';
+import { ApiResponse } from '../../types/api';
 
 interface SellRouteParams {
   fundId: number;
   fundName: string;
   currentUnits: number;
   currentNav?: number;
+  investmentId: number;
+  originalAmount?: number;
 }
 
 export const FundSellScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { fundId, fundName, currentUnits, currentNav = 25000 } = (route.params as SellRouteParams) || {};
+  const {
+    fundId,
+    fundName,
+    currentUnits,
+    currentNav = 25000,
+    investmentId,
+    originalAmount = currentUnits * currentNav
+  } = (route.params as SellRouteParams) || {};
+
+  const navRounded = Math.round(currentNav / 50) * 50;
 
   const [sellAmount, setSellAmount] = useState('');
   const [sellUnits, setSellUnits] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [calculationMode, setCalculationMode] = useState<'amount' | 'units'>('units');
+  const [calculationMode, setCalculationMode] = useState('units' as 'amount' | 'units');
 
-  // Calculate amount from units or vice versa
+  if (!investmentId) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#212529" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Bán quỹ</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Không tìm thấy thông tin khoản đầu tư để bán.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const handleUnitsChange = (value: string) => {
     setSellUnits(value);
     setCalculationMode('units');
     
     const numericUnits = parseFloat(value);
     if (!isNaN(numericUnits) && numericUnits > 0) {
-      const calculatedAmount = numericUnits * currentNav;
+      const calculatedAmount = numericUnits * navRounded;
       setSellAmount(calculatedAmount.toString());
     } else {
       setSellAmount('');
@@ -47,74 +75,84 @@ export const FundSellScreen: React.FC = () => {
   };
 
   const handleAmountChange = (value: string) => {
-    setSellAmount(value);
     setCalculationMode('amount');
     
     const numericAmount = parseFloat(value.replace(/[,\.]/g, ''));
-    if (!isNaN(numericAmount) && numericAmount > 0) {
-      const calculatedUnits = numericAmount / currentNav;
+    if (!isNaN(numericAmount) && numericAmount > 0 && navRounded > 0) {
+      const calculatedUnits = numericAmount / navRounded;
       setSellUnits(calculatedUnits.toFixed(4));
+      const sanitizedAmount = calculatedUnits * navRounded;
+      setSellAmount(sanitizedAmount.toString());
     } else {
       setSellUnits('');
+      setSellAmount('');
     }
   };
 
   const handleSellAll = () => {
     setSellUnits(currentUnits.toString());
-    setSellAmount((currentUnits * currentNav).toString());
+    setSellAmount((currentUnits * navRounded).toString());
     setCalculationMode('units');
   };
 
   const handleSellFund = async () => {
-    if (!sellAmount || !sellUnits) {
-      Alert.alert('Lỗi', 'Vui lòng nhập số tiền hoặc số đơn vị muốn bán');
+    if (!sellUnits) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số đơn vị muốn bán');
       return;
     }
 
-    const numericAmount = parseFloat(sellAmount.replace(/[,\.]/g, ''));
     const numericUnits = parseFloat(sellUnits);
+
+    if (Number.isNaN(numericUnits) || numericUnits <= 0) {
+      Alert.alert('Lỗi', 'Số đơn vị bán phải lớn hơn 0');
+      return;
+    }
 
     if (numericUnits > currentUnits) {
       Alert.alert('Lỗi', `Bạn chỉ có thể bán tối đa ${currentUnits} đơn vị`);
       return;
     }
 
-    if (numericUnits <= 0) {
-      Alert.alert('Lỗi', 'Số đơn vị bán phải lớn hơn 0');
-      return;
-    }
+    const estimatedValue = numericUnits * navRounded;
 
     Alert.alert(
       'Xác nhận bán quỹ',
-      `Bạn muốn bán ${numericUnits.toFixed(4)} đơn vị quỹ ${fundName} với tổng giá trị dự kiến ${formatVND(numericAmount)}?`,
+      `Bạn muốn bán ${numericUnits.toFixed(4)} đơn vị quỹ ${fundName} với tổng giá trị dự kiến ${formatVND(estimatedValue)}?`,
       [
         { text: 'Hủy', style: 'cancel' },
         { 
           text: 'Xác nhận', 
           style: 'destructive',
-          onPress: () => executeSellOrder(numericAmount, numericUnits)
+          onPress: () => executeSellOrder(numericUnits)
         }
       ]
     );
   };
 
-  const executeSellOrder = async (amount: number, units: number) => {
+  const executeSellOrder = async (units: number) => {
     try {
       setIsLoading(true);
-      console.log(`🔄 [SellFund] Executing sell order for fund ${fundId}:`, { amount, units });
-      
-      // Call real API to execute sell order
-      const response = await fundApi.sellFund(fundId, units);
+      console.log(`🔄 [SellFund] Executing sell order for fund ${fundId}:`, { investmentId, units });
+
+      const estimatedValue = units * navRounded;
+      const response = await fundApi.sellFund({
+        investment_id: investmentId,
+        quantity: units,
+        estimated_value: estimatedValue,
+      });
       console.log('✅ [SellFund] Sell order response:', response);
-      
+
+      if (!response?.success) {
+        throw new Error(response?.message || 'Đặt lệnh bán thất bại');
+      }
+
       Alert.alert(
         'Thành công!',
-        `Đã đặt lệnh bán ${units.toFixed(4)} đơn vị quỹ ${fundName} thành công. Portfolio sẽ được cập nhật ngay lập tức.`,
+        response?.message || `Đã đặt lệnh bán ${units.toFixed(4)} đơn vị quỹ ${fundName} thành công.`,
         [
           { 
             text: 'OK', 
             onPress: () => {
-              // Navigate back to trigger portfolio refresh
               navigation.goBack();
             }
           }
@@ -158,6 +196,14 @@ export const FundSellScreen: React.FC = () => {
               {formatVND(currentUnits * currentNav)}
             </Text>
           </View>
+          <View style={styles.fundInfoRow}>
+            <Text style={styles.fundInfoLabel}>Số tiền gốc đã đầu tư:</Text>
+            <Text style={styles.fundInfoValue}>{formatVND(originalAmount)}</Text>
+          </View>
+          <View style={styles.fundInfoRow}>
+            <Text style={styles.fundInfoLabel}>NAV làm tròn (bước 50):</Text>
+            <Text style={styles.fundInfoValue}>{formatVND(navRounded)}</Text>
+          </View>
         </View>
 
         {/* Sell Form */}
@@ -187,7 +233,7 @@ export const FundSellScreen: React.FC = () => {
             <Text style={styles.inputLabel}>Số tiền dự kiến nhận (VNĐ)</Text>
             <TextInput
               style={[styles.input, calculationMode === 'amount' && styles.inputActive]}
-              value={sellAmount ? formatVND(parseFloat(sellAmount.replace(/[,\.]/g, ''))) : ''}
+              value={sellAmount ? formatVND(parseFloat(sellAmount)) : ''}
               onChangeText={(text) => {
                 const numericValue = text.replace(/[^0-9]/g, '');
                 handleAmountChange(numericValue);
@@ -199,7 +245,7 @@ export const FundSellScreen: React.FC = () => {
           </View>
 
           {/* Calculation Summary */}
-          {sellAmount && sellUnits && (
+          {parseFloat(sellUnits || '0') > 0 && (
             <View style={styles.summaryCard}>
               <Text style={styles.summaryTitle}>Tóm tắt giao dịch</Text>
               <View style={styles.summaryRow}>
@@ -207,8 +253,8 @@ export const FundSellScreen: React.FC = () => {
                 <Text style={styles.summaryValue}>{parseFloat(sellUnits).toFixed(4)}</Text>
               </View>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>NAV:</Text>
-                <Text style={styles.summaryValue}>{formatVND(currentNav)}</Text>
+                <Text style={styles.summaryLabel}>NAV làm tròn:</Text>
+                <Text style={styles.summaryValue}>{formatVND(navRounded)}</Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Còn lại sau bán:</Text>
@@ -219,7 +265,7 @@ export const FundSellScreen: React.FC = () => {
               <View style={[styles.summaryRow, styles.summaryTotal]}>
                 <Text style={styles.summaryLabelTotal}>Số tiền dự kiến:</Text>
                 <Text style={styles.summaryValueTotal}>
-                  {formatVND(parseFloat(sellAmount.replace(/[,\.]/g, '')))}
+                  {formatVND(parseFloat(sellUnits) * navRounded)}
                 </Text>
               </View>
             </View>
@@ -240,9 +286,9 @@ export const FundSellScreen: React.FC = () => {
       {/* Sell Button */}
       <View style={styles.footer}>
         <TouchableOpacity 
-          style={[styles.sellButton, (!sellAmount || !sellUnits || isLoading) && styles.sellButtonDisabled]}
+          style={[styles.sellButton, (parseFloat(sellUnits || '0') <= 0 || isLoading) && styles.sellButtonDisabled]}
           onPress={handleSellFund}
-          disabled={!sellAmount || !sellUnits || isLoading}
+          disabled={parseFloat(sellUnits || '0') <= 0 || isLoading}
         >
           {isLoading ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -457,5 +503,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6C757D',
+    textAlign: 'center',
+  },
+  listContainer: {
+    flex: 1,
+    minHeight: 160,
   },
 }); 

@@ -55,56 +55,72 @@ class ReportPurchaseContract(models.Model):
         for record in self:
             record.so_tien = record.amount or 0.0
 
-    @api.depends('transaction_date')
+    @api.depends('created_at')
     def _compute_ngay_hd_mua(self):
-        """Compute ngày HĐ mua từ transaction_date"""
+        """Compute ngày HĐ mua từ created_at"""
         for record in self:
-            record.ngay_hd_mua = record.transaction_date
+            if record.created_at:
+                record.ngay_hd_mua = record.created_at.date()
+            else:
+                record.ngay_hd_mua = False
 
-    @api.depends('transaction_date')
+    @api.depends('created_at')
     def _compute_ngay_mua(self):
-        """Compute ngày mua từ transaction_date"""
+        """Compute ngày mua từ created_at"""
         for record in self:
-            record.ngay_mua = record.transaction_date
+            if record.created_at:
+                record.ngay_mua = record.created_at.date()
+            else:
+                record.ngay_mua = False
 
-    @api.depends('transaction_date')
+    @api.depends('created_at')
     def _compute_ngay_thanh_toan(self):
         """Compute ngày thanh toán"""
         for record in self:
-            # Có thể tính từ transaction_date + số ngày xử lý
-            record.ngay_thanh_toan = record.transaction_date
+            # Có thể tính từ created_at + số ngày xử lý
+            if record.created_at:
+                record.ngay_thanh_toan = record.created_at.date()
+            else:
+                record.ngay_thanh_toan = False
 
-    @api.depends('fund_id')
+    @api.depends('term_months')
     def _compute_ky_han(self):
-        """Compute kỳ hạn từ fund"""
+        """Compute kỳ hạn từ term_months"""
         for record in self:
-            # Có thể map từ fund hoặc để mặc định
-            record.ky_han = '12'  # Mặc định 12 tháng
+            record.ky_han = str(record.term_months) if record.term_months else '12'
 
-    @api.depends('fund_id')
+    @api.depends('interest_rate')
     def _compute_lai_suat(self):
-        """Compute lãi suất"""
+        """Compute lãi suất từ interest_rate"""
         for record in self:
-            # Có thể map từ fund hoặc để mặc định
-            record.lai_suat = 8.5  # Mặc định 8.5%
+            record.lai_suat = record.interest_rate if record.interest_rate else 8.5
 
-    @api.depends('transaction_date')
+    @api.depends('created_at', 'term_months')
     def _compute_so_ngay_tham_gia(self):
-        """Compute số ngày tham gia từ transaction_date"""
+        """Compute số ngày tham gia - sử dụng nav_days nếu có"""
         for record in self:
-            if record.transaction_date:
+            # Ưu tiên sử dụng nav_days đã tính toán sẵn
+            nav_days = getattr(record, 'nav_days', 0)
+            if nav_days and nav_days > 0:
+                record.so_ngay_tham_gia = nav_days
+            elif record.created_at:
                 from datetime import date
                 today = date.today()
-                delta = today - record.transaction_date
+                transaction_date = record.created_at.date()
+                delta = today - transaction_date
                 record.so_ngay_tham_gia = delta.days
             else:
                 record.so_ngay_tham_gia = 0
 
-    @api.depends('amount', 'lai_suat', 'ky_han')
+    @api.depends('nav_customer_receive', 'amount')
     def _compute_tien_lai_du_kien(self):
-        """Compute tiền lãi dự kiến khi đến hạn"""
+        """Compute tiền lãi dự kiến khi đến hạn - sử dụng NAV customer_receive nếu có"""
         for record in self:
-            if record.amount and record.lai_suat and record.ky_han:
+            # Ưu tiên sử dụng nav_customer_receive - amount (nếu có)
+            nav_customer_receive = getattr(record, 'nav_customer_receive', 0.0)
+            if nav_customer_receive > 0 and record.amount:
+                record.tien_lai_du_kien = nav_customer_receive - record.amount
+            elif record.amount and record.lai_suat and record.ky_han:
                 try:
                     ky_han_months = int(record.ky_han)
                     tien_lai = record.amount * (record.lai_suat / 100) * (ky_han_months / 12)
@@ -177,7 +193,7 @@ class ReportPurchaseContract(models.Model):
             total = self.search_count(domain)
             print(f"Total records found: {total}")
             
-            records = self.search(domain, limit=limit, offset=offset, order='transaction_date desc')
+            records = self.search(domain, limit=limit, offset=offset, order='created_at desc')
             print(f"Records retrieved: {len(records)}")
             
             formatted_records = []

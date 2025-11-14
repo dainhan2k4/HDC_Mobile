@@ -155,8 +155,8 @@ export class AssetManagementWidget extends Component {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <t t-if="state.holdings and Array.isArray(state.holdings) and state.holdings.length > 0">
-                                        <t t-foreach="state.holdings" t-as="holding" t-key="(holding.accountNumber or '') + (holding.fund or '') + (holding.tradingDate or '') + holding_index">
+                                    <t t-if="state.pagedHoldings and Array.isArray(state.pagedHoldings) and state.pagedHoldings.length > 0">
+                                        <t t-foreach="state.pagedHoldings" t-as="holding" t-key="(holding.accountNumber or '') + (holding.fund or '') + (holding.tradingDate or '') + holding_index">
                                             <tr>
                                                 <td class="text-center fw-semibold">
                                                     <t t-esc="holding.accountNumber or ''"/>
@@ -197,7 +197,7 @@ export class AssetManagementWidget extends Component {
                                             </tr>
                                         </t>
                                     </t>
-                                    <t t-if="!state.holdings or !Array.isArray(state.holdings) or state.holdings.length === 0">
+                                    <t t-if="!state.pagedHoldings or !Array.isArray(state.pagedHoldings) or state.pagedHoldings.length === 0">
                                         <tr>
                                             <td colspan="10" class="text-center text-muted">
                                                 Không có dữ liệu holdings
@@ -216,15 +216,15 @@ export class AssetManagementWidget extends Component {
                             <div class="mt-2 mt-sm-0 d-flex align-items-center gap-2">
                                 <label for="pageSize" class="form-label mb-0">Số lượng 1 trang:</label>
                                 <select id="pageSize" name="pageSize" class="form-select form-select-sm w-auto rounded-pill" t-on-change="(ev) => this.changePageSize(ev.target.value)">
-                                    <option value="10" t-att-selected="state.pageSize == 10">10</option>
-                                    <option value="20" t-att-selected="state.pageSize == 20">20</option>
-                                    <option value="50" t-att-selected="state.pageSize == 50">50</option>
+                                    <option value="10" t-att-selected="state.holdingsPageSize == 10">10</option>
+                                    <option value="20" t-att-selected="state.holdingsPageSize == 20">20</option>
+                                    <option value="50" t-att-selected="state.holdingsPageSize == 50">50</option>
                                 </select>
                             </div>
                             <nav class="d-inline-flex align-items-center gap-2 mt-2 mt-sm-0">
                                 <button t-attf-class="btn btn-outline-secondary btn-sm rounded-pill #{!state.hasPrevious ? 'disabled' : ''}"
                                         t-att-disabled="!state.hasPrevious"
-                                        t-on-click="() => this.changePage(state.currentPage - 1)">
+                                        t-on-click="() => this.changePage(state.holdingsPage - 1)">
                                     <i class="fas fa-chevron-left"></i>
                                 </button>
                                 <t t-if="state.pages and Array.isArray(state.pages) and state.pages.length > 0">
@@ -237,7 +237,7 @@ export class AssetManagementWidget extends Component {
                                 </t>
                                 <button t-attf-class="btn btn-outline-secondary btn-sm rounded-pill #{!state.hasNext ? 'disabled' : ''}"
                                         t-att-disabled="!state.hasNext"
-                                        t-on-click="() => this.changePage(state.currentPage + 1)">
+                                        t-on-click="() => this.changePage(state.holdingsPage + 1)">
                                     <i class="fas fa-chevron-right"></i>
                                 </button>
                             </nav>
@@ -279,8 +279,8 @@ export class AssetManagementWidget extends Component {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <t t-if="state.swapOrders and Array.isArray(state.swapOrders) and state.swapOrders.length > 0">
-                                        <t t-foreach="state.swapOrders" t-as="order" t-key="(order.accountNumber or '') + (order.fund or '') + (order.tradingDate or '') + order_index">
+                                    <t t-if="state.pagedSwapOrders and Array.isArray(state.pagedSwapOrders) and state.pagedSwapOrders.length > 0">
+                                        <t t-foreach="state.pagedSwapOrders" t-as="order" t-key="(order.accountNumber or '') + (order.fund or '') + (order.tradingDate or '') + order_index">
                                             <tr>
                                                 <td class="text-center fw-semibold">
                                                     <t t-esc="order.accountNumber or ''"/>
@@ -313,7 +313,7 @@ export class AssetManagementWidget extends Component {
                                             </tr>
                                         </t>
                                     </t>
-                                    <t t-if="!state.swapOrders or !Array.isArray(state.swapOrders) or state.swapOrders.length === 0">
+                                    <t t-if="!state.pagedSwapOrders or !Array.isArray(state.pagedSwapOrders) or state.pagedSwapOrders.length === 0">
                                         <tr>
                                             <td colspan="6" class="text-center text-muted">
                                                 Không có dữ liệu lệnh hoán đổi
@@ -322,6 +322,38 @@ export class AssetManagementWidget extends Component {
                                     </t>
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Pagination for Swap Orders -->
+                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center mt-3 small text-secondary gap-2">
+                            <div>
+                                Hiện
+                                <t t-esc="(state.swapPage - 1) * state.swapPageSize + (state.pagedSwapOrders.length ? 1 : 0)"/>
+                                -
+                                <t t-esc="(state.swapPage - 1) * state.swapPageSize + state.pagedSwapOrders.length"/>
+                                trong số
+                                <t t-esc="(state.fundScopedSwapOrders &amp;&amp; state.fundScopedSwapOrders.length) ? state.fundScopedSwapOrders.length : (state.allSwapOrders ? state.allSwapOrders.length : 0)"/>
+                            </div>
+                            <div class="mt-2 mt-sm-0 d-flex align-items-center gap-2">
+                                <label for="swapPageSize" class="form-label mb-0">Số lượng 1 trang:</label>
+                                <select id="swapPageSize" name="swapPageSize" class="form-select form-select-sm w-auto rounded-pill" t-on-change="(ev) => this.changeSwapPageSize(ev.target.value)">
+                                    <option value="10" t-att-selected="state.swapPageSize == 10">10</option>
+                                    <option value="20" t-att-selected="state.swapPageSize == 20">20</option>
+                                    <option value="50" t-att-selected="state.swapPageSize == 50">50</option>
+                                </select>
+                            </div>
+                            <nav class="d-inline-flex align-items-center gap-2 mt-2 mt-sm-0">
+                                <button class="btn btn-outline-secondary btn-sm rounded-pill"
+                                        t-att-disabled="state.swapPage &lt;= 1"
+                                        t-on-click="() => this.changeSwapPage(state.swapPage - 1)">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm rounded-pill"
+                                        t-on-click="() => this.changeSwapPage(state.swapPage + 1)"
+                                        t-att-disabled="(state.swapPage * state.swapPageSize) &gt;= ((state.fundScopedSwapOrders &amp;&amp; state.fundScopedSwapOrders.length) ? state.fundScopedSwapOrders.length : (state.allSwapOrders ? state.allSwapOrders.length : 0))">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </nav>
                         </div>
                     </section>
                 </div>
@@ -339,8 +371,19 @@ export class AssetManagementWidget extends Component {
       fundCertificates: this.safeGetProp('fundCertificates', []),
       holdings: this.safeGetProp('holdings', []),
       allHoldings: this.safeGetProp('holdings', []),
+      holdingsPage: 1,
+      holdingsPageSize: 10,
+      holdingsTotal: (this.safeGetProp('holdings', []) || []).length,
+      pagedHoldings: [],
       swapOrders: this.safeGetProp('swapOrders', {}).items || [],
       allSwapOrders: this.safeGetProp('swapOrders', {}).items || [],
+      swapPage: 1,
+      swapPageSize: 10,
+      swapTotal: ((this.safeGetProp('swapOrders', {}).items || [])),
+      pagedSwapOrders: [],
+      // Danh sách đã lọc theo fund đang chọn (làm nguồn cho filter ngày)
+      fundScopedHoldings: [],
+      fundScopedSwapOrders: [],
       activeTab: this.safeGetProp('activeTab', ''),
       currentPage: this.safeGetProp('currentPage', 1),
       pageSize: this.safeGetProp('pageSize', 10),
@@ -362,6 +405,8 @@ export class AssetManagementWidget extends Component {
     onMounted(() => {
       try {
         this.filterByTab(this.state.activeTab);
+        this.updateHoldingsPagination();
+        this.updateSwapPagination();
         this.initChart();
       } catch (error) {
         console.error('Error in onMounted:', error);
@@ -526,24 +571,40 @@ export class AssetManagementWidget extends Component {
         : '';
       
       if (Array.isArray(this.state.allHoldings)) {
-        this.state.holdings = this.state.allHoldings.filter(h => {
+        const scopedHoldings = this.state.allHoldings.filter(h => {
           return h && h.fund && h.fund === fundName;
         });
+        this.state.fundScopedHoldings = scopedHoldings;
+        this.state.holdings = scopedHoldings;
+        this.state.holdingsTotal = scopedHoldings.length;
+        this.state.holdingsPage = 1;
+        this.updateHoldingsPagination();
       } else {
         this.state.holdings = [];
+        this.state.fundScopedHoldings = [];
+        this.state.holdingsTotal = 0;
       }
       
       if (Array.isArray(this.state.allSwapOrders)) {
-        this.state.swapOrders = this.state.allSwapOrders.filter(o => {
+        const scopedOrders = this.state.allSwapOrders.filter(o => {
           return o && o.fund && o.fund === fundName;
         });
+        this.state.fundScopedSwapOrders = scopedOrders;
+        this.state.swapOrders = scopedOrders;
+        this.state.swapTotal = scopedOrders.length;
+        this.state.swapPage = 1;
+        this.updateSwapPagination();
       } else {
         this.state.swapOrders = [];
+        this.state.fundScopedSwapOrders = [];
+        this.state.swapTotal = 0;
       }
     } catch (error) {
       console.error('Error in filterByTab:', error);
       this.state.holdings = [];
       this.state.swapOrders = [];
+      this.state.fundScopedHoldings = [];
+      this.state.fundScopedSwapOrders = [];
     }
   }
 
@@ -551,13 +612,15 @@ export class AssetManagementWidget extends Component {
     try {
       const from = this.state.holdingsDateFrom;
       const to = this.state.holdingsDateTo;
-      
-      if (!Array.isArray(this.state.allHoldings)) {
+
+      // Luôn lọc trong phạm vi fund đang chọn
+      const source = Array.isArray(this.state.fundScopedHoldings) ? this.state.fundScopedHoldings : [];
+      if (!source.length) {
         this.state.holdings = [];
         return;
       }
-      
-      this.state.holdings = this.state.allHoldings.filter(h => {
+
+      this.state.holdings = source.filter(h => {
         if (!h || !h.transactionDate) return false;
         try {
           const date = new Date(h.transactionDate);
@@ -582,9 +645,13 @@ export class AssetManagementWidget extends Component {
           return false;
         }
       });
+      this.state.holdingsTotal = this.state.holdings.length;
+      this.state.holdingsPage = 1;
+      this.updateHoldingsPagination();
     } catch (error) {
       console.error('Error in filterHoldingsByDate:', error);
       this.state.holdings = [];
+      this.state.holdingsTotal = 0;
     }
   }
 
@@ -592,13 +659,15 @@ export class AssetManagementWidget extends Component {
     try {
       const from = this.state.swapOrdersDateFrom;
       const to = this.state.swapOrdersDateTo;
-      
-      if (!Array.isArray(this.state.allSwapOrders)) {
+
+      // Luôn lọc trong phạm vi fund đang chọn
+      const source = Array.isArray(this.state.fundScopedSwapOrders) ? this.state.fundScopedSwapOrders : [];
+      if (!source.length) {
         this.state.swapOrders = [];
         return;
       }
-      
-      this.state.swapOrders = this.state.allSwapOrders.filter(o => {
+
+      this.state.swapOrders = source.filter(o => {
         if (!o || !o.transactionDate) return false;
         try {
           const date = new Date(o.transactionDate);
@@ -623,9 +692,91 @@ export class AssetManagementWidget extends Component {
           return false;
         }
       });
+      this.state.swapTotal = this.state.swapOrders.length;
+      this.state.swapPage = 1;
+      this.updateSwapPagination();
     } catch (error) {
       console.error('Error in filterSwapOrdersByDate:', error);
       this.state.swapOrders = [];
+      this.state.swapTotal = 0;
+    }
+  }
+
+  // Pagination helpers for holdings
+  updateHoldingsPagination() {
+    try {
+      const page = parseInt(this.state.holdingsPage) || 1;
+      const size = parseInt(this.state.holdingsPageSize) || 10;
+      const list = Array.isArray(this.state.holdings) ? this.state.holdings : [];
+      const start = (page - 1) * size;
+      const end = Math.min(start + size, list.length);
+      this.state.pagedHoldings = list.slice(start, end);
+      // Update summary counters used in template
+      this.state.pagination_start = list.length ? start + 1 : 0;
+      this.state.pagination_end = end;
+      this.state.pagination_total = list.length;
+      const totalPages = Math.ceil(list.length / size) || 1;
+      this.state.pages = Array.from({ length: totalPages }, (_, i) => ({ number: i + 1, is_current: i + 1 === page }));
+      this.state.hasPrevious = page > 1;
+      this.state.hasNext = page < totalPages;
+    } catch (e) {
+      console.warn('updateHoldingsPagination error', e);
+      this.state.pagedHoldings = [];
+    }
+  }
+
+  changePage(page) {
+    try {
+      const p = parseInt(page) || 1;
+      this.state.holdingsPage = p;
+      this.updateHoldingsPagination();
+    } catch (e) {
+      console.warn('changePage error', e);
+    }
+  }
+
+  changePageSize(size) {
+    try {
+      this.state.holdingsPageSize = parseInt(size) || 10;
+      this.state.holdingsPage = 1;
+      this.updateHoldingsPagination();
+    } catch (e) {
+      console.warn('changePageSize error', e);
+    }
+  }
+
+  // Pagination helpers for swap orders
+  updateSwapPagination() {
+    try {
+      const page = parseInt(this.state.swapPage) || 1;
+      const size = parseInt(this.state.swapPageSize) || 10;
+      const list = Array.isArray(this.state.swapOrders) ? this.state.swapOrders : [];
+      const start = (page - 1) * size;
+      const end = Math.min(start + size, list.length);
+      this.state.pagedSwapOrders = list.slice(start, end);
+    } catch (e) {
+      console.warn('updateSwapPagination error', e);
+      this.state.pagedSwapOrders = [];
+    }
+  }
+
+  changeSwapPage(page) {
+    try {
+      const p = parseInt(page) || 1;
+      this.state.swapPage = p;
+      this.updateSwapPagination();
+    } catch (e) {
+      console.warn('changeSwapPage error', e);
+    }
+  }
+
+  changeSwapPageSize(size) {
+    try {
+      this.state.swapPageSize = parseInt(size) || 10;
+      this.state.swapPage = 1;
+      this.updateSwapPagination();
+    } catch (e) {
+      console.warn('changeSwapPageSize error', e);
     }
   }
 

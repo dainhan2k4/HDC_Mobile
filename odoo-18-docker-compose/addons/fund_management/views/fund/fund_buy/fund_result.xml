@@ -5,6 +5,7 @@
 
       <t t-call-assets="web.assets_frontend" t-js="true" />
       <t t-set="head">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
@@ -13,7 +14,7 @@
 
 <!--      <t t-call="fund_management.fund_header_template"/>-->
       <div id="header-container"></div>
-      <div class="profile-container">
+      <div class="profile-container fm">
         <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4 mt-4">
             <div class="bg-white rounded-4 px-3 py-3">
                   <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 border py-2 " >
@@ -94,7 +95,7 @@
                                 <strong id="result-order-date">...</strong>
                               </li>
                               <li class="list-group-item d-flex justify-content-between">
-                                <span>Số tiền cổ phiếu đã mua</span>
+                                <span>Số tiền đầu tư</span>
                                 <strong id="result-amount" class="fs-5">...</strong>
                               </li>
                               <li class="list-group-item d-flex justify-content-between">
@@ -102,9 +103,10 @@
                                 <strong id="result-total-amount" class="fs-5">...</strong>
                               </li>
                               <li class="list-group-item d-flex justify-content-between">
-                                <span>Tổng số cổ phiếu đã mua</span>
+                                <span>Tổng số CCQ</span>
                                 <strong id="result-units" class="fs-5">...</strong>
                               </li>
+                              
                             </ul>
 
                             <div class="d-flex justify-content-between mt-4">

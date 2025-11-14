@@ -10,11 +10,23 @@ class BankBranchWidget extends Component {
         <!-- Header Section -->
         <div class="card shadow-sm mb-4">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <button t-on-click="createNew" class="btn btn-success fw-bold shadow-sm d-flex align-items-center gap-2">
-                        <i class="fas fa-plus"></i>
-                        Tạo mới
-                    </button>
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <div>
+                        <button t-on-click="createNew" class="btn btn-success fw-bold shadow-sm d-flex align-items-center gap-2">
+                            <i class="fas fa-plus"></i>
+                            Tạo mới
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button t-on-click="syncBasic" t-att-disabled="state.syncing || state.syncingAll" class="btn btn-outline-primary fw-bold">
+                            <t t-if="state.syncing">Đang đồng bộ...</t>
+                            <t t-else="">Đồng bộ cơ bản</t>
+                        </button>
+                        <button t-on-click="syncNationwide" t-att-disabled="state.syncingAll || state.syncing" class="btn btn-outline-secondary fw-bold">
+                            <t t-if="state.syncingAll">Toàn quốc...</t>
+                            <t t-else="">Đồng bộ toàn quốc</t>
+                        </button>
+                    </div>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="input-group" style="max-width: 450px;">
@@ -122,7 +134,9 @@ class BankBranchWidget extends Component {
             loading: true,
             currentPage: 1,
             totalRecords: 0,
-            limit: 10
+            limit: 10,
+            syncing: false,
+            syncingAll: false
         });
         onMounted(() => this.loadData());
     }
@@ -143,6 +157,55 @@ class BankBranchWidget extends Component {
     performSearch() { this.state.currentPage = 1; this.loadData(); }
     handleEdit(id) { window.location.href = `/bank_branch/edit/${id}`; }
     createNew() { window.location.href = '/bank_branch/new'; }
+    async syncBasic() {
+        this.state.syncing = true;
+        try {
+            const res = await fetch('/bank_branch/sync/basic', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                window.alert(err.error || `HTTP ${res.status}`);
+                return;
+            }
+            const result = await res.json();
+            if (!result.success) {
+                window.alert(result.error || 'Đồng bộ thất bại.');
+                return;
+            }
+            window.alert(`Đã đồng bộ chi nhánh cơ bản. Thêm mới: ${result.created || 0}, cập nhật: ${result.updated || 0}.`);
+            this.state.currentPage = 1;
+            await this.loadData();
+        } catch (e) {
+            console.error('Sync branch error:', e);
+            window.alert('Có lỗi xảy ra khi đồng bộ chi nhánh.');
+        } finally {
+            this.state.syncing = false;
+        }
+    }
+
+    async syncNationwide() {
+        this.state.syncingAll = true;
+        try {
+            const res = await fetch('/bank_branch/sync/nationwide', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                window.alert(err.error || `HTTP ${res.status}`);
+                return;
+            }
+            const result = await res.json();
+            if (!result.success) {
+                window.alert(result.error || 'Đồng bộ thất bại.');
+                return;
+            }
+            window.alert(`Đã đồng bộ chi nhánh toàn quốc. Thêm mới: ${result.created || 0}, cập nhật: ${result.updated || 0}.`);
+            this.state.currentPage = 1;
+            await this.loadData();
+        } catch (e) {
+            console.error('Sync nationwide error:', e);
+            window.alert('Có lỗi xảy ra khi đồng bộ chi nhánh toàn quốc.');
+        } finally {
+            this.state.syncingAll = false;
+        }
+    }
 }
 window.BankBranchWidget = BankBranchWidget;
 export default BankBranchWidget; 

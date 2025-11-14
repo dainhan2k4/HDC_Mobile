@@ -1,0 +1,133 @@
+{
+  "info": {
+    "name": "FCTrading Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "AccessToken - Read (GET token)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v2/Trading/AccessToken",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v2", "Trading", "AccessToken"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"consumerID\": \"{{consumerId}}\",\n  \"consumerSecret\": \"{{consumerSecret}}\",\n  \"twoFactorType\": {{twoFAType}},\n  \"code\": \"1\",\n  \"isSave\": false\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json && json.data && json.data.accessToken) {",
+              "  pm.environment.set('read_access_token', json.data.accessToken);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GetOTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v2/Trading/GetOTP",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v2", "Trading", "GetOTP"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"consumerID\": \"{{consumerId}}\",\n  \"consumerSecret\": \"{{consumerSecret}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "AccessToken - Write (verify code)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v2/Trading/AccessToken",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v2", "Trading", "AccessToken"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"consumerID\": \"{{consumerId}}\",\n  \"consumerSecret\": \"{{consumerSecret}}\",\n  \"twoFactorType\": {{twoFAType}},\n  \"code\": \"{{otp_or_pin}}\",\n  \"isSave\": true\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json && json.data && json.data.accessToken) {",
+              "  pm.environment.set('write_access_token', json.data.accessToken);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "rateLimit (GET)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{read_access_token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v2/Trading/rateLimit",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v2", "Trading", "rateLimit"]
+        }
+      }
+    },
+    {
+      "name": "NewOrder (POST, requires signature)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{write_access_token}}" },
+          { "key": "X-Signature", "value": "{{x_signature}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v2/Trading/NewOrder",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v2", "Trading", "NewOrder"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"account\": \"0123456789\",\n  \"requestID\": \"12345678\",\n  \"instrumentID\": \"SSI\",\n  \"market\": \"VN\",\n  \"buySell\": \"B\",\n  \"orderType\": \"LO\",\n  \"price\": 25000,\n  \"quantity\": 100,\n  \"stopOrder\": false,\n  \"stopPrice\": 0,\n  \"stopType\": \"\",\n  \"stopStep\": 0,\n  \"lossStep\": 0,\n  \"profitStep\": 0,\n  \"channelID\": \"TA\",\n  \"code\": \"\",\n  \"deviceId\": \"\",\n  \"userAgent\": \"\"\n}"
+        },
+        "description": "Lưu ý: cần ký payload JSON bằng RSA SHA256 (PKCS#1 v1.5) với PrivateKey của bạn, đặt vào header X-Signature dưới dạng hex. Postman không ký được trực tiếp."
+      }
+    }
+  ]
+}
+
+
+
+
+
+
+

@@ -1,0 +1,35 @@
+{
+  "id": "fctrading-env-001",
+  "name": "FCTrading Environment",
+  "values": [
+    { "key": "baseUrl", "value": "https://fc-tradeapi.ssi.com.vn", "enabled": true },
+    { "key": "consumerId", "value": "58216e6ce67848ceb2bc4dbb12f7efb5", "enabled": true },
+    { "key": "consumerSecret", "value": "05c1d21b8eb64386a2cb2ae57776ad84", "enabled": true },
+    { "key": "privateKey", "value": "PFJTQUtleVZhbHVlPjxNb2R1bHVzPm81RkhHWUdlSzZqUnVIZDZIdEl2UndVallFNEJoTUpRTCtvUTZHRXlIdkhiS1hBMHpuVThuTW0rR2t2VWdOT3hJNmd6d2tqTEwzRzdvZXRMQzY3OXA2Z0pyZlFybWxhK3dGT3VWZlpRZHpYMHduVVV2d2ZBcEpxR01DQ1MxQ0V4K1VpSUhhWnNoSzJ2NUt6NERqa2FhSkp0TkhzVk80T010VWVtUHRxL1p0cz08L01vZHVsdXM+PEV4cG9uZW50PkFRQUI8L0V4cG9uZW50PjxQPjJPOVdleHZiNlYydVQza3JLZG5nTkg3MElSR0JhYkNKZTd5WVhtL2VCMklTRDBmczZLYUN1OTBWUitqVmVKL1U5eGg0aG5xMjE3ajBzSTU1MkRCVjZ3PT08L1A+PFE+d1FXMS85TFY5OWlWbHRsNDhnbFpGbXVEd1FsengrS2Q5aUQwa1FRMmIrclRSdkZKSmZ2b0R4SWNUSXhIRzZaVEovWUdmRUkyWjhKQkQyZklrYUZHMFE9PTwvUT48RFA+UTRYanhqZjZzRjIvZHU5Qk55cWc5ZFlhU1B5NDZsdlB2MXNKbGtOOXVaQ1dESG1YelNhZkJMaWcraHdIN2g3WjIvdWE4RWpjQnJPRVBqeHF3cGJ3OXc9PTwvRFA+PERRPnBsNHN3MlpQQkVQS2syMjRZQzJNZXRXS2gweUZYY2pHeThrVjR4UlZjMXRjWlc0ODFSOXRvZWZET250Q0l1UFdFc0JzVUplbFd3TkVubW1lcDE3eHNRPT08L0RRPjxJbnZlcnNlUT5hcFpWdGxPdytDaFJoWTBhMHhhRldWaDFLMERvc21NSkhxQjhtNUNYOEhiNXV0eCsvSkY4WXZNSmpldGpWeGVlZWpXVWc2RXhXdUxLaC9MUkV0WWx4QT09PC9JbnZlcnNlUT48RD5rcVgvL3doTlRZdVFiRGtDam51WDA2N3hwcmlKZUFQWGJQNElwcS91QmZ5RnFFTm50T3M3cXI3ZDZDbXduc2d0ZTNDazV6M29uZUwwZlJtK01QMTFnTm9DK1RyL3R0TVp5YVVxbnV6ZElMU0loNC82MEZGc2UxaG15ZG1TWGZqdTM5RlJtU1pvRm9sTWg4WWtNSTY5bGdOYUdJMkxickJzbDlDSm9tV0ZiTUU9PC9EPjwvUlNBS2V5VmFsdWU+", "enabled": true },
+    { "key": "twoFAType", "value": "0", "enabled": true },
+    { "key": "otp_or_pin", "value": "", "enabled": true },
+    { "key": "read_access_token", "value": "", "enabled": true },
+    { "key": "write_access_token", "value": "", "enabled": true },
+    { "key": "x_signature", "value": "", "enabled": true }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_at": "2025-11-03T00:00:00.000Z",
+  "_postman_exported_using": "Postman/10"
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

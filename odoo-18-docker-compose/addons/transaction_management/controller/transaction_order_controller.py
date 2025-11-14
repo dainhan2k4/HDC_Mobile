@@ -15,12 +15,12 @@ class TransactionOrderController(http.Controller):
             ('user_id', '=', request.env.user.id)
         ], order='create_date desc')
 
-        # Hàm chuyển đổi loại giao dịch
+        # Hàm chuyển đổi loại giao dịch (đồng bộ với widget: buy/sell/exchange)
         def get_transaction_type_display(type):
             type_map = {
-                'purchase': 'Mua',
-                'sell': 'Bán',
-                'exchange': 'Hoán đổi'
+                'purchase': 'buy',
+                'sell': 'sell',
+                'exchange': 'exchange'
             }
             return type_map.get(type, type)
 
@@ -33,8 +33,20 @@ class TransactionOrderController(http.Controller):
             }
             return status_map.get(status, status)
 
-        TransactionModel = request.env['portfolio.transaction']
-        has_contract_field = 'contract_pdf_path' in TransactionModel._fields
+        # Không cần kiểm tra field cũ nữa vì đã chuyển sang fund.signed.contract
+
+        # Helper: lấy NAV giống @nav_management
+        def get_nav_value(tx):
+            try:
+                if getattr(tx, 'current_nav', False):
+                    return float(tx.current_nav)
+                fund = tx.fund_id
+                cert = fund.certificate_id if fund else None
+                if cert and getattr(cert, 'initial_certificate_price', False):
+                    return float(cert.initial_certificate_price)
+            except Exception:
+                pass
+            return 0.0
 
         orders = []
         for transaction in transactions:
@@ -44,25 +56,45 @@ class TransactionOrderController(http.Controller):
                 status_info = request.env['status.info'].sudo().search([('partner_id', '=', partner.id)], limit=1)
                 so_tk = status_info.so_tk if status_info else ''
 
-            # Hợp đồng
-            has_contract = False
-            contract_url = ''
-            contract_download_url = ''
-            if has_contract_field:
-                value = transaction.contract_pdf_path
-                has_contract = bool(value)
-                if has_contract:
-                    contract_url = f"/transaction_management/contract/{transaction.id}"
-                    contract_download_url = f"/transaction_management/contract/{transaction.id}?download=1"
+            # Hợp đồng - nếu có file thì cung cấp route ổn định để xem/tải và gửi kèm tên/filename
+            has_contract = bool(getattr(transaction, 'contract_file', False))
+            contract_url = f"/transaction_management/contract/{transaction.id}" if has_contract else ''
+            contract_download_url = f"/transaction_management/contract/{transaction.id}?download=1" if has_contract else ''
+            contract_name = ''
+            contract_filename = ''
+            if has_contract:
+                try:
+                    Investment = request.env['portfolio.investment'].sudo()
+                    candidate_inv = Investment.search([
+                        ('user_id', '=', transaction.user_id.id if transaction.user_id else 0),
+                        ('fund_id', '=', transaction.fund_id.id if transaction.fund_id else 0),
+                    ], limit=1, order='id desc')
+                    domain = []
+                    if candidate_inv:
+                        domain = [('investment_id', '=', candidate_inv.id)]
+                    else:
+                        partner = transaction.user_id.partner_id if transaction.user_id else None
+                        if partner:
+                            domain = [('partner_id', '=', partner.id)]
+                    signed_contract = request.env['fund.signed.contract'].sudo().search(domain, limit=1, order='id desc') if domain else False
+                    if signed_contract:
+                        contract_name = signed_contract.name or ''
+                        contract_filename = signed_contract.filename or (transaction.name and f"{transaction.name}.pdf") or ''
+                except Exception:
+                    pass
+            nav_value = get_nav_value(transaction)
+            # Xác định session_date: ưu tiên date_end (thời gian khớp), sau đó created_at (thời gian vào), cuối cùng create_date
+            session_date_obj = (transaction.date_end if hasattr(transaction, 'date_end') and transaction.date_end else None) or (transaction.created_at if hasattr(transaction, 'created_at') and transaction.created_at else None) or transaction.create_date
+            session_date_str = session_date_obj.strftime('%d/%m/%Y') if session_date_obj else "N/A"
             orders.append({
                 'id': transaction.id,
                 'account_number': so_tk,
                 'fund_name': transaction.fund_id.name,
-                'order_date': transaction.created_at.strftime('%d/%m/%Y, %H:%M'),
+                'order_date': transaction.created_at.strftime('%d/%m/%Y, %H:%M') if getattr(transaction, 'created_at', False) else (transaction.create_date.strftime('%d/%m/%Y, %H:%M') if transaction.create_date else ''),
                 'order_code': transaction.name or f"TX{transaction.id:06d}",
-                'nav': f"{transaction.amount:,.0f}đ" if transaction.amount else "N/A",
-                'amount': f"{transaction.amount:,.0f}",
-                'session_date': transaction.transaction_date.strftime('%d/%m/%Y') if transaction.transaction_date else "N/A",
+                'nav': f"{nav_value:,.0f}đ" if nav_value else "N/A",
+                'amount': f"{max(transaction.amount - getattr(transaction, 'fee', 0.0), 0.0):,.0f}",
+                'session_date': session_date_str,
                 'status': get_status_display(transaction.status),
                 'status_detail': transaction.description or 'Hoàn thành',
                 'transaction_type': get_transaction_type_display(transaction.transaction_type),
@@ -72,6 +104,8 @@ class TransactionOrderController(http.Controller):
                 'has_contract': has_contract,
                 'contract_url': contract_url,
                 'contract_download_url': contract_download_url,
+                'contract_name': contract_name,
+                'contract_filename': contract_filename,
             })
 
         orders_json = json.dumps(orders, ensure_ascii=False)
@@ -81,12 +115,29 @@ class TransactionOrderController(http.Controller):
 
     @http.route('/transaction_management/contract/<int:tx_id>', type='http', auth='user')
     def transaction_contract(self, tx_id, download=False, **kw):
-        tx = request.env['portfolio.transaction'].sudo().browse(tx_id)
-        if not tx or not tx.exists():
+        # Tìm transaction
+        transaction = request.env['portfolio.transaction'].sudo().browse(tx_id)
+        if not transaction or not transaction.exists():
             return request.not_found()
 
-        field = tx._fields.get('contract_pdf_path')
-        if not field:
+        # Suy ra investment: cùng user + fund, bản ghi mới nhất
+        Investment = request.env['portfolio.investment'].sudo()
+        candidate_inv = Investment.search([
+            ('user_id', '=', transaction.user_id.id if transaction.user_id else 0),
+            ('fund_id', '=', transaction.fund_id.id if transaction.fund_id else 0),
+        ], limit=1, order='id desc')
+
+        domain = []
+        if candidate_inv:
+            domain = [('investment_id', '=', candidate_inv.id)]
+        else:
+            partner = transaction.user_id.partner_id if transaction.user_id else None
+            if partner:
+                domain = [('partner_id', '=', partner.id)]
+
+        signed_contract = request.env['fund.signed.contract'].sudo().search(domain, limit=1, order='id desc') if domain else False
+
+        if not signed_contract or not signed_contract.exists() or not signed_contract.file_data:
             return request.not_found()
 
         headers = [
@@ -94,24 +145,14 @@ class TransactionOrderController(http.Controller):
             ('X-Content-Type-Options', 'nosniff'),
         ]
 
-        filename = f"contract_{tx_id}.pdf"
+        filename = signed_contract.filename or f"contract_{tx_id}.pdf"
         if str(download).lower() in ('1', 'true', 'yes'):
             headers.append(('Content-Disposition', f'attachment; filename="{filename}"'))
         else:
             headers.append(('Content-Disposition', f'inline; filename="{filename}"'))
 
         try:
-            if field.type == 'binary':
-                if not tx.contract_pdf_path:
-                    return request.not_found()
-                data = base64.b64decode(tx.contract_pdf_path)
-                return request.make_response(data, headers=headers)
-            else:
-                path = tx.contract_pdf_path
-                if not path or not os.path.isfile(path):
-                    return request.not_found()
-                with open(path, 'rb') as f:
-                    data = f.read()
-                return request.make_response(data, headers=headers)
+            data = base64.b64decode(signed_contract.file_data)
+            return request.make_response(data, headers=headers)
         except Exception:
             return request.not_found()

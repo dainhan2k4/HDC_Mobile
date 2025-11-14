@@ -5,6 +5,9 @@ export interface Fund {
   description: string;
   current_ytd: number;
   current_nav: number;
+  open_price?: number;      // Giá mở cửa
+  high_price?: number;      // Giá cao nhất
+  low_price?: number;       // Giá thấp nhất
   investment_type: 'equity' | 'fixed_income' | 'balanced' | 'money_market' | 'real_estate' | 'commodity' | 'crypto' | 'multi_asset' | 'alternative';
   is_shariah: boolean;
   status: 'active' | 'inactive' | 'closed';

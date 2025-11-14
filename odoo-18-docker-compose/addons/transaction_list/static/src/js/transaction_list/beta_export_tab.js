@@ -21,6 +21,8 @@ export class BetaExportTab extends Component {
                   <div class="input-group">
                     <input 
                       type="date" 
+                      id="trading-session"
+                      name="trading-session"
                       class="form-control" 
                       t-model="state.tradingSession"
                       t-on-change="onTradingSessionChange"
@@ -37,6 +39,8 @@ export class BetaExportTab extends Component {
                   <div class="input-group">
                     <input 
                       type="number" 
+                      id="nav-value"
+                      name="nav-value"
                       class="form-control" 
                       placeholder="Nhập NAV..."
                       t-model="state.navValue"
@@ -83,7 +87,8 @@ export class BetaExportTab extends Component {
                 </div>
                 <div class="col-md-4 d-flex align-items-end">
                   <button 
-                    class="btn btn-lg w-100" style="background-color:#f97316;border-color:#f97316;color:white" 
+                    class="btn btn-lg w-100 btn-orange" 
+                    title="Xác nhận upload file R44"
                     t-on-click="confirmUpload"
                     t-att-disabled="!state.canConfirm"
                   >
@@ -129,7 +134,7 @@ export class BetaExportTab extends Component {
                           <td><t t-esc="transaction.fund"/></td>
                           <td><t t-esc="transaction.tradeCode"/></td>
                           <td>
-                            <span class="badge" t-att-class="transaction.orderType === 'Lệnh mua' ? 'bg-success' : ''" t-att-style="transaction.orderType === 'Lệnh mua' ? '' : 'background-color:#f97316'">
+                            <span class="badge" t-att-class="transaction.orderType === 'Lệnh mua' ? 'bg-success' : 'bg-orange'">
                               <t t-esc="transaction.orderType"/>
                             </span>
                           </td>
@@ -218,7 +223,7 @@ export class BetaExportTab extends Component {
 
     onMounted(() => {
       // Đảm bảo refs đã được khởi tạo
-      console.log('BetaExportTab mounted, refs:', this.refs);
+('BetaExportTab mounted, refs:', this.refs);
     });
   }
 

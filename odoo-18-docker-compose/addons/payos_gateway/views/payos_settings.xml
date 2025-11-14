@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Standalone Settings form for PayOS -->
+    <record id="payos_res_config_settings_view" model="ir.ui.view">
+        <field name="name">payos.res.config.settings.form</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="30"/>
+        <field name="arch" type="xml">
+            <form string="PayOS Settings">
+                <header>
+                    <button name="action_test_connection" string="Test Kết nối" type="object" class="btn-secondary"/>
+                    <button name="set_values" string="Lưu" type="object" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>PayOS Gateway</h1>
+                    </div>
+                    
+                    <!-- Trạng thái cấu hình -->
+                    <group string="Trạng thái" groups="base.group_system">
+                        <group>
+                            <field name="payos_status" readonly="1"/>
+                            <field name="payos_is_configured" widget="boolean_toggle" readonly="1" 
+                                   invisible="[('payos_is_configured', '=', False)]"/>
+                            <label for="payos_is_configured" string="Đã cấu hình và hoạt động" 
+                                   invisible="[('payos_is_configured', '=', False)]"/>
+                        </group>
+                    </group>
+                    
+                    <!-- Thông tin cấu hình -->
+                    <group string="Thông tin cấu hình PayOS" groups="base.group_system">
+                        <group>
+                            <field name="payos_client_id" placeholder="Nhập Client ID"/>
+                            <field name="payos_api_key" password="True" placeholder="Nhập API Key"/>
+                            <field name="payos_checksum_key" password="True" placeholder="Nhập Checksum Key"/>
+                        </group>
+                        <group>
+                            <div class="text-muted" style="padding: 8px;">
+                                <p><strong>Lưu ý:</strong></p>
+                                <ul>
+                                    <li>Client ID, API Key và Checksum Key sẽ được lưu tự động sau khi nhấn "Lưu"</li>
+                                    <li>Các trường trên sẽ hiển thị giá trị đã lưu khi mở lại trang này</li>
+                                    <li>Trạng thái sẽ tự động cập nhật khi đã nhập đầy đủ thông tin</li>
+                                    <li>Nhấn "Test Kết nối" để kiểm tra kết nối tới PayOS API</li>
+                                </ul>
+                            </div>
+                        </group>
+                    </group>
+                    
+                    <!-- Webhook Configuration -->
+                    <group string="Cấu hình Webhook" groups="base.group_system">
+                        <group>
+                            <field name="payos_webhook_url" readonly="1" widget="url"/>
+                            <div class="text-muted" style="padding: 8px;">
+                                <p><strong>Hướng dẫn:</strong></p>
+                                <ol>
+                                    <li>Sao chép Webhook URL ở trên</li>
+                                    <li>Đăng nhập vào PayOS Dashboard</li>
+                                    <li>Vào mục Webhook Settings</li>
+                                    <li>Dán Webhook URL vào và xác nhận</li>
+                                    <li>PayOS sẽ gửi thông báo thanh toán tới URL này</li>
+                                </ol>
+                            </div>
+                        </group>
+                    </group>
+                    
+                    <!-- Kết quả test kết nối -->
+                    <group string="Kết quả test kết nối" groups="base.group_system">
+                        <group>
+                            <field name="payos_last_connection_date" readonly="1" widget="datetime"/>
+                            <field name="payos_last_connection_status" readonly="1" widget="badge"
+                                   decoration-success="payos_last_connection_status == 'success'"
+                                   decoration-danger="payos_last_connection_status == 'failed'"
+                                   decoration-muted="payos_last_connection_status == 'not_tested'"/>
+                            <field name="payos_connection_message" readonly="1" widget="text"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_payos_res_config_settings" model="ir.actions.act_window">
+        <field name="name">PayOS Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="payos_res_config_settings_view"/>
+        <field name="target">current</field>
+        <field name="context">{"module":"payos_gateway"}</field>
+    </record>
+
+    <menuitem id="menu_payos_settings" name="PayOS" groups="base.group_system" sequence="50"/>
+    <menuitem id="menu_payos_settings_form" name="Cài đặt PayOS" parent="menu_payos_settings" action="action_payos_res_config_settings" groups="base.group_system" sequence="10"/>
+</odoo>
+
+

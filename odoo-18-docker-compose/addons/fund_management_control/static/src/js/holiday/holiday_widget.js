@@ -10,11 +10,27 @@ class HolidayWidget extends Component {
         <!-- Search and Filter Section -->
         <div class="card shadow-sm mb-4">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <button t-on-click="createNew" class="btn btn-success fw-bold shadow-sm d-flex align-items-center gap-2">
-                        <i class="fas fa-plus"></i>
-                        Tạo mới
-                    </button>
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <div>
+                        <button t-on-click="createNew" class="btn btn-success fw-bold shadow-sm d-flex align-items-center gap-2">
+                            <i class="fas fa-plus"></i>
+                            Tạo mới
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label m-0 text-muted">Năm</label>
+                        <input type="number" min="1900" max="2100" class="form-control" style="width: 110px;"
+                            t-model="state.syncYear"
+                        />
+                        <button t-on-click="syncFromApi" t-att-disabled="state.syncingApi" class="btn btn-outline-primary fw-bold">
+                            <t t-if="state.syncingApi">API...</t>
+                            <t t-else="">Đồng bộ API</t>
+                        </button>
+                        <button t-on-click="syncInternal" t-att-disabled="state.syncingInternal" class="btn btn-outline-secondary fw-bold">
+                            <t t-if="state.syncingInternal">Nội bộ...</t>
+                            <t t-else="">Đồng bộ nội bộ</t>
+                        </button>
+                    </div>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="input-group" style="max-width: 450px;">
@@ -125,6 +141,9 @@ class HolidayWidget extends Component {
             currentPage: 1,
             totalRecords: 0,
             limit: 10,
+            syncYear: String(new Date().getFullYear()),
+            syncingApi: false,
+            syncingInternal: false,
         });
 
         onMounted(() => {
@@ -207,6 +226,52 @@ class HolidayWidget extends Component {
     
     createNew() { 
         window.location.href = '/holiday/new';
+    }
+
+    async _sync(endpoint, stateKey, successLabel) {
+        const year = parseInt(this.state.syncYear, 10);
+        if (Number.isNaN(year)) {
+            window.alert('Vui lòng nhập năm hợp lệ.');
+            return;
+        }
+        this.state[stateKey] = true;
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ year }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                const message = result.error || 'Không thể đồng bộ ngày lễ.';
+                window.alert(message);
+                return;
+            }
+
+            const created = result.created || 0;
+            const updated = result.updated || 0;
+            window.alert(`${successLabel} năm ${result.year}. Thêm mới: ${created}, cập nhật: ${updated}.`);
+            this.state.currentPage = 1;
+            await this.loadData();
+        } catch (error) {
+            console.error('Sync holiday error:', error);
+            window.alert('Có lỗi xảy ra khi đồng bộ ngày lễ. Vui lòng thử lại.');
+        } finally {
+            this.state[stateKey] = false;
+        }
+    }
+
+    async syncFromApi() {
+        await this._sync('/holiday/sync', 'syncingApi', 'Đã đồng bộ ngày lễ từ API');
+    }
+
+    async syncInternal() {
+        await this._sync('/holiday/sync/internal', 'syncingInternal', 'Đã đồng bộ ngày lễ nội bộ');
     }
 }
 

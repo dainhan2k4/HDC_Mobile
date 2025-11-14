@@ -68,11 +68,14 @@ class ReportTransaction(models.Model):
         for record in self:
             record.chuong_trinh = record.fund_id.name if record.fund_id else ''
 
-    @api.depends('transaction_date')
+    @api.depends('created_at')
     def _compute_phien_giao_dich(self):
-        """Compute phiên giao dịch từ transaction_date"""
+        """Compute phiên giao dịch từ created_at"""
         for record in self:
-            record.phien_giao_dich = record.transaction_date
+            if record.created_at:
+                record.phien_giao_dich = record.created_at.date()
+            else:
+                record.phien_giao_dich = False
 
     @api.depends('name')
     def _compute_ma_giao_dich(self):
@@ -137,9 +140,9 @@ class ReportTransaction(models.Model):
                         if field == 'fund_id.name':
                             filter_domain.append(('fund_id.name', '=', value))
                         elif field == 'phien_giao_dich':
-                            filter_domain.append(('transaction_date', '>=', value))
+                            filter_domain.append(('created_at', '>=', f"{value} 00:00:00"))
                         elif field == 'phien_giao_dich_to':
-                            filter_domain.append(('transaction_date', '<=', value))
+                            filter_domain.append(('created_at', '<=', f"{value} 23:59:59"))
                 domain = filter_domain
             elif not isinstance(domain, list):
                 domain = []
@@ -178,11 +181,12 @@ class ReportTransaction(models.Model):
             total = self.search_count(domain)
             print(f"Total records found: {total}")
             
-            records = self.search(domain, limit=limit, offset=offset, order='transaction_date desc')
+            records = self.search(domain, limit=limit, offset=offset, order='created_at desc')
             print(f"Records retrieved: {len(records)}")
             
             formatted_records = []
             for record in records:
+                # Lấy dữ liệu trực tiếp từ transaction record, ưu tiên các field NAV đã tính toán
                 formatted_records.append({
                     'id': record.id,
                     'so_tai_khoan': record.so_tai_khoan,
@@ -198,6 +202,13 @@ class ReportTransaction(models.Model):
                     'gia_tien': record.gia_tien,
                     'tong_so_tien': record.tong_so_tien,
                     'contract_pdf_path': getattr(record, 'contract_pdf_path', ''),
+                    # Thêm các field NAV nếu có
+                    'nav_maturity_date': record.nav_maturity_date.strftime('%Y-%m-%d') if getattr(record, 'nav_maturity_date', False) else None,
+                    'nav_sell_date': record.nav_sell_date.strftime('%Y-%m-%d') if getattr(record, 'nav_sell_date', False) else None,
+                    'nav_days': getattr(record, 'nav_days', 0),
+                    'nav_purchase_value': getattr(record, 'nav_purchase_value', 0.0),
+                    'nav_sell_value1': getattr(record, 'nav_sell_value1', 0.0),
+                    'nav_customer_receive': getattr(record, 'nav_customer_receive', 0.0),
                 })
             
             result = {

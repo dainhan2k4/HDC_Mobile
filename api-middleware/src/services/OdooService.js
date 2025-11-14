@@ -4,6 +4,7 @@ const TransactionService = require('./TransactionService');
 const ProfileService = require('./ProfileService');
 const InvestmentService = require('./InvestmentService');
 const AssetService = require('./AssetService');
+const OTPService = require('./OTPService');
 /**
  * Main OdooService class that combines all service modules
  * This is the primary interface for interacting with Odoo
@@ -19,6 +20,7 @@ class OdooService {
     this.profileService = new ProfileService(this.authService);
     this.investmentService = new InvestmentService(this.authService);
     this.assetService = new AssetService(this.authService);
+    this.otpService = new OTPService(this.authService);
     console.log('🚀 [OdooService] Initialized with modular architecture');
   }
 

@@ -58,18 +58,24 @@ class ReportContractSummary(models.Model):
         for record in self:
             record.khach_hang = record.user_id.name if record.user_id else ''
 
-    @api.depends('transaction_date')
+    @api.depends('created_at')
     def _compute_ngay_mua(self):
-        """Compute ngày mua từ transaction_date"""
+        """Compute ngày mua từ created_at"""
         for record in self:
-            record.ngay_mua = record.transaction_date
+            if record.created_at:
+                record.ngay_mua = record.created_at.date()
+            else:
+                record.ngay_mua = False
 
-    @api.depends('transaction_date')
+    @api.depends('created_at')
     def _compute_ngay_thanh_toan(self):
         """Compute ngày thanh toán"""
         for record in self:
-            # Có thể tính từ transaction_date + số ngày xử lý
-            record.ngay_thanh_toan = record.transaction_date
+            # Có thể tính từ created_at + số ngày xử lý
+            if record.created_at:
+                record.ngay_thanh_toan = record.created_at.date()
+            else:
+                record.ngay_thanh_toan = False
 
     @api.depends('units')
     def _compute_so_luong(self):
@@ -92,37 +98,44 @@ class ReportContractSummary(models.Model):
         for record in self:
             record.thanh_tien = record.amount or 0.0
 
-    @api.depends('fund_id')
+    @api.depends('term_months')
     def _compute_ky_han(self):
-        """Compute kỳ hạn từ fund"""
+        """Compute kỳ hạn từ term_months"""
         for record in self:
-            # Có thể map từ fund hoặc để mặc định
-            record.ky_han = '12'  # Mặc định 12 tháng
+            record.ky_han = str(record.term_months) if record.term_months else '12'
 
-    @api.depends('fund_id')
+    @api.depends('interest_rate')
     def _compute_lai_suat(self):
-        """Compute lãi suất"""
+        """Compute lãi suất từ interest_rate"""
         for record in self:
-            # Có thể map từ fund hoặc để mặc định
-            record.lai_suat = 8.5  # Mặc định 8.5%
+            record.lai_suat = record.interest_rate if record.interest_rate else 8.5
 
-    @api.depends('transaction_date')
+    @api.depends('created_at', 'term_months')
     def _compute_so_ngay(self):
-        """Compute số ngày từ transaction_date"""
+        """Compute số ngày - sử dụng nav_days nếu có"""
         for record in self:
-            if record.transaction_date:
+            # Ưu tiên sử dụng nav_days đã tính toán sẵn
+            nav_days = getattr(record, 'nav_days', 0)
+            if nav_days and nav_days > 0:
+                record.so_ngay = nav_days
+            elif record.created_at:
                 from datetime import date
                 today = date.today()
-                delta = today - record.transaction_date
+                transaction_date = record.created_at.date()
+                delta = today - transaction_date
                 record.so_ngay = delta.days
             else:
                 record.so_ngay = 0
 
-    @api.depends('amount', 'lai_suat', 'ky_han')
+    @api.depends('nav_customer_receive', 'amount')
     def _compute_tien_lai_du_kien(self):
-        """Compute tiền lãi dự kiến khi đến hạn"""
+        """Compute tiền lãi dự kiến khi đến hạn - sử dụng NAV customer_receive nếu có"""
         for record in self:
-            if record.amount and record.lai_suat and record.ky_han:
+            # Ưu tiên sử dụng nav_customer_receive - amount (nếu có)
+            nav_customer_receive = getattr(record, 'nav_customer_receive', 0.0)
+            if nav_customer_receive > 0 and record.amount:
+                record.tien_lai_du_kien = nav_customer_receive - record.amount
+            elif record.amount and record.lai_suat and record.ky_han:
                 try:
                     ky_han_months = int(record.ky_han)
                     tien_lai = record.amount * (record.lai_suat / 100) * (ky_han_months / 12)
@@ -132,11 +145,15 @@ class ReportContractSummary(models.Model):
             else:
                 record.tien_lai_du_kien = 0.0
 
-    @api.depends('gia_mua', 'lai_suat', 'ky_han')
+    @api.depends('nav_sell_price2', 'price')
     def _compute_gia_ban_lai_du_kien(self):
-        """Compute giá bán lại dự kiến theo HĐ"""
+        """Compute giá bán lại dự kiến theo HĐ - sử dụng NAV sell_price2 nếu có"""
         for record in self:
-            if record.gia_mua and record.lai_suat and record.ky_han:
+            # Ưu tiên sử dụng nav_sell_price2 đã tính toán sẵn
+            nav_sell_price2 = getattr(record, 'nav_sell_price2', 0.0)
+            if nav_sell_price2 > 0:
+                record.gia_ban_lai_du_kien = nav_sell_price2
+            elif record.gia_mua and record.lai_suat and record.ky_han:
                 try:
                     ky_han_months = int(record.ky_han)
                     gia_ban_lai = record.gia_mua * (1 + (record.lai_suat / 100) * (ky_han_months / 12))
@@ -152,18 +169,25 @@ class ReportContractSummary(models.Model):
         for record in self:
             record.goc_lai_du_kien = (record.amount or 0.0) + (record.tien_lai_du_kien or 0.0)
 
-    @api.depends('transaction_date', 'ky_han')
+    @api.depends('created_at', 'term_months')
     def _compute_ngay_ban_lai_du_kien(self):
-        """Compute ngày bán lại dự kiến theo HĐ"""
+        """Compute ngày bán lại dự kiến theo HĐ - sử dụng nav_maturity_date nếu có"""
         for record in self:
-            if record.transaction_date and record.ky_han:
+            # Ưu tiên sử dụng nav_maturity_date đã tính toán sẵn
+            nav_maturity_date = getattr(record, 'nav_maturity_date', False)
+            if nav_maturity_date:
+                record.ngay_ban_lai_du_kien = nav_maturity_date
+            elif record.created_at and record.term_months:
                 try:
-                    from datetime import timedelta
-                    ky_han_months = int(record.ky_han)
-                    ngay_ban_lai = record.transaction_date + timedelta(days=ky_han_months * 30)
-                    record.ngay_ban_lai_du_kien = ngay_ban_lai
+                    from dateutil.relativedelta import relativedelta
+                    transaction_date = record.created_at.date()
+                    maturity_date = transaction_date + relativedelta(months=record.term_months)
+                    record.ngay_ban_lai_du_kien = maturity_date
                 except:
-                    record.ngay_ban_lai_du_kien = False
+                    if record.created_at:
+                        record.ngay_ban_lai_du_kien = record.created_at.date()
+                    else:
+                        record.ngay_ban_lai_du_kien = False
             else:
                 record.ngay_ban_lai_du_kien = False
 
@@ -173,13 +197,16 @@ class ReportContractSummary(models.Model):
         for record in self:
             record.ngay_den_han = record.ngay_ban_lai_du_kien
 
-    @api.depends('transaction_type')
+    @api.depends('transaction_type', 'created_at')
     def _compute_ngay_ban_lai(self):
         """Compute ngày bán lại"""
         for record in self:
             # Chỉ có ngày bán lại khi transaction_type là 'sell'
             if record.transaction_type == 'sell':
-                record.ngay_ban_lai = record.transaction_date
+                if record.created_at:
+                    record.ngay_ban_lai = record.created_at.date()
+                else:
+                    record.ngay_ban_lai = False
             else:
                 record.ngay_ban_lai = False
 
@@ -275,7 +302,7 @@ class ReportContractSummary(models.Model):
             total = self.search_count(domain)
             print(f"Total records found: {total}")
             
-            records = self.search(domain, limit=limit, offset=offset, order='transaction_date desc')
+            records = self.search(domain, limit=limit, offset=offset, order='created_at desc')
             print(f"Records retrieved: {len(records)}")
             
             formatted_records = []

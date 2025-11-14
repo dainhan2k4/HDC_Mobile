@@ -213,7 +213,10 @@
 
       <!-- Header Container -->
       <div id="header-container"></div>
-
+      
+      <!-- Chatbot AI Widget Container -->
+      <div id="chatbotAiWidgetContainer"></div>
+      
       <!-- Main Container -->
       <div class="fund-overview-container">
         <div class="container-fluid py-4">

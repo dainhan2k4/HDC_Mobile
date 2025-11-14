@@ -49,10 +49,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userSessionId) {
           // Set session ID in ApiService if found
           apiService.setSessionId(userSessionId);
+          console.log('✅ [AuthContext] Restored session ID from storage:', userSessionId.substring(0, 10) + '...');
+        } else {
+          console.log('ℹ️ [AuthContext] No session ID found in storage');
         }
       } catch (e) {
         // Restoring token failed
-        console.error('Failed to load session from storage', e);
+        console.error('❌ [AuthContext] Failed to load session from storage', e);
       }
 
       // After restoring token, prevent the splash screen from hiding
@@ -77,10 +80,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const authStatus = apiService.getAuthStatus();
       console.log('🔐 [AuthContext] Auth status after login:', authStatus);
       
+      // Try multiple ways to get session ID
+      let sessionId: string | null = null;
+      
+      // Method 1: From ApiService private property
       if (authStatus.hasSessionId) {
-        const sessionId = (apiService as any).sessionId; // Access private property
-        console.log('✅ [AuthContext] Got session ID:', sessionId);
-        
+        sessionId = apiService.getSessionId();
+        console.log('✅ [AuthContext] Got session ID from getSessionId():', sessionId);
+      }
+      
+      // Method 2: From login response data
+      if (!sessionId && loginResponse.data?.result?.session_id) {
+        sessionId = loginResponse.data.result.session_id;
+        console.log('✅ [AuthContext] Got session ID from response:', sessionId);
+        apiService.setSessionId(sessionId);
+      }
+      
+      // Method 3: Try to extract from raw response headers
+      if (!sessionId && loginResponse.rawResponse) {
+        const rawRes = loginResponse.rawResponse as any;
+        const setCookie = rawRes?.headers?.['set-cookie'] || rawRes?.headers?.['Set-Cookie'];
+        if (setCookie) {
+          const cookieStr = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+          const match = /session_id=([^;]+)/.exec(cookieStr);
+          if (match) {
+            sessionId = match[1];
+            console.log('✅ [AuthContext] Got session ID from headers:', sessionId);
+            apiService.setSessionId(sessionId);
+          }
+        }
+      }
+      
+      if (sessionId) {
         setSessionId(sessionId);
         setUser({ 
           id: 1, 
@@ -89,8 +120,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           db: loginResponse.data?.result?.db || 'odoo'
         });
         await AsyncStorage.setItem('sessionId', sessionId);
-        console.log('✅ [AuthContext] Login successful, session saved');
+        console.log('✅ [AuthContext] Login successful, session saved to storage');
       } else {
+        console.error('❌ [AuthContext] Could not retrieve session ID from any source');
         throw new Error('Could not retrieve session ID');
       }
     } catch (error: any) {

@@ -44,16 +44,17 @@ class ReportTransactionController(http.Controller):
                     fund_id_int = fund_filter
                 domain.append(('fund_id', '=', fund_id_int))
 
-            # Prefer filtering on transaction_date; if equal day, use exact match
+            # Prefer filtering on created_at; if equal day, use exact match
             if date_from and date_to and date_from == date_to:
                 domain.extend([
-                    ('transaction_date', '=', date_from)
+                    ('created_at', '>=', f"{date_from} 00:00:00"),
+                    ('created_at', '<=', f"{date_to} 23:59:59")
                 ])
             else:
                 if date_from:
-                    domain.append(('transaction_date', '>=', date_from))
+                    domain.append(('created_at', '>=', f"{date_from} 00:00:00"))
                 if date_to:
-                    domain.append(('transaction_date', '<=', date_to))
+                    domain.append(('created_at', '<=', f"{date_to} 23:59:59"))
 
             # Inline search by fields (account_number, customer_name, stock_code, order_type, transaction_code)
             inline_search = kw.get('search_values') or search_values or {}
@@ -88,7 +89,7 @@ class ReportTransactionController(http.Controller):
             total = report_model.search_count(domain)
             
             # Get records with pagination
-            records = report_model.search(domain, limit=limit, offset=offset, order='transaction_date desc, id desc')
+            records = report_model.search(domain, limit=limit, offset=offset, order='created_at desc, id desc')
             
             # Format data for frontend
             data = []
@@ -125,7 +126,7 @@ class ReportTransactionController(http.Controller):
                     'dksh': str(record.amount) if record.amount else '',
                     'quy': fund_name,
                     'chuong_trinh': fund_name,
-                    'phien_giao_dich': record.transaction_date.strftime('%d/%m/%Y') if record.transaction_date else '',
+                    'phien_giao_dich': record.created_at.strftime('%d/%m/%Y') if record.created_at else '',
                     'ma_giao_dich': record.name or '',
                     'loai_lenh': loai_lenh,
                     'so_ccq': record.units or 0,
@@ -190,12 +191,12 @@ class ReportTransactionController(http.Controller):
             if selected_product:
                 domain.append(['fund_id.name', '=', selected_product])
             if from_date:
-                domain.append(['transaction_date', '>=', from_date])
+                domain.append(['created_at', '>=', f"{from_date} 00:00:00"])
             if to_date:
-                domain.append(['transaction_date', '<=', to_date])
+                domain.append(['created_at', '<=', f"{to_date} 23:59:59"])
             
             # Get all records for PDF export (no pagination)
-            records = report_model.search(domain, order='transaction_date desc')
+            records = report_model.search(domain, order='created_at desc')
             
             # Calculate totals
             total_records = len(records)
@@ -256,12 +257,12 @@ class ReportTransactionController(http.Controller):
             if selected_product:
                 domain.append(['fund_id.name', '=', selected_product])
             if from_date:
-                domain.append(['transaction_date', '>=', from_date])
+                domain.append(['created_at', '>=', f"{from_date} 00:00:00"])
             if to_date:
-                domain.append(['transaction_date', '<=', to_date])
+                domain.append(['created_at', '<=', f"{to_date} 23:59:59"])
             
             # Get all records for XLSX export (no pagination)
-            records = report_model.search(domain, order='transaction_date desc')
+            records = report_model.search(domain, order='created_at desc')
             
             # Create XLSX content
             import io
@@ -303,7 +304,7 @@ class ReportTransactionController(http.Controller):
                 sheet.cell(row=i, column=7, value=matched_units)
                 sheet.cell(row=i, column=8, value=remaining_units)
                 sheet.cell(row=i, column=9, value=record.price or 0)
-                sheet.cell(row=i, column=10, value=record.transaction_date.strftime('%d/%m/%Y') if record.transaction_date else '')
+                sheet.cell(row=i, column=10, value=record.created_at.strftime('%d/%m/%Y') if record.created_at else '')
                 sheet.cell(row=i, column=11, value='Đã khớp' if matched_units > 0 else 'Chờ khớp')
             
             # Auto-adjust column widths
@@ -360,12 +361,12 @@ class ReportTransactionController(http.Controller):
             if selected_product:
                 domain.append(['fund_id.name', '=', selected_product])
             if from_date:
-                domain.append(['transaction_date', '>=', from_date])
+                domain.append(['created_at', '>=', f"{from_date} 00:00:00"])
             if to_date:
-                domain.append(['transaction_date', '<=', to_date])
+                domain.append(['created_at', '<=', f"{to_date} 23:59:59"])
             
             # Get all records for CSV export (no pagination)
-            records = report_model.search(domain, order='transaction_date desc')
+            records = report_model.search(domain, order='created_at desc')
             
             # Create CSV content
             output = io.StringIO()
@@ -392,7 +393,7 @@ class ReportTransactionController(http.Controller):
                 price = record.amount / record.units if record.units and record.amount else 0
                 
                 writer.writerow([
-                    self._format_date(record.transaction_date),
+                    self._format_date(record.created_at),
                     record.user_id.partner_id.name if record.user_id and record.user_id.partner_id else '',
                     record.user_id.name if record.user_id else '',
                     str(record.dksh) if hasattr(record, 'dksh') and record.dksh else '',

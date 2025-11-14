@@ -164,6 +164,11 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
+    /* Prevent accidental text selection while clicking */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .nav-management-btn-modern:before {
@@ -566,6 +571,11 @@
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
     outline: 0;
     animation: nav-management-fadeIn 0.25s ease-out;
+    /* Allow text selection inside modal content */
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
 }
 
 .nav-management-modal-header {
@@ -705,6 +715,9 @@
     text-decoration: none;
     vertical-align: middle;
     cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
     user-select: none;
     background-color: transparent;
     border: 1px solid transparent;
@@ -792,7 +805,17 @@
     linear-gradient(to right, rgba(148,163,184,0.08) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(148,163,184,0.08) 1px, transparent 1px);
   background-size: 64px 100%, 100% 48px; /* vertical every 64px, horizontal every 48px */
+  /* Use vendor-prefixed mask for better compatibility; fallback handled below */
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.35), rgba(0,0,0,0.9));
   mask-image: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.35), rgba(0,0,0,0.9));
+}
+
+/* Fallback nếu trình duyệt không hỗ trợ mask-image */
+@supports not (mask-image: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.35), rgba(0,0,0,0.9))) {
+  .nav-management-chart-container::before {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
 }
 
 .nav-management-chart-container canvas {

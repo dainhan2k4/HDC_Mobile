@@ -178,12 +178,12 @@ class ReportSellContractController(http.Controller):
             if contract:
                 domain.append(['name', 'ilike', contract])
             if from_date:
-                domain.append(['transaction_date', '>=', from_date])
+                domain.append(['created_at', '>=', f"{from_date} 00:00:00"])
             if to_date:
-                domain.append(['transaction_date', '<=', to_date])
+                domain.append(['created_at', '<=', f"{to_date} 23:59:59"])
             
             # Get all records for PDF export (no pagination)
-            records = report_model.search(domain, order='transaction_date desc')
+            records = report_model.search(domain, order='created_at desc')
             
             # Prepare data for template
             data = {

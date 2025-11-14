@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Securities Details Views -->
+    <record id="view_securities_details_tree" model="ir.ui.view">
+        <field name="name">ssi.securities.details.tree</field>
+        <field name="model">ssi.securities.details</field>
+        <field name="arch" type="xml">
+            <list string="Securities Details">
+                <field name="name"/>
+                <field name="symbol"/>
+                <field name="market"/>
+                <field name="security_id" optional="show"/>
+                <field name="fetch_date" widget="datetime"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_securities_details_form" model="ir.ui.view">
+        <field name="name">ssi.securities.details.form</field>
+        <field name="model">ssi.securities.details</field>
+        <field name="arch" type="xml">
+            <form string="Securities Details">
+                <header>
+                    <button name="action_fetch_details" string="Fetch Details" type="object" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="security_id"/>
+                            <field name="symbol" required="1"/>
+                            <field name="market" required="1"/>
+                        </group>
+                        <group>
+                            <field name="fetch_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="API Response">
+                            <field name="raw_response" widget="text" nolabel="1" readonly="1"/>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes" widget="text" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_securities_details_search" model="ir.ui.view">
+        <field name="name">ssi.securities.details.search</field>
+        <field name="model">ssi.securities.details</field>
+        <field name="arch" type="xml">
+            <search string="Securities Details">
+                <field name="symbol"/>
+                <field name="market"/>
+                <field name="security_id"/>
+                <filter string="HOSE" name="market_hose" domain="[('market','=','HOSE')]"/>
+                <filter string="HNX" name="market_hnx" domain="[('market','=','HNX')]"/>
+                <filter string="UPCOM" name="market_upcom" domain="[('market','=','UPCOM')]"/>
+                <group expand="1" string="Group By">
+                    <filter string="Market" name="group_market" context="{'group_by':'market'}"/>
+                    <filter string="Symbol" name="group_symbol" context="{'group_by':'symbol'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_securities_details" model="ir.actions.act_window">
+        <field name="name">Securities Details</field>
+        <field name="res_model">ssi.securities.details</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_securities_details_search"/>
+    </record>
+</odoo>
+
+

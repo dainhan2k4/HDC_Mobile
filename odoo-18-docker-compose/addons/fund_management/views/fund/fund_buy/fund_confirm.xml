@@ -5,6 +5,7 @@
 
       <t t-call-assets="web.assets_frontend" t-js="true" />
       <t t-set="head">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
         <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
@@ -13,7 +14,7 @@
 <!--      <t t-call="fund_management.fund_header_template"/>-->
       <div id="header-container"></div>
 
-      <div class="profile-container">
+      <div class="profile-container fm">
         <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4 mt-4">
           <div class="bg-white rounded-4 px-3 py-3">
                   <nav class="navbar navbar-expand-lg navbar-light bg-white rounded-4 shadow-sm mb-4 px-3 border py-2 " >
@@ -70,53 +71,99 @@
                           <h5 class="mb-4">Phương thức thanh toán</h5>
 
                           <form id="payment-method-form">
-                            <!-- Select phương thức -->
-                            <div class="mb-3">
-                              <label for="paymentMethod" class="form-label">Chọn phương thức:</label>
-                              <select class="form-select" id="paymentMethod" name="paymentMethod">
-                                <option value="qr">QR thanh toán</option>
-                                <option value="bank">Chuyển khoản qua ngân hàng</option>
-                                <option value="payos">Thanh toán PayOS</option>
-                              </select>
-                            </div>
-
-                            <!-- Chuyển khoản ngân hàng -->
-                            <div id="bank-transfer-info" style="display:none;">
+                            <!-- PayOS -->
+                            <div id="payos-payment-info">
                               <div class="form-text mb-3">
-                                Nhà đầu tư vui lòng chuyển tiền trước
-                                <span id="deadline-bank" class="text-primary fw-bold"></span>
+                                <p class="mb-2 fw-bold">Thanh toán trực tuyến qua PayOS</p>
+                                <p class="small text-muted mb-0">Quét mã QR bên dưới để thanh toán hoặc click vào nút để mở trang thanh toán PayOS.</p>
                               </div>
-                              <div class="bg-light rounded-3 p-3">
-                                <h6 class="fw-semibold mb-3">Thông tin chuyển khoản:</h6>
-                                <div class="row small text-muted">
-                                  <div class="col-6 mb-2">Tên thụ hưởng: <strong class="text-dark">FFC2</strong></div>
-                                  <div class="col-6 mb-2">Số tài khoản: <strong class="text-dark">8888888888</strong></div>
-                                  <div class="col-6 mb-2">Ngân hàng: <strong class="text-dark">NH Standard Chartered VN</strong></div>
-                                  <div class="col-6 mb-2">Nội dung: <strong class="text-dark">911CL39541 - FFC2N003</strong></div>
+                              
+                              <!-- Thông tin thanh toán -->
+                              <div id="payos-payment-details" class="mb-3" style="display:none;">
+                                <!-- Thông tin ngân hàng -->
+                                <div class="mb-3">
+                                  <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-university text-primary me-2"></i>
+                                    <span class="small fw-semibold">Ngân hàng</span>
+                                  </div>
+                                  <div class="small text-muted" id="payos-bank-name">Ngân hàng TMCP Quân đội</div>
+                                </div>
+                                
+                                <!-- Chủ tài khoản -->
+                                <div class="mb-3">
+                                  <div class="small text-muted mb-1">Chủ tài khoản:</div>
+                                  <div class="fw-bold" id="payos-account-holder">...</div>
+                                </div>
+                                
+                                <!-- Số tài khoản -->
+                                <div class="mb-3">
+                                  <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="small text-muted">Số tài khoản:</span>
+                                    <button type="button" class="btn btn-sm btn-outline-success" id="copy-account-number" title="Sao chép">
+                                      <i class="fas fa-copy"></i> Sao chép
+                                    </button>
+                                  </div>
+                                  <div class="fw-bold" id="payos-account-number">...</div>
+                                </div>
+                                
+                                <!-- Số tiền -->
+                                <div class="mb-3">
+                                  <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="small text-muted">Số tiền:</span>
+                                    <button type="button" class="btn btn-sm btn-outline-success" id="copy-amount" title="Sao chép">
+                                      <i class="fas fa-copy"></i> Sao chép
+                                    </button>
+                                  </div>
+                                  <div class="fw-bold" id="payos-amount">...</div>
+                                </div>
+                                
+                                <!-- Nội dung -->
+                                <div class="mb-3">
+                                  <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="small text-muted">Nội dung:</span>
+                                    <button type="button" class="btn btn-sm btn-outline-success" id="copy-description" title="Sao chép">
+                                      <i class="fas fa-copy"></i> Sao chép
+                                    </button>
+                                  </div>
+                                  <div class="fw-bold" id="payos-description">...</div>
+                                </div>
+                                
+                                <!-- Lưu ý -->
+                                <div class="alert alert-warning small mb-0">
+                                  <i class="fas fa-exclamation-triangle me-1"></i>
+                                  <strong>Lưu ý:</strong> Nhập chính xác số tiền <span id="payos-amount-note" class="fw-bold">...</span> khi chuyển khoản
                                 </div>
                               </div>
-                            </div>
-
-                            <!-- Quét QR -->
-                            <div id="qr-payment-info" >
-                              <div class="text-center">
-                                <p class="text-muted fs-6 mb-3">
-                                  Quét mã QR để thanh toán nhanh.<br></br>
-                                  Vui lòng hoàn tất thanh toán trước <span id="deadline-qr" class="text-primary fw-bold"></span>
-                                </p>
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=DEMO-QR-PAYMENT"
-                                     alt="QR Code"
-                                     class="img-fluid rounded shadow-sm mx-auto d-block" />
-                                <p class="small mt-2 text-muted">Mã QR demo - chỉ sử dụng thử nghiệm</p>
+                              
+                              <!-- Container cho QR code -->
+                              <div id="payos-qr-code" class="text-center mt-3">
+                                <!-- QR code sẽ được thêm vào đây -->
+                                <div class="text-center py-3">
+                                  <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Đang tạo mã QR...</span>
+                                  </div>
+                                  <p class="small text-muted mt-2 mb-0">Đang tạo mã QR thanh toán...</p>
+                                </div>
                               </div>
-                            </div>
-
-                            <!-- PayOS -->
-                            <div id="payos-payment-info" style="display:none;">
-                              <div class="form-text mb-3">
-                                Thanh toán trực tuyến qua PayOS (thẻ/QR/ví). Sau khi bấm thanh toán, bạn sẽ được chuyển đến trang PayOS hoặc hiển thị QR.
+                              
+                              <!-- Header VietQR (giống PayOS) -->
+                              <div id="payos-qr-header" class="text-center mb-2" style="display:none;">
+                                <div class="d-flex align-items-center justify-content-center mb-2">
+                                  <span class="text-danger fw-bold me-2">VIETQR</span>
+                                  <span class="bg-warning text-dark px-2 py-1 rounded small fw-bold">PRO</span>
+                                </div>
                               </div>
-                              <div class="d-grid gap-2">
+                              
+                              <!-- Footer logos (giống PayOS) -->
+                              <div id="payos-qr-footer" class="text-center mt-2" style="display:none;">
+                                <div class="d-flex align-items-center justify-content-center gap-3 small">
+                                  <span class="text-primary">napas 247</span>
+                                  <span class="text-muted">|</span>
+                                  <span class="text-primary">MB</span>
+                                </div>
+                              </div>
+                              
+                              <div class="d-grid gap-2 mt-3">
                                 <button type="button" class="btn btn-primary" id="payos-payment-btn">Thanh toán với PayOS</button>
                               </div>
                               <div id="payos-error" class="alert alert-danger mt-3" style="display:none;"><span id="payos-error-message">Có lỗi xảy ra. Vui lòng thử lại.</span></div>
@@ -151,7 +198,7 @@
                               <strong id="confirm-order-date">...</strong>
                             </li>
                             <li class="list-group-item d-flex justify-content-between">
-                              <span>Số tiền cổ phiếu</span>
+                              <span>Số tiền đầu tư</span>
                               <strong id="confirm-amount">30,000,000đ</strong>
                             </li>
                             <li class="list-group-item d-flex justify-content-between">
@@ -159,9 +206,10 @@
                               <strong id="confirm-total-amount">30,000,000đ</strong>
                             </li>
                             <li class="list-group-item d-flex justify-content-between">
-                              <span>Tổng số cổ phiếu đang mua</span>
+                              <span>Tổng số CCQ</span>
                               <strong id="confirm-units">0</strong>
                             </li>
+                            
                           </ul>
 
                           <div class="d-flex justify-content-between mt-4">

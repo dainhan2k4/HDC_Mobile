@@ -11,7 +11,15 @@ if [ -f "/etc/odoo/requirements.txt" ]; then
 else
     echo "requirements.txt not found"
 fi
+# Install ssi_fc_data from local package
+if [ -d "/fc-data/dist/ssi_fc_data-2.2.2" ]; then
+    python3 -m pip install --no-input --disable-pip-version-check --root-user-action=ignore --break-system-packages /fc-data/dist/ssi_fc_data-2.2.2
+fi
 
+# Install ssi-fctrading from local package
+if [ -d "/fc-trading/dist/ssi-fctrading-2.5.3" ]; then
+    python3 -m pip install --no-input --disable-pip-version-check --root-user-action=ignore --break-system-packages /fc-trading/dist/ssi-fctrading-2.5.3
+fi
 # Resolve database host – if the provided DB_HOST cannot be resolved (e.g. Render hostname on local), fallback to 'db'
 RESOLVED_HOST=${DB_HOST:-}
 if ! getent hosts "$RESOLVED_HOST" >/dev/null 2>&1; then
@@ -58,8 +66,8 @@ sys.exit(1)
 PY
 
 # Auto-install/update custom addons
-ADDONS_TO_INSTALL="fund_management,investor_profile_management,asset_management,custom_auth,fund_management_control,investor_list,nav_management,overview_fund_management,report_list,sign_oca,stock_market_data,transaction_list,transaction_management"
-DB_NAME="${DB_NAME:-p2p}"
+ADDONS_TO_INSTALL="web,fund_management,investor_profile_management,asset_management,custom_auth,fund_management_control,investor_list,nav_management,overview_fund_management,report_list,sign_oca,stock_data,stock_trading,payos_gateway,transaction_list,transaction_management"
+DB_NAME="${DB_NAME:-anfan}"
 
 echo "[entrypoint] Installing/updating custom addons in database '$DB_NAME'..."
 echo "[entrypoint] Addons: $ADDONS_TO_INSTALL"

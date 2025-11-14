@@ -4,6 +4,53 @@ console.log('Loading PersonalProfileWidget component...');
 const { Component, xml, useState, onMounted } = owl;
 
 class PersonalProfileWidget extends Component {
+    // Configuration constants
+    static CONFIG = {
+        FACE_API: {
+            VERSION: '0.22.2',
+            VLADMANDIC_VERSION: '1.7.14',
+            CDN_SOURCES: [
+                'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js',
+                'https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js',
+                'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js'
+            ],
+            MODEL_SOURCES: [
+                'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.14/model',
+                'https://unpkg.com/@vladmandic/face-api@1.7.14/model',
+                'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights',
+                'https://unpkg.com/face-api.js@0.22.2/weights'
+            ],
+            LOCAL_PATHS: [
+                '/web/static/lib/face-api/face-api.min.js',
+                '/static/lib/face-api/face-api.min.js',
+                '/face-api.min.js'
+            ],
+            TIMEOUTS: {
+                SCRIPT_LOAD: 8000,
+                MODEL_LOAD: 12000,
+                INITIALIZATION: 1000
+            }
+        },
+        DETECTION: {
+            INPUT_SIZE: 320,
+            SCORE_THRESHOLD: 0.3,
+            INTERVAL: 1000,
+            PERFECT_FACE_THRESHOLD: 3
+        },
+        CAPTURE: {
+            REQUIREMENTS: {
+                front: 3,
+                left: 2,
+                right: 2
+            },
+            INSTRUCTIONS: {
+                front: 'Nhìn thẳng vào camera và giữ nguyên tư thế',
+                left: 'Quay mặt sang trái một góc 45 độ',
+                right: 'Quay mặt sang phải một góc 45 độ'
+            }
+        }
+    };
+
     static template = xml`
         <div class="bg-light p-4">
           <div class="container bg-white rounded-3 shadow-sm p-4">
@@ -80,8 +127,15 @@ class PersonalProfileWidget extends Component {
                       <input id="email" type="email" t-model="state.formData.email" class="form-control"/>
                     </div>
                     <div class="col-12 mb-3">
-                      <label for="phone" class="form-label">Số điện thoại</label>
-                      <input id="phone" type="text" t-model="state.formData.phone" class="form-control"/>
+                      <label for="phone" class="form-label">Số điện thoại <span style="color:#f97316">*</span></label>
+                      <input id="phone" type="tel" t-model="state.formData.phone" 
+                             pattern="[0-9]{10}" 
+                             title="Số điện thoại phải có đúng 10 chữ số"
+                             maxlength="10"
+                             required="required" 
+                             t-on-input="onPhoneInput"
+                             class="form-control"/>
+                      <div class="form-text">Nhập đúng 10 chữ số (ví dụ: 0123456789)</div>
                     </div>
                   </fieldset>
                   <fieldset>
@@ -1058,6 +1112,19 @@ class PersonalProfileWidget extends Component {
                 this.state.showModal = true;
                 return;
             }
+            
+            // Kiểm tra số điện thoại phải có đúng 10 chữ số
+            if (profileData.phone) {
+                const phoneDigits = profileData.phone.replace(/[^0-9]/g, '');
+                if (phoneDigits.length !== 10) {
+                    this.state.modalTitle = 'Lỗi';
+                    this.state.modalMessage = 'Số điện thoại phải có đúng 10 chữ số!';
+                    this.state.showModal = true;
+                    return;
+                }
+                // Cập nhật phone với chỉ số
+                profileData.phone = phoneDigits;
+            }
             // Ràng buộc phải có ảnh mặt trước, mặt sau CCCD (từ eKYC, upload, hoặc database)
             const hasFrontImage = this.state.ekycFiles.front || this.state.ekycFiles.frontPreview;
             const hasBackImage = this.state.ekycFiles.back || this.state.ekycFiles.backPreview;
@@ -1170,6 +1237,16 @@ class PersonalProfileWidget extends Component {
         if (file) {
             this.uploadIdImage(file, 'back');
         }
+    }
+
+    onPhoneInput(ev) {
+        // Chỉ cho phép nhập số và giới hạn 10 ký tự
+        let value = ev.target.value.replace(/[^0-9]/g, '');
+        if (value.length > 10) {
+            value = value.substring(0, 10);
+        }
+        this.state.formData.phone = value;
+        ev.target.value = value;
     }
 
     async uploadIdImage(file, side) {
@@ -1564,15 +1641,29 @@ class PersonalProfileWidget extends Component {
                 // Start face detection after camera is ready
                 video.onloadedmetadata = () => {
                     setTimeout(async () => {
-                        try {
-                            // Try to load Face API in background
-                            await this.loadFaceAPI();
+                        // Check if Face API is already loaded from template
+                        if (window.faceapi && this.areModelsLoaded()) {
+                            console.log('✅ Face API and models already available from template');
                             this.startFaceDetection();
                             this.updateFaceStatus('detecting', 'fas fa-search', 'Đang phát hiện khuôn mặt...');
-                        } catch (faceApiError) {
-                            console.warn('⚠️ Face API failed to load, using fallback:', faceApiError);
+                        } else if (window.faceapi && !this.areModelsLoaded()) {
+                            console.log('🔄 Face API loaded but models not ready, loading models...');
+                            await this.loadFaceAPIModels();
                             this.startFaceDetection();
-                            this.updateFaceStatus('detecting', 'fas fa-search', 'Đang phát hiện khuôn mặt (chế độ cơ bản)...');
+                            this.updateFaceStatus('detecting', 'fas fa-search', 'Đang phát hiện khuôn mặt...');
+                        } else {
+                            // Try to load Face API in background
+                            await this.loadFaceAPI();
+                            
+                            // Check if Face API loaded successfully
+                            if (window.faceapi) {
+                                this.startFaceDetection();
+                                this.updateFaceStatus('detecting', 'fas fa-search', 'Đang phát hiện khuôn mặt...');
+                            } else {
+                                console.warn('⚠️ Face API not available, using fallback detection');
+                                this.startFaceDetection();
+                                this.updateFaceStatus('detecting', 'fas fa-search', 'Đang phát hiện khuôn mặt (chế độ cơ bản)...');
+                            }
                         }
                     }, 1000); // Small delay to ensure video is fully loaded
                 };
@@ -1580,14 +1671,29 @@ class PersonalProfileWidget extends Component {
                 // Backup: Start face detection immediately if video is already loaded
                 if (video.readyState >= 2) {
                     setTimeout(async () => {
-                        try {
-                            await this.loadFaceAPI();
+                        // Check if Face API is already loaded from template
+                        if (window.faceapi && this.areModelsLoaded()) {
+                            console.log('✅ Face API and models already available from template (backup)');
                             this.startFaceDetection();
                             this.updateFaceStatus('detecting', 'fas fa-search', 'Đang phát hiện khuôn mặt...');
-                        } catch (faceApiError) {
-                            console.warn('⚠️ Face API failed to load, using fallback:', faceApiError);
+                        } else if (window.faceapi && !this.areModelsLoaded()) {
+                            console.log('🔄 Face API loaded but models not ready (backup), loading models...');
+                            await this.loadFaceAPIModels();
                             this.startFaceDetection();
-                            this.updateFaceStatus('detecting', 'fas fa-search', 'Đang phát hiện khuôn mặt (chế độ cơ bản)...');
+                            this.updateFaceStatus('detecting', 'fas fa-search', 'Đang phát hiện khuôn mặt...');
+                        } else {
+                            // Try to load Face API in background
+                            await this.loadFaceAPI();
+                            
+                            // Check if Face API loaded successfully
+                            if (window.faceapi) {
+                                this.startFaceDetection();
+                                this.updateFaceStatus('detecting', 'fas fa-search', 'Đang phát hiện khuôn mặt...');
+                            } else {
+                                console.warn('⚠️ Face API not available, using fallback detection');
+                                this.startFaceDetection();
+                                this.updateFaceStatus('detecting', 'fas fa-search', 'Đang phát hiện khuôn mặt (chế độ cơ bản)...');
+                            }
                         }
                     }, 1000);
                 }
@@ -1604,56 +1710,268 @@ class PersonalProfileWidget extends Component {
     
     async loadFaceAPI() {
         if (window.faceapi) {
-            console.log('✅ Face API already loaded');
+            console.log('✅ Face API already loaded from CDN');
             return;
         }
         
         try {
-            console.log('🔄 Loading Face API...');
+            console.log('🔄 Face API not found, trying to load...');
             
-            // Load Face API scripts with timeout
-            await Promise.race([
-                this.loadScript('https://cdn.jsdelivr.net/npm/face-api.js@1/dist/face-api.min.js'),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Face API script timeout')), 10000))
-            ]);
-            
-            // Wait a bit for script to initialize
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            if (!window.faceapi) {
-                throw new Error('Face API not available after loading');
+            // Check if Face API is already loaded from CDN in template
+            if (window.faceapi) {
+                console.log('✅ Face API loaded from template CDN');
+                return;
             }
             
-            // Load models with timeout
-            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@1/weights';
+            // Try multiple CDN sources for better reliability
+            const cdnSources = this.constructor.CONFIG.FACE_API.CDN_SOURCES;
             
-            await Promise.race([
-                Promise.all([
-                    window.faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-                    window.faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                    window.faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
-                ]),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Face API models timeout')), 15000))
-            ]);
+            let loadSuccess = false;
+            let lastError = null;
             
-            console.log('✅ Face API loaded successfully');
+            for (const cdnUrl of cdnSources) {
+                try {
+                    console.log(`🔄 Trying CDN: ${cdnUrl}`);
+                    await Promise.race([
+                        this.loadScript(cdnUrl),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Script load timeout')), this.constructor.CONFIG.FACE_API.TIMEOUTS.SCRIPT_LOAD))
+                    ]);
+                    
+                    // Wait for script to initialize
+                    await new Promise(resolve => setTimeout(resolve, this.constructor.CONFIG.FACE_API.TIMEOUTS.INITIALIZATION));
+                    
+                    if (window.faceapi) {
+                        loadSuccess = true;
+                        console.log(`✅ Face API loaded from: ${cdnUrl}`);
+                        break;
+                    }
+                } catch (error) {
+                    console.warn(`⚠️ Failed to load from ${cdnUrl}:`, error);
+                    lastError = error;
+                    continue;
+                }
+            }
+            
+            if (!loadSuccess || !window.faceapi) {
+                console.warn('⚠️ All CDNs failed, trying local fallback...');
+                await this.loadFaceAPILocal();
+                
+                if (!window.faceapi) {
+                    throw new Error(`Face API not available after trying all CDNs and local fallback. Last error: ${lastError?.message || 'Unknown'}`);
+                }
+            }
+            
+            // Load models with better error handling
+            const modelUrls = this.constructor.CONFIG.FACE_API.MODEL_SOURCES;
+            
+            let modelsLoaded = false;
+            let modelError = null;
+            
+            for (const modelUrl of modelUrls) {
+                try {
+                    console.log(`🔄 Loading models from: ${modelUrl}`);
+                    await Promise.race([
+                        Promise.all([
+                            window.faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
+                            window.faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
+                            window.faceapi.nets.faceExpressionNet.loadFromUri(modelUrl)
+                        ]),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Model load timeout')), this.constructor.CONFIG.FACE_API.TIMEOUTS.MODEL_LOAD))
+                    ]);
+                    modelsLoaded = true;
+                    console.log(`✅ Models loaded from: ${modelUrl}`);
+                    break;
+                } catch (error) {
+                    console.warn(`⚠️ Failed to load models from ${modelUrl}:`, error);
+                    modelError = error;
+                    continue;
+                }
+            }
+            
+            if (!modelsLoaded) {
+                console.warn('⚠️ All CDN model sources failed, trying local fallback...');
+                await this.loadFaceAPIModelsLocal();
+                
+                if (!this.areModelsLoaded()) {
+                    throw new Error(`Models not loaded from CDN or local. Last error: ${modelError?.message || 'Unknown'}`);
+                }
+            }
+            
+            // Wait for models to be fully initialized
+            await new Promise(resolve => setTimeout(resolve, this.constructor.CONFIG.FACE_API.TIMEOUTS.INITIALIZATION));
+            
+            // Verify models are ready
+            if (!this.areModelsLoaded()) {
+                throw new Error('Models not properly loaded');
+            }
+            
+            console.log('✅ Face API and models loaded successfully');
         } catch (error) {
             console.error('❌ Error loading Face API:', error);
-            throw new Error(`Không thể tải Face API: ${error.message}`);
+            // Don't throw error, just log it and let fallback methods handle detection
+            console.warn('⚠️ Face API failed to load, will use fallback detection methods');
+        }
+    }
+    
+    async loadFaceAPIModels() {
+        try {
+            console.log('🔄 Loading Face API models...');
+            
+            // Load models with better error handling
+            const modelUrls = this.constructor.CONFIG.FACE_API.MODEL_SOURCES;
+            
+            let modelsLoaded = false;
+            let modelError = null;
+            
+            for (const modelUrl of modelUrls) {
+                try {
+                    console.log(`🔄 Loading models from: ${modelUrl}`);
+                    await Promise.race([
+                        Promise.all([
+                            window.faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
+                            window.faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
+                            window.faceapi.nets.faceExpressionNet.loadFromUri(modelUrl)
+                        ]),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Model load timeout')), this.constructor.CONFIG.FACE_API.TIMEOUTS.MODEL_LOAD))
+                    ]);
+                    modelsLoaded = true;
+                    console.log(`✅ Models loaded from: ${modelUrl}`);
+                    break;
+                } catch (error) {
+                    console.warn(`⚠️ Failed to load models from ${modelUrl}:`, error);
+                    modelError = error;
+                    continue;
+                }
+            }
+            
+            if (!modelsLoaded) {
+                console.warn('⚠️ All CDN model sources failed, trying local fallback...');
+                await this.loadFaceAPIModelsLocal();
+                
+                if (!this.areModelsLoaded()) {
+                    throw new Error(`Models not loaded from CDN or local. Last error: ${modelError?.message || 'Unknown'}`);
+                }
+            }
+            
+            // Wait for models to be fully initialized
+            await new Promise(resolve => setTimeout(resolve, this.constructor.CONFIG.FACE_API.TIMEOUTS.INITIALIZATION));
+            
+            // Verify models are ready
+            if (!this.areModelsLoaded()) {
+                throw new Error('Models not properly loaded');
+            }
+            
+            console.log('✅ Face API models loaded successfully');
+        } catch (error) {
+            console.error('❌ Error loading Face API models:', error);
+            throw error;
+        }
+    }
+    
+    async loadFaceAPIModelsLocal() {
+        try {
+            console.log('🔄 Trying to load Face API models from local assets...');
+            
+            // Try to load models from local assets
+            const localModelPaths = [
+                '/web/static/lib/face-api/models',
+                '/static/lib/face-api/models',
+                '/models'
+            ];
+            
+            for (const localModelPath of localModelPaths) {
+                try {
+                    await Promise.all([
+                        window.faceapi.nets.tinyFaceDetector.loadFromUri(localModelPath),
+                        window.faceapi.nets.faceLandmark68Net.loadFromUri(localModelPath),
+                        window.faceapi.nets.faceExpressionNet.loadFromUri(localModelPath)
+                    ]);
+                    console.log(`✅ Models loaded from local: ${localModelPath}`);
+                    return;
+                } catch (error) {
+                    console.warn(`⚠️ Failed to load models from local path ${localModelPath}:`, error);
+                    continue;
+                }
+            }
+            
+            console.warn('⚠️ Local models not found, will use fallback detection');
+        } catch (error) {
+            console.warn('⚠️ Error loading local models:', error);
+        }
+    }
+    
+    async loadFaceAPILocal() {
+        try {
+            console.log('🔄 Trying to load Face API from local assets...');
+            
+            // Try to load from local assets
+            const localPaths = this.constructor.CONFIG.FACE_API.LOCAL_PATHS;
+            
+            for (const localPath of localPaths) {
+                try {
+                    await this.loadScript(localPath);
+                    if (window.faceapi) {
+                        console.log(`✅ Face API loaded from local: ${localPath}`);
+                        return;
+                    }
+                } catch (error) {
+                    console.warn(`⚠️ Failed to load from local path ${localPath}:`, error);
+                    continue;
+                }
+            }
+            
+            console.warn('⚠️ Local Face API not found, will use fallback detection');
+        } catch (error) {
+            console.warn('⚠️ Error loading local Face API:', error);
         }
     }
     
     loadScript(src) {
         return new Promise((resolve, reject) => {
-            if (document.querySelector(`script[src="${src}"]`)) {
+            // Check if script already exists
+            const existingScript = document.querySelector(`script[src="${src}"]`);
+            if (existingScript) {
+                console.log(`✅ Script already loaded: ${src}`);
                 resolve();
                 return;
             }
             
             const script = document.createElement('script');
             script.src = src;
-            script.onload = resolve;
-            script.onerror = reject;
+            script.async = true;
+            script.crossOrigin = 'anonymous';
+            script.type = 'text/javascript';
+            
+            script.onload = () => {
+                console.log(`✅ Script loaded successfully: ${src}`);
+                resolve();
+            };
+            
+            script.onerror = (error) => {
+                console.error(`❌ Failed to load script: ${src}`, error);
+                // Remove failed script
+                if (script.parentNode) {
+                    script.parentNode.removeChild(script);
+                }
+                reject(new Error(`Failed to load script: ${src}`));
+            };
+            
+            // Add timeout
+            const timeoutId = setTimeout(() => {
+                console.error(`❌ Script load timeout: ${src}`);
+                if (script.parentNode) {
+                    script.parentNode.removeChild(script);
+                }
+                reject(new Error(`Script load timeout: ${src}`));
+            }, 8000);
+            
+            // Clear timeout on successful load
+            const originalOnload = script.onload;
+            script.onload = () => {
+                clearTimeout(timeoutId);
+                originalOnload();
+            };
+            
             document.head.appendChild(script);
         });
     }
@@ -2084,11 +2402,36 @@ class PersonalProfileWidget extends Component {
         // Ensure camera instructions are set for current phase when starting detection
         this.updateCameraInstructionsForPhase(this.state.currentCapturePhase);
         
+        // Determine detection method based on available APIs
+        const detectionMethod = this.getBestDetectionMethod();
+        console.log(`🔍 Starting face detection with method: ${detectionMethod}`);
+        
         this.state.faceDetectionInterval = setInterval(() => {
             this.detectFace();
-        }, 1000); // Check every 1 second for better responsiveness
+        }, this.constructor.CONFIG.DETECTION.INTERVAL); // Check every 1 second for better responsiveness
+    }
+    
+    getBestDetectionMethod() {
+        if (window.faceapi && this.areModelsLoaded()) {
+            return 'Face API';
+        } else {
+            return 'Fallback (eKYC + Canvas)';
+        }
+    }
+    
+    areModelsLoaded() {
+        if (!window.faceapi) {
+            return false;
+        }
         
-        console.log('🔍 Face detection started with Face API');
+        try {
+            return window.faceapi.nets.tinyFaceDetector.isLoaded && 
+                   window.faceapi.nets.faceLandmark68Net.isLoaded && 
+                   window.faceapi.nets.faceExpressionNet.isLoaded;
+        } catch (error) {
+            console.warn('⚠️ Error checking model status:', error);
+            return false;
+        }
     }
 
     stopFaceDetection() {
@@ -2127,20 +2470,33 @@ class PersonalProfileWidget extends Component {
             canvas.height = video.videoHeight;
             ctx.drawImage(video, 0, 0);
 
-            // Try Face API first, fallback to eKYC API
+            // Try Face API first, fallback to eKYC API, then canvas detection
             if (window.faceapi) {
                 try {
                     await this.detectFaceWithFaceAPI(canvas);
                 } catch (faceApiError) {
-                    console.warn('⚠️ Face API detection failed, using eKYC fallback:', faceApiError);
-                    await this.detectFaceWithEkycAPI(canvas);
+                    console.warn('⚠️ Face API detection failed, trying eKYC fallback:', faceApiError);
+                    try {
+                        await this.detectFaceWithEkycAPI(canvas);
+                    } catch (ekycError) {
+                        console.warn('⚠️ eKYC API failed, using enhanced canvas detection:', ekycError);
+                        this.detectFaceWithCanvas(canvas);
+                    }
                 }
             } else {
-                // Face API not available, use eKYC API
-                await this.detectFaceWithEkycAPI(canvas);
+                // Face API not available, try eKYC API first
+                try {
+                    await this.detectFaceWithEkycAPI(canvas);
+                } catch (ekycError) {
+                    console.warn('⚠️ eKYC API failed, using enhanced canvas detection:', ekycError);
+                    this.detectFaceWithCanvas(canvas);
+                }
             }
         } catch (error) {
             console.error('Error in face detection:', error);
+            // Show helpful error message to user
+            this.updateFaceStatus('error', 'fas fa-exclamation-triangle', 
+                'Lỗi phát hiện khuôn mặt - Vui lòng thử lại hoặc kiểm tra camera');
             // Final fallback to basic detection
             this.detectFaceWithCanvas(canvas);
         }
@@ -2148,33 +2504,47 @@ class PersonalProfileWidget extends Component {
 
     async detectFaceWithFaceAPI(canvas) {
         try {
-            const detections = await window.faceapi.detectAllFaces(canvas, new window.faceapi.TinyFaceDetectorOptions())
+            // Check if models are loaded before using
+            if (!this.areModelsLoaded()) {
+                console.warn('⚠️ Face API models not loaded, using fallback detection');
+                this.detectFaceWithCanvas(canvas);
+                return;
+            }
+            
+            // Use more lenient detection options
+            const options = new window.faceapi.TinyFaceDetectorOptions({
+                inputSize: this.constructor.CONFIG.DETECTION.INPUT_SIZE,
+                scoreThreshold: this.constructor.CONFIG.DETECTION.SCORE_THRESHOLD
+            });
+            
+            const detections = await window.faceapi.detectAllFaces(canvas, options)
                 .withFaceLandmarks()
                 .withFaceExpressions();
             
             console.log('🔍 Face API detections:', detections);
             
             if (detections.length === 0) {
-                this.updateFaceStatus('no_face', 'fas fa-user-slash', 'Không tìm thấy khuôn mặt');
+                this.updateFaceStatus('no_face', 'fas fa-user-slash', 'Không tìm thấy khuôn mặt - Hãy di chuyển gần camera hơn và đảm bảo ánh sáng tốt');
                 return;
             }
             
             if (detections.length > 1) {
-                this.updateFaceStatus('multiple_faces', 'fas fa-users', 'Phát hiện nhiều khuôn mặt');
+                this.updateFaceStatus('multiple_faces', 'fas fa-users', 'Phát hiện nhiều khuôn mặt - Chỉ một người trong khung hình');
                 return;
             }
             
             const detection = detections[0];
             const landmarks = detection.landmarks;
             
-            // Check face position and orientation
+            // Check face position and orientation with more lenient criteria
             const isCentered = this.checkFaceCentered(landmarks, canvas);
             const isFrontFacing = this.checkFaceFrontFacing(landmarks);
             const isGoodSize = this.checkFaceSize(detection, canvas);
             
             console.log('📊 Face checks:', { isCentered, isFrontFacing, isGoodSize });
             
-            if (isCentered && isFrontFacing && isGoodSize) {
+            // More lenient conditions - only require good size and basic positioning
+            if (isGoodSize && (isCentered || isFrontFacing)) {
                 const currentPhase = this.state.currentCapturePhase;
                 const currentCount = this.getCapturedCount(currentPhase);
                 const requiredCount = this.state.captureRequirements[currentPhase];
@@ -2246,7 +2616,8 @@ class PersonalProfileWidget extends Component {
             Math.pow(nose.x - centerX, 2) + Math.pow(nose.y - centerY, 2)
         );
         
-        const maxDistance = Math.min(canvas.width, canvas.height) * 0.15;
+        // More lenient - allow face to be further from center
+        const maxDistance = Math.min(canvas.width, canvas.height) * 0.25;
         return distanceFromCenter < maxDistance;
     }
     
@@ -2259,7 +2630,7 @@ class PersonalProfileWidget extends Component {
         const rightEyeY = rightEye.reduce((sum, point) => sum + point.y, 0) / rightEye.length;
         
         const eyeHeightDiff = Math.abs(leftEyeY - rightEyeY);
-        const maxHeightDiff = 10; // Allow some tolerance
+        const maxHeightDiff = 20; // More lenient tolerance
         
         return eyeHeightDiff < maxHeightDiff;
     }
@@ -2269,8 +2640,8 @@ class PersonalProfileWidget extends Component {
         const canvasArea = canvas.width * canvas.height;
         const faceRatio = faceArea / canvasArea;
         
-        // Face should be between 10% and 40% of canvas area
-        return faceRatio > 0.1 && faceRatio < 0.4;
+        // More lenient size requirements - face should be between 5% and 50% of canvas area
+        return faceRatio >= 0.05 && faceRatio <= 0.5;
     }
 
     async detectFaceWithEkycAPI(canvas) {

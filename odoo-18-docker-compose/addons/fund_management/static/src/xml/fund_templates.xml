@@ -1,5 +1,0 @@
-<templates xml:space="preserve">
-  <t t-name="fund_management.FundWidget">
-    <div>Hello from external XML!</div>
-  </t>
-</templates>

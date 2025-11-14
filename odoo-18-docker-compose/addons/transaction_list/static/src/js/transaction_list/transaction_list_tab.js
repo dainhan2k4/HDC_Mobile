@@ -1,8 +1,10 @@
 /** @odoo-module */
 
 import { Component, xml, useState, onMounted } from "@odoo/owl";
+import { MatchedOrdersTab } from "./matched_orders_tab.js";
 
 export class TransactionListTab extends Component {
+  static components = { MatchedOrdersTab };
   static template = xml`
     <div class="tab-content">
       <!-- Sub Tab Navigation -->
@@ -71,6 +73,19 @@ export class TransactionListTab extends Component {
                       <span>Import Excel</span>
                     </button>
                   </li>
+                  <li><hr class="dropdown-divider"/></li>
+                  <li>
+                    <button class="dropdown-item" t-on-click="sendMaturityNotifications">
+                      <i class="fas fa-bell"></i>
+                      <span>Gửi thông báo đáo hạn</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button class="dropdown-item text-warning" t-on-click="sendMaturityNotificationsTest">
+                      <i class="fas fa-flask"></i>
+                      <span>[TEST] Gửi thông báo cho tất cả lệnh</span>
+                    </button>
+                  </li>
                 </ul>
               </div>
             </div>
@@ -117,284 +132,10 @@ export class TransactionListTab extends Component {
         </div>
       </div>
       
-      <!-- Matched Orders Content -->
-      <div t-if="state.activeSubTab === 'matched_orders'" class="matched-orders-container">
-        
-        <!-- Filter Tabs and Bulk Actions -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <div class="sub-tab-nav">
-            <nav class="nav nav-pills">
-              <a class="nav-link" t-att-class="state.matchedOrdersFilter === 'all' ? 'active' : ''" href="#" t-on-click="() => this.filterMatchedOrders('all')">
-                Tất cả
-              </a>
-              <a class="nav-link" t-att-class="state.matchedOrdersFilter === 'investor' ? 'active' : ''" href="#" t-on-click="() => this.filterMatchedOrders('investor')">
-                Nhà đầu tư
-              </a>
-              <a class="nav-link" t-att-class="state.matchedOrdersFilter === 'market_maker' ? 'active' : ''" href="#" t-on-click="() => this.filterMatchedOrders('market_maker')">
-                Nhà tạo lập
-              </a>
-            </nav>
-          </div>
-          <div class="bulk-actions">
-            <button class="btn-modern btn-primary-modern" 
-                    t-att-disabled="state.selectedPairIds.size === 0"
-                    t-on-click="bulkSendToExchange"
-                    title="Gửi các cặp lệnh đã chọn lên sàn">
-              <i class="fas fa-paper-plane me-2"></i>
-              Gửi lên sàn (<t t-esc="state.selectedPairIds.size"/>)
-            </button>
-          </div>
-        </div>
-        
-        <!-- Filters Section for Matched Orders -->
-        <div class="row mb-3">
-          <div class="col-md-4">
-            <label for="matchedFundFilter" class="form-label">Quỹ:</label>
-            <select id="matchedFundFilter" class="form-select form-select-sm" t-on-change="onMatchedFundFilterChange" t-att-value="state.selectedMatchedFundId">
-              <option value="">Tất cả quỹ</option>
-              <t t-foreach="state.fundOptions" t-as="fund" t-key="fund.value">
-                <option t-att-value="fund.value" t-att-selected="state.selectedMatchedFundId == fund.value">
-                  <t t-esc="fund.label"/>
-                </option>
-              </t>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label for="matchedDateFilter" class="form-label">Ngày giao dịch:</label>
-            <input type="date" id="matchedDateFilter" class="form-control form-control-sm" t-on-change="onMatchedDateFilterChange" t-att-value="state.selectedMatchedDate"/>
-          </div>
-          <div class="col-md-4">
-            <label for="matchedQuickDateFilter" class="form-label">Lọc nhanh:</label>
-            <select id="matchedQuickDateFilter" class="form-select form-select-sm" t-on-change="onMatchedQuickDateFilterChange">
-              <option value="">Chọn thời gian...</option>
-              <option value="today" t-att-selected="state.selectedMatchedQuickDate === 'today'">Hôm nay</option>
-              <option value="yesterday" t-att-selected="state.selectedMatchedQuickDate === 'yesterday'">Hôm qua</option>
-              <option value="last7days" t-att-selected="state.selectedMatchedQuickDate === 'last7days'">7 ngày gần nhất</option>
-            </select>
-          </div>
-        </div>
-        
-        <!-- Matched Orders Table -->
-      <div class="table-container" style="font-size: 0.7rem;">
-        <table class="transaction-table table table-sm table-bordered table-hover" style="margin-bottom: 0; font-size: 0.7rem;">
-          <thead class="table-dark">
-            <tr>
-              <th style="font-size: 0.65rem; font-weight: 600; width: 35px;">
-                  <input type="checkbox" 
-                         class="form-check-input" 
-                         t-on-change="(ev) => this.toggleSelectAllPairs(ev.target.checked)"
-                         title="Chọn tất cả"/>
-                </th>
-              <th style="font-size: 0.65rem; font-weight: 600; width: 35px;">STT</th>
-              <th style="font-size: 0.65rem; font-weight: 600; width: 140px;">QUỸ</th>
-                <th style="font-size: 0.65rem; font-weight: 600; width: 150px;">NGƯỜI MUA</th>
-                <th style="font-size: 0.65rem; font-weight: 600; width: 150px;">NGƯỜI BÁN</th>
-                <th style="font-size: 0.65rem; font-weight: 600; width: 80px;">GIÁ</th>
-                <th style="font-size: 0.65rem; font-weight: 600; width: 70px;">SỐ CCQ</th>
-                <th style="font-size: 0.65rem; font-weight: 600; width: 100px;">GIÁ TRỊ LỆNH</th>
-                <th style="font-size: 0.65rem; font-weight: 600; width: 60px;">LÃI SUẤT</th>
-                <th style="font-size: 0.65rem; font-weight: 600; width: 60px;">KỲ HẠN</th>
-                <th style="font-size: 0.65rem; font-weight: 600; width: 120px;">PHIÊN GIAO DỊCH</th>
-                <th style="font-size: 0.65rem; font-weight: 600; width: 60px;">THAO TÁC</th>
-              </tr>
-            </thead>
-            <tbody>
-              <t t-if="state.loading">
-                <tr>
-                  <td colspan="12" class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                      <span class="visually-hidden">Đang tải...</span>
-                    </div>
-                    <div class="mt-2">Đang tải dữ liệu...</div>
-                  </td>
-                </tr>
-              </t>
-              <t t-elif="state.error">
-                <tr>
-                  <td colspan="12" class="text-center py-4 text-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <t t-esc="state.error"/>
-                  </td>
-                </tr>
-              </t>
-              <t t-elif="!state.filteredMatchedOrders or state.filteredMatchedOrders.length === 0">
-                <tr>
-                  <td colspan="12" class="text-center py-4 text-muted">
-                    <i class="fas fa-inbox me-2"></i>
-                    Chưa có lệnh khớp thỏa thuận nào
-                  </td>
-                </tr>
-              </t>
-              <t t-else="">
-                <t t-foreach="state.displayedTransactions" t-as="pair" t-key="pair.id">
-                  <tr t-att-class="this.isPairSentToExchange(pair) ? 'sent-to-exchange' : ''" 
-                      t-att-style="this.isPairSentToExchange(pair) ? 'opacity: 0.6;' : ''">
-                    <!-- Checkbox -->
-                    <td class="text-center">
-                      <input type="checkbox" 
-                             class="form-check-input pair-checkbox" 
-                             t-att-data-pair-id="(pair.buy_id || '') + '-' + (pair.sell_id || '')"
-                             t-att-disabled="this.isPairSentToExchange(pair)"
-                             t-att-checked="this.isPairSelected(pair)"
-                             t-on-change="(ev) => this.toggleSelectPair(pair, ev.target.checked)"/>
-                    </td>
-                    <!-- STT -->
-                    <td class="text-center" style="font-size: 0.65rem; font-weight: 600;">
-                      <t t-esc="(state.matchedOrdersPagination.currentPage - 1) * state.matchedOrdersPagination.itemsPerPage + pair_index + 1"/>
-                    </td>
-                    <!-- QUỸ -->
-                    <td class="text-start" style="font-size: 0.65rem;">
-                      <t t-esc="this.getFundNameFromPair(pair)"/>
-                    </td>
-                    
-                    <!-- NGƯỜI MUA -->
-                    <td>
-                      <div class="investor-info">
-                        <div class="investor-name" style="color: #28a745; font-weight: 600; font-size: 0.65rem;">
-                          <t t-esc="pair.buy_investor || 'N/A'"/>
-                        </div>
-                        <div class="investor-details" style="font-size: 0.6rem; color: #6c757d;">
-                          CCQ: <t t-esc="this.formatNumber(pair.buy_units || 0)"/>
-                          <div>
-                            Giá mua: <span class="text-success" style="font-weight:600;">
-                              <t t-esc="this.formatNumber(pair.buy_price || 0)"/> VND
-                            </span>
-                          </div>
-                          <t t-if="(pair.buy_user_type || '') !== 'market_maker'">
-                            <div>
-                              Còn lại: <span class="text-muted" style="font-weight:600;">
-                                <t t-esc="this.formatNumber(pair.buy_remaining_units || 0)"/>
-                              </span>
-                            </div>
-                          </t>
-                        </div>
-                      </div>
-                    </td>
-                    
-                    <!-- NGƯỜI BÁN -->
-                    <td>
-                      <div class="investor-info">
-                        <div class="investor-name" style="color: #dc3545; font-weight: 600; font-size: 0.65rem;">
-                          <t t-esc="pair.sell_investor || 'N/A'"/>
-                        </div>
-                        <div class="investor-details" style="font-size: 0.6rem; color: #6c757d;">
-                          CCQ: <t t-esc="this.formatNumber(pair.sell_units || 0)"/>
-                          <div>
-                            Giá bán: <span class="text-danger" style="font-weight:600;">
-                              <t t-esc="this.formatNumber(pair.sell_price || 0)"/> VND
-                            </span>
-                          </div>
-                          <t t-if="(pair.sell_user_type || '') !== 'market_maker'">
-                            <div>
-                              Còn lại: <span class="text-muted" style="font-weight:600;">
-                                <t t-esc="this.formatNumber(pair.sell_remaining_units || 0)"/>
-                              </span>
-                            </div>
-                          </t>
-                        </div>
-                      </div>
-                    </td>
-                    
-                    <!-- GIÁ (lấy trực tiếp từ bản ghi matched_orders) -->
-                    <td class="text-center">
-                      <div class="price-info" style="font-weight: 600; color: #28a745; font-size: 0.65rem; text-align: center;">
-                        <t t-esc="this.formatNumber(pair.matched_price || 0)"/> VND
-                      </div>
-                    </td>
-                    
-                    <!-- SỐ CCQ (lấy trực tiếp từ bản ghi matched_orders) -->
-                    <td class="text-center">
-                      <div style="font-size: 0.6rem; color: #6c757d;">
-                        Khớp: <t t-esc="this.formatNumber(pair.matched_quantity || 0)"/>
-                      </div>
-                    </td>
-
-                    <!-- GIÁ TRỊ LỆNH (lấy trực tiếp từ bản ghi matched_orders) -->
-                    <td class="text-center">
-                      <div style="font-size: 0.6rem; color: #6c757d; font-weight: 600;">
-                        <t t-esc="this.formatAmountVND(pair.total_value || 0)"/>
-                      </div>
-                    </td>
-                    
-                    
-                    
-                    <!-- LÃI SUẤT -->
-                    <td class="text-center" style="font-size: 0.6rem; color: #6c757d;">
-                      -
-                    </td>
-                    
-                    <!-- KỲ HẠN -->
-                    <td class="text-center" style="font-size: 0.6rem; color: #6c757d;">
-                      -
-                    </td>
-                    
-                    <!-- PHIÊN GIAO DỊCH -->
-                    <td class="text-center">
-                      <div class="transaction-time-info" style="font-size: 0.6rem;">
-                        <div style="color: #28a745; font-weight: 600;">
-                          In: <t t-esc="this.formatDateTime(pair.buy_in_time || pair.match_time || pair.created_at)"/>
-                        </div>
-                        <div style="color: #dc3545; font-weight: 600;">
-                          Out: <t t-esc="this.formatDateTime(pair.sell_in_time || pair.match_time || pair.created_at)"/>
-                        </div>
-                      </div>
-                    </td>
-                    
-                    <!-- Action Button -->
-                    <td class="text-center">
-                      <button class="btn-send-exchange" 
-                              t-att-data-pair-id="pair.buy_id + '-' + pair.sell_id"
-                              t-att-disabled="this.isPairSentToExchange(pair)"
-                              t-att-style="this.isPairSentToExchange(pair) ? 'background: #28a745; color: white;' : 'background:#f97316;color:white;border:1px solid #f97316;border-radius:4px;padding:5px 8px;cursor:pointer;'"
-                              title="Gửi lên sàn">
-                        <i t-att-class="this.isPairSentToExchange(pair) ? 'fas fa-check' : 'fas fa-paper-plane'"></i>
-                      </button>
-                    </td>
-                  </tr>
-                </t>
-              </t>
-            </tbody>
-            <tfoot t-if="state.filteredMatchedOrders and state.filteredMatchedOrders.length > 0">
-              <t t-set="totals" t-value="this.getMatchedOrdersTotals()"/>
-              <tr class="matched-orders-totals-row">
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td class="text-center">TỔNG CCQ: <strong><t t-esc="this.formatNumber(totals.totalCCQ)"/></strong></td>
-                <td class="text-center"><strong>TỔNG TIỀN: <t t-esc="this.formatAmountVND(totals.totalValue)"/></strong></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        
-        <!-- Pagination -->
-        <div t-if="state.filteredMatchedOrders.length > 0" class="pagination-container mt-3">
-          <div class="d-flex justify-content-end align-items-center">
-            <div class="pagination-controls">
-              <button class="page-btn" t-att-disabled="state.matchedOrdersPagination.currentPage === 1" t-on-click="() => this.changeMatchedOrdersPage(state.matchedOrdersPagination.currentPage - 1)">
-                <i class="fas fa-chevron-left"></i>
-              </button>
-              
-              <t t-foreach="Array.from({length: this.getMatchedOrdersTotalPages()}, (_, i) => i + 1)" t-as="page" t-key="page">
-                <button class="page-btn" t-att-class="page === state.matchedOrdersPagination.currentPage ? 'active' : ''" t-on-click="() => this.changeMatchedOrdersPage(page)">
-                  <t t-esc="page"/>
-                </button>
-              </t>
-              
-              <button class="page-btn" t-att-disabled="state.matchedOrdersPagination.currentPage === this.getMatchedOrdersTotalPages()" t-on-click="() => this.changeMatchedOrdersPage(state.matchedOrdersPagination.currentPage + 1)">
-                <i class="fas fa-chevron-right"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Matched Orders Content extracted to dedicated component to avoid duplication -->
+      <t t-if="state.activeSubTab === 'matched_orders'">
+        <MatchedOrdersTab />
+      </t>
       
       <!-- Regular Table Container -->
       <div t-if="state.activeSubTab !== 'matched_orders'" class="table-container" style="font-size: 0.7rem;">
@@ -525,7 +266,7 @@ export class TransactionListTab extends Component {
                       <div class="time-entry" style="font-size: 0.6rem; line-height: 1.1;">
                         <div class="time-label" style="color: #6c757d; font-weight: 500;">In:</div>
                         <div class="time-value" style="color: #28a745; font-weight: 600;">
-                          <t t-esc="this.formatDateTime(transaction.first_in_time || transaction.in_time || transaction.transaction_date)"/>
+                          <t t-esc="this.formatDateTime(transaction.first_in_time || transaction.in_time || transaction.created_at)"/>
                         </div>
                       </div>
                       <t t-if="transaction.out_time">
@@ -737,7 +478,7 @@ export class TransactionListTab extends Component {
         totalItems: 0
       },
       // State cho bulk send
-      selectedPairIds: new Set(),
+      selectedMatchedIds: new Set(),
       transactionById: {},
       // Filter state
       fundOptions: [],
@@ -785,12 +526,13 @@ export class TransactionListTab extends Component {
       await this.loadFundOptions();
       
       // Thêm event listener cho button gửi lên sàn
-      document.addEventListener('click', (e) => {
+      document.addEventListener('click', async (e) => {
         if (e.target.closest('.btn-send-exchange')) {
           e.preventDefault();
           e.stopPropagation();
           const btn = e.target.closest('.btn-send-exchange');
-          const pairId = btn.getAttribute('data-pair-id');
+          const midStr = btn.getAttribute('data-matched-id');
+          const matchedId = midStr ? parseInt(midStr) : null;
           
           // Kiểm tra xem đã gửi chưa
           if (btn.classList.contains('sent')) {
@@ -798,30 +540,35 @@ export class TransactionListTab extends Component {
             return;
           }
           
-          console.log(`[DEBUG] Gửi lên sàn cho pair: ${pairId}`);
           
-          // Hiển thị thông báo gửi lên sàn
-          this.showNotification(`📤 Đang gửi cặp lệnh ${pairId} lên sàn...`, 'info');
-          
-          // Simulate gửi lên sàn (có thể thay bằng API call thực tế)
-          setTimeout(() => {
-            // Lưu trạng thái vào localStorage
-            this.saveSentPairState(pairId);
-            
-            // Làm mờ row
-            const row = btn.closest('tr');
-            if (row) {
-              row.style.opacity = '0.5';
+          if (!matchedId) {
+            this.showNotification('ID cặp lệnh không hợp lệ', 'error');
+            return;
+          }
+          this.showNotification(`📤 Đang gửi cặp lệnh #${matchedId} lên sàn...`, 'info');
+
+          try {
+            const resp = await fetch('/api/transaction-list/send-to-exchange', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+              body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: { matched_order_id: matchedId, auto_submit: true } })
+            });
+            const data = await resp.json();
+            const result = data?.result || data;
+            if (result && result.success) {
+              this.saveSentPairState(String(matchedId));
+              const row = btn.closest('tr');
+              if (row) row.style.opacity = '0.5';
+              btn.innerHTML = '<i class="fas fa-check"></i>';
+              btn.classList.add('sent');
+              btn.title = 'Đã gửi lên sàn';
+              this.showNotification(`✅ Đã gửi cặp lệnh #${matchedId} lên sàn thành công!`, 'success');
+            } else {
+              this.showNotification(result?.message || 'Gửi lên sàn thất bại', 'error');
             }
-            
-            // Thay đổi icon và text
-            btn.innerHTML = '<i class="fas fa-check"></i>';
-            btn.classList.add('sent');
-            btn.title = 'Đã gửi lên sàn';
-            
-            // Hiển thị thông báo thành công
-            this.showNotification(`✅ Đã gửi cặp lệnh ${pairId} lên sàn thành công!`, 'success');
-          }, 1500);
+          } catch (err) {
+            this.showNotification(`Lỗi gửi lên sàn: ${err.message}`, 'error');
+          }
         }
       });
       
@@ -832,7 +579,7 @@ export class TransactionListTab extends Component {
     window.clearSentPairStates = () => this.clearSentPairStates();
     window.getSentPairStates = () => {
       try {
-        return JSON.parse(localStorage.getItem('sentPairs') || '[]');
+        return JSON.parse(localStorage.getItem('sentMatchedIds') || '[]');
       } catch (error) {
         console.error('Error getting sent pair states:', error);
         return [];
@@ -841,10 +588,8 @@ export class TransactionListTab extends Component {
     
     // Test API functions
     window.testAPI = async () => {
-      console.log('=== TESTING API ===');
       try {
         const response = await this.rpc('/api/transaction-list/data', {});
-        console.log('API Response:', response);
         return response;
       } catch (error) {
         console.error('API Error:', error);
@@ -853,10 +598,8 @@ export class TransactionListTab extends Component {
     };
     
     window.testAPIWithFilter = async (statusFilter) => {
-      console.log(`=== TESTING API WITH FILTER: ${statusFilter} ===`);
       try {
         const response = await this.rpc('/api/transaction-list/data', { status_filter: statusFilter });
-        console.log('API Response:', response);
         return response;
       } catch (error) {
         console.error('API Error:', error);
@@ -866,8 +609,8 @@ export class TransactionListTab extends Component {
     
     // Force refresh display
     window.forceRefreshDisplay = () => {
-      console.log('=== FORCE REFRESH DISPLAY ===');
-      console.log('Current state:', {
+('=== FORCE REFRESH DISPLAY ===');
+('Current state:', {
         transactions: this.state.transactions.length,
         filteredTransactions: this.state.filteredTransactions.length,
         displayedTransactions: this.state.displayedTransactions.length,
@@ -879,7 +622,7 @@ export class TransactionListTab extends Component {
       this.state.displayedTransactions = [...this.state.filteredTransactions];
       this.state.totalTransactions = this.state.filteredTransactions.length;
       
-      console.log('After force refresh:', {
+('After force refresh:', {
         displayedTransactions: this.state.displayedTransactions.length,
         totalTransactions: this.state.totalTransactions
       });
@@ -932,7 +675,7 @@ export class TransactionListTab extends Component {
   }
 
   setActiveSubTab(tab) {
-    console.log('Switching to tab:', tab);
+('Switching to tab:', tab);
     this.state.activeSubTab = tab;
     // Reset filters khi chuyển tab
     Object.keys(this.state.filters).forEach(key => {
@@ -942,7 +685,9 @@ export class TransactionListTab extends Component {
     // Reset pagination khi chuyển tab
     this.state.regularPagination.currentPage = 1;
     this.state.matchedOrdersPagination.currentPage = 1;
-    this.state.selectedPairIds.clear();
+    if (this.state.selectedMatchedIds && typeof this.state.selectedMatchedIds.clear === 'function') {
+      this.state.selectedMatchedIds.clear();
+    }
     
     if (tab === 'matched_orders') {
       this.loadMatchedOrders();
@@ -996,18 +741,21 @@ export class TransactionListTab extends Component {
   // Suy luận Giá mua/bán của nhà đầu tư từ nhiều nguồn
   getBuyPrice(pair) {
     if (!pair) return 0;
-    // 1) Ưu tiên lấy trực tiếp từ pair
-    const direct = Number(pair.buy_nav || pair.buy_price || pair.buy_current_nav); // Giữ lại cho hiển thị, nhưng không dùng để tính toán
-    if (!isNaN(direct) && direct > 0) return direct;
-    // 2) Lấy từ bản đồ transactionById nếu có buy_id
-    const tx = this.state.transactionById && pair.buy_id ? this.state.transactionById[pair.buy_id] : null;
-    if (tx && !isNaN(tx.unitPrice) && tx.unitPrice > 0) return tx.unitPrice;
-    // 3) fallback từ amount/units
+    // 1) Ưu tiên backend field mới: buy_price
+    let v = Number(pair.buy_price);
+    if (!isNaN(v) && v > 0) return v;
+    // 2) Trường tương thích cũ
+    v = Number(pair.buy_nav);
+    if (!isNaN(v) && v > 0) return v;
+    v = Number(pair.buy_current_nav);
+    if (!isNaN(v) && v > 0) return v;
+    // 3) Lấy từ bản đồ transactionById theo buy_id
+    const tx = (this.state.transactionById && pair.buy_id) ? this.state.transactionById[pair.buy_id] : null;
+    if (tx && !isNaN(Number(tx.unitPrice)) && Number(tx.unitPrice) > 0) return Number(tx.unitPrice);
+    // 4) fallback amount/units
     const amount = Number(pair.buy_amount || pair.amount);
     const units = Number(pair.buy_units || pair.units);
-    if (!isNaN(amount) && !isNaN(units) && units > 0) {
-      return amount / units;
-    }
+    if (!isNaN(amount) && !isNaN(units) && units > 0) return amount / units;
     return 0;
   }
 
@@ -1086,8 +834,8 @@ export class TransactionListTab extends Component {
         params.date_to = toStr(to);
       }
 
-      // Gọi API matched-orders (chuẩn hóa đủ fund fields)
-      const response = await this.rpc('/api/transaction-list/matched-orders', params);
+      // Gọi API get-matched-orders (chuẩn hóa đủ fund fields)
+      const response = await this.rpc('/api/transaction-list/get-matched-orders', params);
       if (response && response.success) {
         const raw = Array.isArray(response.data) ? response.data : [];
         let normalized = this.normalizeMatchedApiData(raw);
@@ -1114,16 +862,16 @@ export class TransactionListTab extends Component {
         this.state.matchedOrdersPagination.currentPage = 1;
         
         // Debug: Log matched orders data structure
-        console.log('[DEBUG] ===== MATCHED ORDERS DATA STRUCTURE =====');
+('[DEBUG] ===== MATCHED ORDERS DATA STRUCTURE =====');
         if (this.state.matchedOrders.length > 0) {
-          console.log('[DEBUG] Sample matched order:', this.state.matchedOrders[0]);
-          console.log('[DEBUG] Available keys:', Object.keys(this.state.matchedOrders[0]));
-          console.log('[DEBUG] fund_id:', this.state.matchedOrders[0].fund_id);
-          console.log('[DEBUG] fund_name:', this.state.matchedOrders[0].fund_name);
-          console.log('[DEBUG] match_date:', this.state.matchedOrders[0].match_date);
-          console.log('[DEBUG] match_time:', this.state.matchedOrders[0].match_time);
+('[DEBUG] Sample matched order:', this.state.matchedOrders[0]);
+('[DEBUG] Available keys:', Object.keys(this.state.matchedOrders[0]));
+('[DEBUG] fund_id:', this.state.matchedOrders[0].fund_id);
+('[DEBUG] fund_name:', this.state.matchedOrders[0].fund_name);
+('[DEBUG] match_date:', this.state.matchedOrders[0].match_date);
+('[DEBUG] match_time:', this.state.matchedOrders[0].match_time);
         }
-        console.log('[DEBUG] =======================================');
+('[DEBUG] =======================================');
         
         // Extract fund options & apply current filters locally (type tabs)
         this.extractFundOptionsFromTransactions();
@@ -1161,8 +909,8 @@ export class TransactionListTab extends Component {
           this.state.transactionById = {};
         }
 
-        console.log('Loaded matched orders:', this.state.matchedOrders.length);
-        console.log('Sample matched order:', this.state.matchedOrders[0]);
+('Loaded matched orders:', this.state.matchedOrders.length);
+('Sample matched order:', this.state.matchedOrders[0]);
       } else {
         this.state.matchedOrders = [];
         this.state.filteredMatchedOrders = [];
@@ -1170,8 +918,8 @@ export class TransactionListTab extends Component {
         this.state.matchedOrdersPagination.currentPage = 1;
         this.state.displayedTransactions = [];
         this.state.totalTransactions = 0;
-        console.log('No matched orders found');
-        console.log('Response:', response);
+('No matched orders found');
+('Response:', response);
       }
       
       this.state.loading = false;
@@ -1186,12 +934,12 @@ export class TransactionListTab extends Component {
   }
 
   async refreshMatchedOrders() {
-    console.log('Refreshing matched orders...');
+('Refreshing matched orders...');
     await this.loadMatchedOrders();
   }
 
   filterMatchedOrders(filterType) {
-    console.log('Filtering matched orders by:', filterType);
+('Filtering matched orders by:', filterType);
     this.state.matchedOrdersFilter = filterType;
     this.state.matchedOrdersPagination.currentPage = 1; // Reset về trang 1
     
@@ -1218,21 +966,21 @@ export class TransactionListTab extends Component {
   }
 
   applyAdditionalMatchedFilters(filtered) {
-    console.log('[DEBUG] Applying additional matched filters to', filtered.length, 'orders');
+('[DEBUG] Applying additional matched filters to', filtered.length, 'orders');
     
     // Filter by fund - check both buy and sell fund
     if (this.state.selectedMatchedFundId) {
-      console.log('[DEBUG] Filtering matched orders by fund:', this.state.selectedMatchedFundId);
+('[DEBUG] Filtering matched orders by fund:', this.state.selectedMatchedFundId);
       const beforeLength = filtered.length;
       
       // Debug: Check data structure first
       if (filtered.length > 0) {
         const sampleOrder = filtered[0];
-        console.log('[DEBUG] Sample matched order:', sampleOrder);
-        console.log('[DEBUG] Available keys:', Object.keys(sampleOrder));
-        console.log('[DEBUG] buy_fund_id:', sampleOrder.buy_fund_id);
-        console.log('[DEBUG] sell_fund_id:', sampleOrder.sell_fund_id);
-        console.log('[DEBUG] fund_id:', sampleOrder.fund_id);
+('[DEBUG] Sample matched order:', sampleOrder);
+('[DEBUG] Available keys:', Object.keys(sampleOrder));
+('[DEBUG] buy_fund_id:', sampleOrder.buy_fund_id);
+('[DEBUG] sell_fund_id:', sampleOrder.sell_fund_id);
+('[DEBUG] fund_id:', sampleOrder.fund_id);
       }
       
       filtered = filtered.filter(order => {
@@ -1242,11 +990,11 @@ export class TransactionListTab extends Component {
         const matches = buyFundMatches || sellFundMatches;
         
         if (!matches) {
-          console.log(`[DEBUG] Matched order ${order.id || 'N/A'} buy_fund_id ${order.buy_fund_id} and sell_fund_id ${order.sell_fund_id} do not match selected ${this.state.selectedMatchedFundId}`);
+(`[DEBUG] Matched order ${order.id || 'N/A'} buy_fund_id ${order.buy_fund_id} and sell_fund_id ${order.sell_fund_id} do not match selected ${this.state.selectedMatchedFundId}`);
         }
         return matches;
       });
-      console.log(`[DEBUG] After matched fund filter: ${filtered.length} (from ${beforeLength})`);
+(`[DEBUG] After matched fund filter: ${filtered.length} (from ${beforeLength})`);
     }
 
     // Filter by date
@@ -1264,11 +1012,11 @@ export class TransactionListTab extends Component {
         
         const matches = orderDateStr === this.state.selectedMatchedDate;
         if (!matches) {
-          console.log(`[DEBUG] Matched order ${order.id || 'N/A'} date ${order.match_date || order.match_time} (${orderDateStr}) does not match selected date (${this.state.selectedMatchedDate})`);
+(`[DEBUG] Matched order ${order.id || 'N/A'} date ${order.match_date || order.match_time} (${orderDateStr}) does not match selected date (${this.state.selectedMatchedDate})`);
         }
         return matches;
       });
-      console.log(`[DEBUG] After additional date filter: ${filtered.length} (from ${beforeLength})`);
+(`[DEBUG] After additional date filter: ${filtered.length} (from ${beforeLength})`);
     }
 
     // Filter by quick date
@@ -1302,7 +1050,7 @@ export class TransactionListTab extends Component {
           const orderTime = orderDate.getTime();
           return orderTime >= fromTime && orderTime <= toTime;
         });
-        console.log(`[DEBUG] After additional quick date filter: ${filtered.length} (from ${beforeLength})`);
+(`[DEBUG] After additional quick date filter: ${filtered.length} (from ${beforeLength})`);
       }
     }
 
@@ -1314,7 +1062,7 @@ export class TransactionListTab extends Component {
     // Khôi phục trạng thái đã gửi lên sàn sau khi filter
     this.restoreSentPairStates();
     
-    console.log(`Filtered to ${this.state.filteredMatchedOrders.length} pairs`);
+(`Filtered to ${this.state.filteredMatchedOrders.length} pairs`);
   }
 
   updateMatchedOrdersDisplay() {
@@ -1371,28 +1119,28 @@ export class TransactionListTab extends Component {
       // Chọn tất cả pairs hiện tại đang hiển thị
       this.state.displayedTransactions.forEach(pair => {
         if (!this.isPairSentToExchange(pair)) {
-          const pairId = `${pair.buy_id}-${pair.sell_id}`;
-          this.state.selectedPairIds.add(pairId);
+          const matchedId = parseInt(pair?.id);
+          if (matchedId) this.state.selectedMatchedIds.add(matchedId);
         }
       });
     } else {
       // Bỏ chọn tất cả
-      this.state.selectedPairIds.clear();
+      this.state.selectedMatchedIds.clear();
     }
   }
 
   toggleSelectPair(pair, checked) {
-    const pairId = `${pair.buy_id}-${pair.sell_id}`;
+    const matchedId = parseInt(pair?.id);
     if (checked) {
-      this.state.selectedPairIds.add(pairId);
+      if (matchedId) this.state.selectedMatchedIds.add(matchedId);
     } else {
-      this.state.selectedPairIds.delete(pairId);
+      if (matchedId) this.state.selectedMatchedIds.delete(matchedId);
     }
   }
 
   isPairSelected(pair) {
-    const pairId = `${pair.buy_id}-${pair.sell_id}`;
-    return this.state.selectedPairIds.has(pairId);
+    const matchedId = parseInt(pair?.id);
+    return matchedId ? this.state.selectedMatchedIds.has(matchedId) : false;
   }
 
   isPairSentToExchange(pair) {
@@ -1402,9 +1150,9 @@ export class TransactionListTab extends Component {
     }
     
     // Fallback: kiểm tra từ localStorage
-    const pairId = `${pair.buy_id}-${pair.sell_id}`;
+    const pairId = String(pair?.id || '');
     try {
-      const sentPairs = JSON.parse(localStorage.getItem('sentPairs') || '[]');
+      const sentPairs = JSON.parse(localStorage.getItem('sentMatchedIds') || '[]');
       return sentPairs.includes(pairId);
     } catch (e) {
       return false;
@@ -1412,39 +1160,40 @@ export class TransactionListTab extends Component {
   }
 
   async bulkSendToExchange() {
-    if (this.state.selectedPairIds.size === 0) {
+    if (this.state.selectedMatchedIds.size === 0) {
       this.showNotification('Vui lòng chọn ít nhất một cặp lệnh để gửi lên sàn', 'warning');
       return;
     }
 
     try {
-      const pairIds = Array.from(this.state.selectedPairIds);
-      
-      this.showNotification(`Đang gửi ${pairIds.length} cặp lệnh lên sàn...`, 'info');
+      const ids = Array.from(this.state.selectedMatchedIds);
+      this.showNotification(`Đang gửi ${ids.length} cặp lệnh lên sàn...`, 'info');
 
       const response = await fetch('/api/transaction-list/bulk-send-to-exchange', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {
-            pair_ids: pairIds
-          }
-        })
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: { matched_order_ids: ids, auto_submit: true } })
       });
 
       const result = await response.json();
       
-      if (result.result && result.result.success) {
-        // Thành công
-        const { sent_count, failed_count, failed_pairs } = result.result;
+      if ((result.result && result.result.success) || result.success) {
+        const payload = result.result || result;
+        const failed = (payload.results || []).filter(x => !x.success);
+        const sent_count = (payload.submitted || 0) + (payload.created || 0);
+        const failed_count = failed.length;
+
+        // Lưu các id đã gửi vào localStorage để mờ đi kể cả sau reload
+        try {
+          const sentPairs = JSON.parse(localStorage.getItem('sentMatchedIds') || '[]');
+          ids.forEach((id) => {
+            const sid = String(id);
+            if (!sentPairs.includes(sid)) sentPairs.push(sid);
+          });
+          localStorage.setItem('sentMatchedIds', JSON.stringify(sentPairs));
+        } catch (_) {}
         
-        // Clear selected pairs
-        this.state.selectedPairIds.clear();
+        this.state.selectedMatchedIds.clear();
         
         // Refresh data để cập nhật trạng thái
         await this.loadMatchedOrders();
@@ -1456,12 +1205,13 @@ export class TransactionListTab extends Component {
         
         this.showNotification(message, sent_count > 0 ? 'success' : 'warning');
         
-        if (failed_pairs && failed_pairs.length > 0) {
-          console.log('Failed pairs:', failed_pairs);
+        if (failed_count > 0) {
+console.log('Failed pairs:', failed);
         }
       } else {
         // Thất bại
-        this.showNotification(result.result?.message || 'Có lỗi xảy ra khi gửi lên sàn', 'error');
+        const msg = result.result?.message || result?.message || 'Có lỗi xảy ra khi gửi lên sàn';
+        this.showNotification(msg, 'error');
       }
     } catch (error) {
       console.error('Error bulk sending to exchange:', error);
@@ -1472,11 +1222,11 @@ export class TransactionListTab extends Component {
   // Lưu trạng thái đã gửi lên sàn vào localStorage
   saveSentPairState(pairId) {
     try {
-      const sentPairs = JSON.parse(localStorage.getItem('sentPairs') || '[]');
+      const sentPairs = JSON.parse(localStorage.getItem('sentMatchedIds') || '[]');
       if (!sentPairs.includes(pairId)) {
         sentPairs.push(pairId);
-        localStorage.setItem('sentPairs', JSON.stringify(sentPairs));
-        console.log(`[DEBUG] Đã lưu trạng thái gửi lên sàn cho pair: ${pairId}`);
+        localStorage.setItem('sentMatchedIds', JSON.stringify(sentPairs));
+(`[DEBUG] Đã lưu trạng thái gửi lên sàn cho pair: ${pairId}`);
       }
     } catch (error) {
       console.error('Error saving sent pair state:', error);
@@ -1486,13 +1236,13 @@ export class TransactionListTab extends Component {
   // Khôi phục trạng thái đã gửi lên sàn từ localStorage
   restoreSentPairStates() {
     try {
-      const sentPairs = JSON.parse(localStorage.getItem('sentPairs') || '[]');
-      console.log(`[DEBUG] Khôi phục trạng thái cho ${sentPairs.length} cặp lệnh đã gửi`);
+      const sentPairs = JSON.parse(localStorage.getItem('sentMatchedIds') || '[]');
+(`[DEBUG] Khôi phục trạng thái cho ${sentPairs.length} cặp lệnh đã gửi`);
       
       // Sử dụng setTimeout để đảm bảo DOM đã render xong
       setTimeout(() => {
         sentPairs.forEach(pairId => {
-          const btn = document.querySelector(`[data-pair-id="${pairId}"]`);
+          const btn = document.querySelector(`[data-matched-id="${pairId}"]`);
           if (btn && !btn.classList.contains('sent')) {
             // Làm mờ row
             const row = btn.closest('tr');
@@ -1505,7 +1255,7 @@ export class TransactionListTab extends Component {
             btn.classList.add('sent');
             btn.title = 'Đã gửi lên sàn';
             
-            console.log(`[DEBUG] Đã khôi phục trạng thái cho pair: ${pairId}`);
+(`[DEBUG] Đã khôi phục trạng thái cho pair: ${pairId}`);
           }
         });
       }, 100);
@@ -1517,8 +1267,8 @@ export class TransactionListTab extends Component {
   // Xóa trạng thái đã gửi (có thể dùng khi cần reset)
   clearSentPairStates() {
     try {
-      localStorage.removeItem('sentPairs');
-      console.log('[DEBUG] Đã xóa tất cả trạng thái gửi lên sàn');
+      localStorage.removeItem('sentMatchedIds');
+('[DEBUG] Đã xóa tất cả trạng thái gửi lên sàn');
       
       // Reset tất cả button về trạng thái ban đầu
       const sentButtons = document.querySelectorAll('.btn-send-exchange.sent');
@@ -1533,7 +1283,7 @@ export class TransactionListTab extends Component {
         }
       });
       
-      console.log(`[DEBUG] Đã reset ${sentButtons.length} button về trạng thái ban đầu`);
+(`[DEBUG] Đã reset ${sentButtons.length} button về trạng thái ban đầu`);
     } catch (error) {
       console.error('Error clearing sent pair states:', error);
     }
@@ -1573,76 +1323,76 @@ export class TransactionListTab extends Component {
         statusFilter = 'approved'; // This will be mapped to 'completed' in backend
       }
       
-      console.log('Loading transactions with filter:', statusFilter);
-      console.log('Active tab:', this.state.activeSubTab);
+('Loading transactions with filter:', statusFilter);
+('Active tab:', this.state.activeSubTab);
       
       const params = {
         status_filter: statusFilter
       };
-      console.log('Sending params:', params);
+('Sending params:', params);
       
       const response = await this.rpc('/api/transaction-list/data', params);
       
       // Debug: Log full response
-      console.log('=== DEBUG API RESPONSE ===');
-      console.log('Response:', response);
-      console.log('Response success:', response?.success);
-      console.log('Response data:', response?.data);
-      console.log('Response data length:', response?.data?.length);
-      console.log('Response message:', response?.message);
-      console.log('========================');
+('=== DEBUG API RESPONSE ===');
+('Response:', response);
+('Response success:', response?.success);
+('Response data:', response?.data);
+('Response data length:', response?.data?.length);
+('Response message:', response?.message);
+('========================');
       
       // Nếu không có dữ liệu với status_filter, thử lấy tất cả dữ liệu
       if (response && response.success && (!response.data || response.data.length === 0) && statusFilter) {
-        console.log(`[DEBUG] No data with status_filter '${statusFilter}', trying to get all data`);
+(`[DEBUG] No data with status_filter '${statusFilter}', trying to get all data`);
         const allDataResponse = await this.rpc('/api/transaction-list/data', {});
         if (allDataResponse && allDataResponse.success && allDataResponse.data) {
-          console.log(`[DEBUG] Got ${allDataResponse.data.length} transactions from all data`);
+(`[DEBUG] Got ${allDataResponse.data.length} transactions from all data`);
           response.data = allDataResponse.data;
         }
       }
 
-      console.log('API Response:', response);
-      console.log('Response success:', response?.success);
-      console.log('Response data length:', response?.data?.length);
+('API Response:', response);
+('Response success:', response?.success);
+('Response data length:', response?.data?.length);
       if (response?.data && response.data.length > 0) {
-        console.log('First transaction status:', response.data[0].status);
-        console.log('All transaction statuses:', response.data.map(t => t.status));
-        console.log('All transaction IDs:', response.data.map(t => t.id));
-        console.log('All transaction sources:', response.data.map(t => t.source));
+('First transaction status:', response.data[0].status);
+('All transaction statuses:', response.data.map(t => t.status));
+('All transaction IDs:', response.data.map(t => t.id));
+('All transaction sources:', response.data.map(t => t.source));
       }
 
       if (response && response.success) {
         // Lọc dữ liệu theo status ngay tại đây để đảm bảo đúng
         let filteredData = response.data || [];
         
-        console.log('Raw data from API:', filteredData);
-        console.log('Number of transactions from API:', filteredData.length);
+('Raw data from API:', filteredData);
+('Number of transactions from API:', filteredData.length);
         
         // Nếu API không lọc đúng, lọc lại ở frontend
         if (statusFilter) {
           const expectedStatus = statusFilter === 'approved' ? 'completed' : statusFilter; // Map approved -> completed
-          console.log(`[DEBUG] Filtering data with expected status: ${expectedStatus} (original filter: ${statusFilter})`);
-          console.log(`[DEBUG] Available statuses in data:`, [...new Set(filteredData.map(t => t.status))]);
+(`[DEBUG] Filtering data with expected status: ${expectedStatus} (original filter: ${statusFilter})`);
+(`[DEBUG] Available statuses in data:`, [...new Set(filteredData.map(t => t.status))]);
           
           filteredData = filteredData.filter(transaction => {
             const matches = transaction.status === expectedStatus;
             if (!matches) {
-              console.log(`[DEBUG] Transaction ${transaction.id} status '${transaction.status}' does not match expected '${expectedStatus}'`);
+(`[DEBUG] Transaction ${transaction.id} status '${transaction.status}' does not match expected '${expectedStatus}'`);
             }
             return matches;
           });
-          console.log(`Filtered to ${filteredData.length} transactions with status: ${expectedStatus}`);
+(`Filtered to ${filteredData.length} transactions with status: ${expectedStatus}`);
         }
         
         this.state.transactions = filteredData;
         this.state.totalTransactions = this.state.transactions.length;
-        console.log('Final loaded transactions:', this.state.transactions.length);
+('Final loaded transactions:', this.state.transactions.length);
         if (this.state.transactions.length > 0) {
-          console.log('Sample transaction:', this.state.transactions[0]);
-          console.log('Sample transaction ID:', this.state.transactions[0].id);
-          console.log('Sample transaction status:', this.state.transactions[0].status);
-          console.log('All transaction IDs:', this.state.transactions.map(t => t.id));
+('Sample transaction:', this.state.transactions[0]);
+('Sample transaction ID:', this.state.transactions[0].id);
+('Sample transaction status:', this.state.transactions[0].status);
+('All transaction IDs:', this.state.transactions.map(t => t.id));
         }
         
         // Áp dụng các filter từ form nếu có
@@ -1654,12 +1404,12 @@ export class TransactionListTab extends Component {
         this.updateRegularDisplay();
         
         // Debug: Log final state
-        console.log('=== DEBUG FINAL STATE ===');
-        console.log('transactions.length:', this.state.transactions.length);
-        console.log('filteredTransactions.length:', this.state.filteredTransactions.length);
-        console.log('displayedTransactions.length:', this.state.displayedTransactions.length);
-        console.log('totalTransactions:', this.state.totalTransactions);
-        console.log('========================');
+('=== DEBUG FINAL STATE ===');
+('transactions.length:', this.state.transactions.length);
+('filteredTransactions.length:', this.state.filteredTransactions.length);
+('displayedTransactions.length:', this.state.displayedTransactions.length);
+('totalTransactions:', this.state.totalTransactions);
+('========================');
       } else {
         console.error('Error loading transactions:', response ? response.message : 'No response');
         this.state.transactions = [];
@@ -1697,8 +1447,10 @@ export class TransactionListTab extends Component {
           
           // Special handling for date filter
           if (field === 'transaction_date' && value) {
-            const itemDate = item[field] ? new Date(item[field]) : null;
-            if (!itemDate) return false;
+            // Ưu tiên date_end, sau đó created_at, cuối cùng create_date
+            const itemDateValue = item.date_end || item.created_at || item.create_date || item[field];
+            const itemDate = itemDateValue ? new Date(itemDateValue) : null;
+            if (!itemDate || isNaN(itemDate.getTime())) return false;
             // So sánh ngày không tính timezone
             const itemDateStr = itemDate.getFullYear() + '-' + 
               String(itemDate.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -1725,36 +1477,36 @@ export class TransactionListTab extends Component {
   }
 
   applyAllFilters() {
-    console.log('[DEBUG] ===== APPLY ALL FILTERS DEBUG START =====');
-    console.log('[DEBUG] selectedFundId:', this.state.selectedFundId);
-    console.log('[DEBUG] selectedDate:', this.state.selectedDate);
-    console.log('[DEBUG] selectedQuickDate:', this.state.selectedQuickDate);
-    console.log('[DEBUG] form filters:', this.state.filters);
-    console.log('[DEBUG] Original transactions length:', this.state.transactions.length);
+('[DEBUG] ===== APPLY ALL FILTERS DEBUG START =====');
+('[DEBUG] selectedFundId:', this.state.selectedFundId);
+('[DEBUG] selectedDate:', this.state.selectedDate);
+('[DEBUG] selectedQuickDate:', this.state.selectedQuickDate);
+('[DEBUG] form filters:', this.state.filters);
+('[DEBUG] Original transactions length:', this.state.transactions.length);
     
     let filtered = [...this.state.transactions];
 
     // 1. Apply dropdown filters first (fund, date)
     if (this.state.selectedFundId) {
-      console.log('[DEBUG] Filtering by fund:', this.state.selectedFundId);
+('[DEBUG] Filtering by fund:', this.state.selectedFundId);
       const beforeLength = filtered.length;
       filtered = filtered.filter(tx => {
         const matches = Number(tx.fund_id) === Number(this.state.selectedFundId);
         if (!matches) {
-          console.log(`[DEBUG] Transaction ${tx.id} fund_id ${tx.fund_id} (${typeof tx.fund_id}) does not match selected ${this.state.selectedFundId} (${typeof this.state.selectedFundId})`);
+(`[DEBUG] Transaction ${tx.id} fund_id ${tx.fund_id} (${typeof tx.fund_id}) does not match selected ${this.state.selectedFundId} (${typeof this.state.selectedFundId})`);
         }
         return matches;
       });
-      console.log(`[DEBUG] After fund filter: ${filtered.length} (from ${beforeLength})`);
+(`[DEBUG] After fund filter: ${filtered.length} (from ${beforeLength})`);
     }
 
     // Filter by specific date
     if (this.state.selectedDate) {
-      console.log('[DEBUG] Filtering by date:', this.state.selectedDate);
+('[DEBUG] Filtering by date:', this.state.selectedDate);
       const beforeLength = filtered.length;
 
       filtered = filtered.filter(tx => {
-        const txDate = new Date(tx.transaction_date || tx.created_at || tx.create_date);
+        const txDate = new Date(tx.date_end || tx.created_at || tx.create_date);
         if (!txDate) return false;
         
         // So sánh ngày không tính timezone
@@ -1764,16 +1516,16 @@ export class TransactionListTab extends Component {
         
         const matches = txDateStr === this.state.selectedDate;
         if (!matches) {
-          console.log(`[DEBUG] Transaction ${tx.id} date ${tx.transaction_date} (${txDateStr}) does not match selected date (${this.state.selectedDate})`);
+(`[DEBUG] Transaction ${tx.id} date ${tx.transaction_date} (${txDateStr}) does not match selected date (${this.state.selectedDate})`);
         }
         return matches;
       });
-      console.log(`[DEBUG] After date filter: ${filtered.length} (from ${beforeLength})`);
+(`[DEBUG] After date filter: ${filtered.length} (from ${beforeLength})`);
     }
 
     // Filter by quick date
     if (this.state.selectedQuickDate) {
-      console.log('[DEBUG] Filtering by quick date:', this.state.selectedQuickDate);
+('[DEBUG] Filtering by quick date:', this.state.selectedQuickDate);
       const today = new Date();
       let fromTime, toTime;
       const beforeLength = filtered.length;
@@ -1798,17 +1550,17 @@ export class TransactionListTab extends Component {
       }
 
       if (fromTime && toTime) {
-        console.log('[DEBUG] Quick date range:', new Date(fromTime), 'to', new Date(toTime));
+('[DEBUG] Quick date range:', new Date(fromTime), 'to', new Date(toTime));
         filtered = filtered.filter(tx => {
-          const txDate = new Date(tx.transaction_date || tx.created_at || tx.create_date);
+          const txDate = new Date(tx.date_end || tx.created_at || tx.create_date);
           const txTime = txDate.getTime();
           const matches = txTime >= fromTime && txTime <= toTime;
           if (!matches) {
-            console.log(`[DEBUG] Transaction ${tx.id} date ${tx.transaction_date} does not match quick date range`);
+(`[DEBUG] Transaction ${tx.id} date ${tx.transaction_date} does not match quick date range`);
           }
           return matches;
         });
-        console.log(`[DEBUG] After quick date filter: ${filtered.length} (from ${beforeLength})`);
+(`[DEBUG] After quick date filter: ${filtered.length} (from ${beforeLength})`);
       }
     }
 
@@ -1816,15 +1568,17 @@ export class TransactionListTab extends Component {
     Object.keys(this.state.filters).forEach(field => {
       const value = this.state.filters[field];
       if (value && value.trim() !== '') {
-        console.log(`[DEBUG] Applying text filter ${field}:`, value);
+(`[DEBUG] Applying text filter ${field}:`, value);
         const beforeLength = filtered.length;
         filtered = filtered.filter(item => {
           const itemValue = String(item[field] || '').toLowerCase();
           
           // Special handling for date filter
           if (field === 'transaction_date' && value) {
-            const itemDate = item[field] ? new Date(item[field]) : null;
-            if (!itemDate) return false;
+            // Ưu tiên date_end, sau đó created_at, cuối cùng create_date
+            const itemDateValue = item.date_end || item.created_at || item.create_date || item[field];
+            const itemDate = itemDateValue ? new Date(itemDateValue) : null;
+            if (!itemDate || isNaN(itemDate.getTime())) return false;
             // So sánh ngày không tính timezone
             const itemDateStr = itemDate.getFullYear() + '-' + 
               String(itemDate.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -1834,12 +1588,12 @@ export class TransactionListTab extends Component {
           
           return itemValue.includes(value.toLowerCase());
         });
-        console.log(`[DEBUG] After text filter ${field}: ${filtered.length} (from ${beforeLength})`);
+(`[DEBUG] After text filter ${field}: ${filtered.length} (from ${beforeLength})`);
       }
     });
 
-    console.log('[DEBUG] Final filtered length:', filtered.length);
-    console.log('[DEBUG] ===== APPLY ALL FILTERS DEBUG END =====');
+('[DEBUG] Final filtered length:', filtered.length);
+('[DEBUG] ===== APPLY ALL FILTERS DEBUG END =====');
 
     this.state.filteredTransactions = filtered;
     this.state.regularPagination.totalItems = filtered.length;
@@ -1867,26 +1621,26 @@ export class TransactionListTab extends Component {
   }
 
   async deleteTransaction(transactionId) {
-    console.log('Delete transaction called with ID:', transactionId);
-    console.log('Transaction ID type:', typeof transactionId);
+('Delete transaction called with ID:', transactionId);
+('Transaction ID type:', typeof transactionId);
     
     if (!confirm('Bạn có chắc chắn muốn xóa giao dịch này? Hành động này không thể hoàn tác.')) {
-      console.log('User cancelled deletion');
+('User cancelled deletion');
       return;
     }
 
     try {
-      console.log('Sending delete request for transaction ID:', transactionId);
+('Sending delete request for transaction ID:', transactionId);
       
       // Đảm bảo transactionId là số
       const numericId = parseInt(transactionId);
-      console.log('Numeric ID:', numericId);
+('Numeric ID:', numericId);
       
       // Thử phương thức đơn giản trước
       const formData = new FormData();
       formData.append('transaction_id', numericId);
       
-      console.log('Using simple HTTP delete method');
+('Using simple HTTP delete method');
       
       const response = await fetch('/api/transaction-list/delete-simple', {
         method: 'POST',
@@ -1896,17 +1650,17 @@ export class TransactionListTab extends Component {
         }
       });
       
-      console.log('Response status:', response.status);
+('Response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const result = await response.json();
-      console.log('Delete result:', result);
+('Delete result:', result);
 
       if (result.success) {
-        console.log('Transaction deleted successfully');
+('Transaction deleted successfully');
         alert('Giao dịch đã được xóa thành công!');
         this.loadTransactions(); // Reload data
       } else {
@@ -1923,17 +1677,17 @@ export class TransactionListTab extends Component {
       });
       
       // Fallback to original method if simple method fails
-      console.log('Trying fallback method...');
+('Trying fallback method...');
       try {
         const params = {
           transaction_id: parseInt(transactionId)
         };
         
         const response = await this.rpc('/api/transaction-list/delete', params);
-        console.log('Fallback response:', response);
+('Fallback response:', response);
         
         if (response && response.success) {
-          console.log('Transaction deleted successfully via fallback');
+('Transaction deleted successfully via fallback');
           alert('Giao dịch đã được xóa thành công!');
           this.loadTransactions();
         } else {
@@ -1994,25 +1748,13 @@ export class TransactionListTab extends Component {
       const result = await response.json();
       
       if (result.success) {
-        this.showNotification('🎲 Tạo Random Transactions Thành Công! (12 giao dịch: Lệnh mua từ current NAV trở lên, Lệnh bán từ giá trung bình NAV đầu ngày × chi phí vốn, làm tròn bội số 50)', 'success');
-        
-        // Hiển thị danh sách giao dịch được tạo
-        if (result.transactions) {
-          console.log('Giao dịch được tạo (sắp xếp theo thời gian):', result.transactions);
-        }
-        
-        // Debug: Log current tab before reload
-        console.log('=== DEBUG BEFORE RELOAD ===');
-        console.log('Current activeSubTab:', this.state.activeSubTab);
-        console.log('========================');
-        
-        // Reload data để hiển thị transactions mới
+        this.showNotification(`Tạo thành công ${result.created_count || 0} giao dịch random`, 'success');
         this.loadData();
       } else {
-        this.showNotification('❌ Lỗi khi tạo random transactions: ' + result.message, 'error');
+        this.showNotification('Lỗi tạo random transactions: ' + result.message, 'error');
       }
     } catch (error) {
-      this.showNotification('❌ Lỗi kết nối: ' + error.message, 'error');
+      this.showNotification('Lỗi kết nối: ' + error.message, 'error');
     }
   }
 
@@ -2020,14 +1762,11 @@ export class TransactionListTab extends Component {
   async matchOrders() {
     try {
       const payload = {
-        status_mode: 'auto',
-        use_time_priority: true,
-        match_type: 'investor_investor', // Chỉ khớp investor-investor
+        match_type: 'all',
+        use_time_priority: true,  // Sử dụng Price-Time Priority (FIFO)
+        status_mode: 'pending'
       };
-      // Nếu có filter fund đang chọn, gửi kèm để khớp theo quỹ
-      if (this.state?.filters?.matchedFundId) {
-        payload.fund_id = this.state.filters.matchedFundId;
-      }
+      
       const response = await fetch('/api/transaction-list/match-orders', {
         method: 'POST',
         headers: {
@@ -2039,215 +1778,67 @@ export class TransactionListTab extends Component {
       const result = await response.json();
       
       if (result.success) {
-        console.log('[DEBUG] Khớp lệnh thành công:', result);
-        console.log('[DEBUG] Số cặp lệnh khớp:', result.matched_pairs?.length || 0);
-        
-        this.showNotification(`✅ Khớp Lệnh Thành Công! Đã khớp ${result.matched_pairs?.length || 0} cặp lệnh`, 'success');
-        
-        // Hiển thị popup với các cặp lệnh khớp (sẽ lấy từ backend)
-        this.showMatchingResults(result);
-        
-        // Reload data để hiển thị trạng thái mới
+        const algorithmUsed = result.algorithm_used || 'Price-Time Priority (FIFO)';
+        this.showNotification(`Khớp lệnh thành công: ${result.summary?.total_matched || 0} cặp (${algorithmUsed})`, 'success');
+        // Hiển thị popup kết quả khớp lệnh ngay
+        await this.showMatchingResults(result);
+        // Sau đó refresh dữ liệu danh sách
         this.loadData();
       } else {
-        console.error('[DEBUG] Khớp lệnh thất bại:', result);
-        this.showNotification('❌ Lỗi khi khớp lệnh: ' + result.message, 'error');
+        this.showNotification('Lỗi khớp lệnh: ' + result.message, 'error');
       }
     } catch (error) {
-      this.showNotification('❌ Lỗi kết nối: ' + error.message, 'error');
+      this.showNotification('Lỗi kết nối: ' + error.message, 'error');
     }
   }
 
   async marketMakerHandleRemainingFromMenu() {
     try {
-      // BẮT BUỘC: lọc theo lợi nhuận dựa trên NAV hiện tại và cap chặn trên/dưới
-      const selectedFundId = this.state.selectedFundId || this.state.selectedMatchedFundId;
-      if (!selectedFundId) {
-        this.showNotification('⚠️ Vui lòng chọn Quỹ trước khi Market Maker xử lý.', 'warning');
+      // Thu thập pending còn lại trên UI hiện tại (không cần filter theo fund)
+      const currentData = this.state.showCalculatedResults ? (this.state.calculatedTransactions || []) : (this.state.filteredTransactions || []);
+      const buys = (currentData || []).filter(tx => (tx.transaction_type || '').toLowerCase() === 'purchase');
+      const sells = (currentData || []).filter(tx => (tx.transaction_type || '').toLowerCase() === 'sell');
+
+      const remaining_buys = buys.map(tx => tx.id);
+      const remaining_sells = sells.map(tx => tx.id);
+      if (remaining_buys.length === 0 && remaining_sells.length === 0) {
+        this.showNotification('ℹ️ Không có lệnh hợp lệ để xử lý.', 'info');
         return;
       }
 
-      // Xác định khoảng ngày theo filter UI (ưu tiên selectedMatchedDate để đồng bộ với bảng khớp lệnh)
-      const dateStr = this.state.selectedMatchedDate || this.state.selectedDate || '';
-      let fromDate = null, toDate = null;
-      if (dateStr) {
-        fromDate = `${dateStr}`;
-        toDate = `${dateStr}`;
-      }
-
-      // Sử dụng API từ nav_management để tính toán và lọc lệnh có lãi
-      let profitableData;
-      let profitableTransactions = [];
-      
-      try {
-        const profitableResponse = await fetch('/nav_management/api/calculate_nav_transaction', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            params: {
-              fund_id: Number(selectedFundId),
-              from_date: fromDate,
-              to_date: toDate
-            }
-          })
-        });
-
-        console.log('[DEBUG] Profitable API response status:', profitableResponse.status);
-        console.log('[DEBUG] Profitable API response ok:', profitableResponse.ok);
-
-        if (!profitableResponse.ok) {
-          const errorText = await profitableResponse.text();
-          console.error('[DEBUG] API response error:', errorText);
-          console.warn('[DEBUG] Fallback to old getProfitableTxIds method');
-          // Fallback to old method
-          const profitableIds = await this.getProfitableTxIds(selectedFundId, fromDate, toDate);
-          profitableTransactions = Array.from(profitableIds).map(id => ({ id: id }));
-        } else {
-          profitableData = await profitableResponse.json();
-          console.log('[DEBUG] Profitable API response data:', profitableData);
-
-          // Kiểm tra JSON-RPC response format
-          if (profitableData.result && profitableData.result.success) {
-            // API trả về success=true trong result
-            profitableTransactions = profitableData.result.transactions || [];
-            console.log('[DEBUG] API success=true, transactions:', profitableTransactions.length);
-          } else if (profitableData.result && !profitableData.result.success) {
-            // API trả về success=false trong result
-            console.error('[DEBUG] API returned success=false in result:', profitableData.result);
-            console.warn('[DEBUG] Fallback to old getProfitableTxIds method');
-            const profitableIds = await this.getProfitableTxIds(selectedFundId, fromDate, toDate);
-            profitableTransactions = Array.from(profitableIds).map(id => ({ id: id }));
-          } else if (profitableData.success === false) {
-            // API trả về success=false ở root level
-            console.error('[DEBUG] API returned success=false at root:', profitableData);
-            console.warn('[DEBUG] Fallback to old getProfitableTxIds method');
-            const profitableIds = await this.getProfitableTxIds(selectedFundId, fromDate, toDate);
-            profitableTransactions = Array.from(profitableIds).map(id => ({ id: id }));
-          } else {
-            // Không có success field, thử lấy transactions trực tiếp
-            profitableTransactions = profitableData.transactions || profitableData.result?.transactions || [];
-            console.log('[DEBUG] No success field, using transactions directly:', profitableTransactions.length);
-          }
-        }
-      } catch (error) {
-        console.error('[DEBUG] Exception when calling profitable API:', error);
-        console.warn('[DEBUG] Fallback to old getProfitableTxIds method');
-        // Fallback to old method
-        try {
-          const profitableIds = await this.getProfitableTxIds(selectedFundId, fromDate, toDate);
-          profitableTransactions = Array.from(profitableIds).map(id => ({ id: id }));
-        } catch (fallbackError) {
-          console.error('[DEBUG] Fallback method also failed:', fallbackError);
-          this.showNotification('❌ Lỗi tính toán lãi: Không thể kết nối API', 'error');
-          return;
-        }
-      }
-
-      if (profitableTransactions.length === 0) {
-        this.showNotification('ℹ️ Không có lệnh nào thỏa điều kiện lãi để Market Maker xử lý.', 'info');
-        return;
-      }
-
-      // Lấy danh sách ID các lệnh có lãi
-      const profitableIds = new Set(profitableTransactions.map(tx => Number(tx.id)));
-
-      // Gọi khớp lệnh trước để lấy remaining
-      const matchResp = await fetch('/api/transaction-list/match-orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const matchData = await matchResp.json();
-      if (!matchData.success) {
-        this.showNotification('❌ Lỗi khớp lệnh: ' + (matchData.message || 'Không xác định'), 'error');
-        return;
-      }
-
-      // Gắn nhãn nguồn cho cặp từ engine khớp lệnh
-      const enginePairs = (matchData.matched_pairs || []).map(p => ({ ...p, _sourceType: 'investor' }));
-
-      const remainingBuys = (matchData.remaining?.buys || []).map(b => b.id);
-      const remainingSells = (matchData.remaining?.sells || []).map(s => s.id);
-
-      if (remainingBuys.length === 0 && remainingSells.length === 0) {
-        this.showNotification('ℹ️ Không còn lệnh chờ để Market Maker xử lý.', 'info');
-        // Hiển thị popup với thông tin lệnh có lãi nhưng không có lệnh pending
-        this.showMatchingResults({
-          matched_pairs: enginePairs,
-          remaining: matchData.remaining || { buys: [], sells: [] },
-          algorithm_used: matchData.algorithm_used || 'Best Price First',
-          profitable_info: {
-            total_profitable: profitableTransactions.length,
-            profitable_transactions: profitableTransactions,
-            is_fallback: !profitableData || (!profitableData.result?.success && !profitableData.success)
-          }
-        });
-        return;
-      }
-
-      // Lọc chỉ các lệnh CÓ LÃI để Market Maker xử lý
-      const filteredBuys = remainingBuys.filter(id => profitableIds.has(Number(id)));
-      const filteredSells = remainingSells.filter(id => profitableIds.has(Number(id)));
-      
-      if (filteredBuys.length === 0 && filteredSells.length === 0) {
-        this.showNotification('ℹ️ Không có lệnh pending nào thỏa điều kiện lãi để Market Maker xử lý.', 'info');
-        // Hiển thị popup với thông tin lệnh có lãi nhưng không có lệnh pending
-        this.showMatchingResults({
-          matched_pairs: enginePairs,
-          remaining: matchData.remaining || { buys: [], sells: [] },
-          algorithm_used: matchData.algorithm_used || 'Best Price First',
-          profitable_info: {
-            total_profitable: profitableTransactions.length,
-            profitable_transactions: profitableTransactions,
-            is_fallback: !profitableData || (!profitableData.result?.success && !profitableData.success)
-          }
-        });
-        return;
-      }
-
-      // Gọi xử lý phần còn lại bằng Market Maker chỉ với các lệnh CÓ LÃI
-      const resp = await fetch('/api/transaction-list/market-maker/handle-remaining', {
+      // Gọi API bulk NTL (không cần kiểm tra lãi)
+      const res = await fetch('/api/transaction-list/market-maker/handle-remaining', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ remaining_buys: filteredBuys, remaining_sells: filteredSells })
+        body: JSON.stringify({ remaining_buys, remaining_sells })
       });
-      const data = await resp.json();
-      if (data.success) {
-        this.showNotification('✅ Market Maker đã xử lý phần còn lại', 'success');
-        // Kết hợp cặp từ matchData và từ market maker để hiển thị đầy đủ
-        const mmPairs = (data.matched_pairs || []).map(p => ({ ...p, _sourceType: 'market_maker' }));
-        const combinedPairs = [
-          ...enginePairs,
-          ...mmPairs
-        ];
-        const modalPayload = {
-          matched_pairs: combinedPairs,
-          remaining: data.remaining || matchData.remaining || { buys: [], sells: [] },
-          algorithm_used: `Market Maker + ${matchData.algorithm_used || 'Best Price First'}`,
-          match_type: 'market_maker_investor', // Chỉ hiển thị market maker-investor
-          profitable_info: {
-            total_profitable: profitableTransactions.length,
-            profitable_transactions: profitableTransactions,
-            filtered_buys: filteredBuys,
-            filtered_sells: filteredSells
-          }
-        };
-        this.showMatchingResults(modalPayload);
-        this.loadData();
 
-        // Recalc tồn kho cho statcard (today hoặc theo ngày đã chọn)
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}: ${txt || res.statusText}`);
+      }
+
+      const data = await res.json();
+      const ok = !!(data && data.success);
+      this.showNotification(ok ? '✅ Đã xử lý Nhà tạo lập' : ('❌ Lỗi: ' + (data && data.message || 'Không xác định')), ok ? 'success' : 'error');
+
+      if (ok) {
+        // Hiển thị popup kết quả
+        const annotated = (data.matched_pairs || []).map(p => ({ ...p, _sourceType: 'market_maker' }));
+        this.showMatchingResults({ matched_pairs: annotated, remaining: data.remaining || { buys: [], sells: [] }, algorithm_used: 'Market Maker' });
+        // Làm mới dữ liệu bảng và bộ đếm
+        this.loadData();
+        // Recalc tồn kho cho statcard (không cần fund_id cụ thể)
         try {
           await fetch('/nav_management/api/inventory/recalc_after_match', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jsonrpc: '2.0', params: { fund_id: Number(selectedFundId), inventory_date: dateStr || undefined } })
+            body: JSON.stringify({ jsonrpc: '2.0', params: {} })
           });
         } catch (_) {}
-      } else {
-        this.showNotification('❌ Lỗi: ' + (data.message || 'Không xác định'), 'error');
       }
-    } catch (e) {
-      this.showNotification('❌ Lỗi kết nối: ' + e.message, 'error');
+      } catch (error) {
+      this.showNotification('❌ Lỗi Market Maker: ' + error.message, 'error');
     }
   }
 
@@ -2260,7 +1851,7 @@ export class TransactionListTab extends Component {
     let allMatchedPairs = [];
     
     try {
-      console.log('[DEBUG] Bắt đầu gọi API matched-pairs để lấy tất cả cặp lệnh thực tế');
+('[DEBUG] Bắt đầu gọi API matched-pairs để lấy tất cả cặp lệnh thực tế');
       
       // Gọi API đúng endpoint để lấy tất cả cặp lệnh đã khớp từ backend
       const body = {
@@ -2271,7 +1862,7 @@ export class TransactionListTab extends Component {
       if (this.state?.filters?.matchedFundId) {
         body.fund_id = this.state.filters.matchedFundId;
       }
-      const response = await fetch('/api/transaction-list/get-matched-pairs', {
+      const response = await fetch('/api/transaction-list/get-matched-orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2279,18 +1870,18 @@ export class TransactionListTab extends Component {
         body: JSON.stringify(body)
       });
       
-      console.log('[DEBUG] API response status:', response.status);
-      console.log('[DEBUG] API response ok:', response.ok);
+('[DEBUG] API response status:', response.status);
+('[DEBUG] API response ok:', response.ok);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('[DEBUG] API response data:', data);
-        console.log('[DEBUG] API success:', data?.success);
-        console.log('[DEBUG] API matched_pairs length:', data?.matched_pairs?.length);
+('[DEBUG] API response data:', data);
+('[DEBUG] API success:', data?.success);
+('[DEBUG] API data length:', data?.data?.length);
         
-        if (data.success && data.matched_pairs) {
+        if (data.success && data.data) {
           // Lọc theo loại khớp lệnh
-          allMatchedPairs = data.matched_pairs.filter(pair => {
+          allMatchedPairs = data.data.filter(pair => {
             const isSingle = pair._pairType === 'investor_single' || 
                             pair._pairType === 'market_maker_single' ||
                             !pair.buy_id || !pair.sell_id ||
@@ -2314,9 +1905,9 @@ export class TransactionListTab extends Component {
             // Mặc định: hiển thị tất cả
             return true;
           });
-          console.log(`[DEBUG] Lấy được ${data.matched_pairs.length} cặp lệnh từ backend, sau khi lọc theo loại khớp còn ${allMatchedPairs.length} cặp`);
+(`[DEBUG] Lấy được ${data.data.length} cặp lệnh từ backend, sau khi lọc theo loại khớp còn ${allMatchedPairs.length} cặp`);
         } else {
-          console.warn('[DEBUG] API trả về không thành công:', data);
+          // API trả về không thành công, bỏ qua không hiển thị lỗi
           allMatchedPairs = [];
         }
       } else {
@@ -2332,7 +1923,7 @@ export class TransactionListTab extends Component {
     // Đảm bảo dữ liệu nhất quán: nếu có dữ liệu từ lần khớp hiện tại, kết hợp với dữ liệu từ backend
     const currentMatchedPairs = result.matched_pairs || [];
     if (currentMatchedPairs.length > 0) {
-      console.log(`[DEBUG] Có ${currentMatchedPairs.length} cặp lệnh từ lần khớp hiện tại`);
+(`[DEBUG] Có ${currentMatchedPairs.length} cặp lệnh từ lần khớp hiện tại`);
       
       // Lọc theo loại khớp lệnh từ current match
       const currentFilteredPairs = currentMatchedPairs.filter(pair => {
@@ -2360,12 +1951,12 @@ export class TransactionListTab extends Component {
         return true;
       });
       
-      console.log(`[DEBUG] Current match sau khi lọc single: ${currentFilteredPairs.length} cặp`);
+(`[DEBUG] Current match sau khi lọc single: ${currentFilteredPairs.length} cặp`);
       
       // Kết hợp dữ liệu: ưu tiên dữ liệu từ backend, nhưng đảm bảo có dữ liệu từ current match
       if (allMatchedPairs.length === 0) {
         allMatchedPairs = currentFilteredPairs;
-        console.log(`[DEBUG] Sử dụng dữ liệu từ current match: ${allMatchedPairs.length} cặp`);
+(`[DEBUG] Sử dụng dữ liệu từ current match: ${allMatchedPairs.length} cặp`);
       } else {
         // Kết hợp và loại bỏ trùng lặp
         const combinedPairs = [...allMatchedPairs];
@@ -2379,7 +1970,7 @@ export class TransactionListTab extends Component {
           }
         });
         allMatchedPairs = combinedPairs;
-        console.log(`[DEBUG] Kết hợp dữ liệu: ${allMatchedPairs.length} cặp (${allMatchedPairs.length - currentFilteredPairs.length} từ backend + ${currentFilteredPairs.length} từ current match)`);
+(`[DEBUG] Kết hợp dữ liệu: ${allMatchedPairs.length} cặp (${allMatchedPairs.length - currentFilteredPairs.length} từ backend + ${currentFilteredPairs.length} từ current match)`);
       }
     }
     
@@ -2393,21 +1984,21 @@ export class TransactionListTab extends Component {
     }, 0);
     const avgPrice = totalCCQ > 0 ? totalValue / totalCCQ : 0;
     
-    console.log(`[DEBUG] Thống kê từ lần khớp hiện tại: ${totalMatched} cặp lệnh, ${totalCCQ.toLocaleString()} CCQ, ${totalValue.toLocaleString()} VND`);
-    console.log(`[DEBUG] Bảng tổng hợp sẽ hiển thị ${allMatchedPairs.length} cặp lệnh từ backend`);
+(`[DEBUG] Thống kê từ lần khớp hiện tại: ${totalMatched} cặp lệnh, ${totalCCQ.toLocaleString()} CCQ, ${totalValue.toLocaleString()} VND`);
+(`[DEBUG] Bảng tổng hợp sẽ hiển thị ${allMatchedPairs.length} cặp lệnh từ backend`);
     
     // Lấy warnings từ result
     const warnings = result.warnings || [];
-    console.log(`[DEBUG] Warnings: ${warnings.length} cảnh báo`, warnings);
+(`[DEBUG] Warnings: ${warnings.length} cảnh báo`, warnings);
 
     // Helper: lấy tên quỹ từ pair hoặc từ filter hiện tại
     const getFundNameFromPair = (pair) => {
-      console.log('[DEBUG] getFundNameFromPair called with pair:', pair);
+('[DEBUG] getFundNameFromPair called with pair:', pair);
       
       // 1. Thử lấy trực tiếp từ pair data
       const direct = pair.fund_name || pair.buy_fund_name || pair.sell_fund_name || '';
       if (direct) {
-        console.log('[DEBUG] Found direct fund name:', direct);
+('[DEBUG] Found direct fund name:', direct);
         return direct;
       }
       
@@ -2416,7 +2007,7 @@ export class TransactionListTab extends Component {
       if (fundId && this.state?.fundOptions?.length) {
         const fundOption = this.state.fundOptions.find(f => String(f.id) === String(fundId));
         if (fundOption && fundOption.name) {
-          console.log('[DEBUG] Found fund name from fund_id:', fundOption.name);
+('[DEBUG] Found fund name from fund_id:', fundOption.name);
           return fundOption.name;
         }
       }
@@ -2426,12 +2017,12 @@ export class TransactionListTab extends Component {
       if (selectedFundId && this.state?.fundOptions?.length) {
         const fo = this.state.fundOptions.find(f => String(f.id) === String(selectedFundId));
         if (fo && fo.name) {
-          console.log('[DEBUG] Found fund name from filter:', fo.name);
+('[DEBUG] Found fund name from filter:', fo.name);
           return fo.name;
         }
       }
       
-      console.log('[DEBUG] No fund name found, returning N/A');
+('[DEBUG] No fund name found, returning N/A');
       return 'N/A';
     };
 
@@ -2571,7 +2162,7 @@ export class TransactionListTab extends Component {
                         pair.buy_id === 'N/A' || pair.sell_id === 'N/A';
         
         if (isSingle) {
-          console.log(`[DEBUG] Bỏ qua single pair ${idx + 1}:`, {
+(`[DEBUG] Bỏ qua single pair ${idx + 1}:`, {
             buy_id: pair.buy_id,
             sell_id: pair.sell_id,
             _pairType: pair._pairType
@@ -2583,7 +2174,7 @@ export class TransactionListTab extends Component {
       })
       .map((pair, idx) => {
         // Debug: Log dữ liệu pair gốc
-        console.log(`[DEBUG] Original pair ${idx + 1}:`, {
+(`[DEBUG] Original pair ${idx + 1}:`, {
           buy_id: pair.buy_id,
           sell_id: pair.sell_id,
           _pairType: pair._pairType,
@@ -2690,7 +2281,7 @@ export class TransactionListTab extends Component {
         };
         
         // Debug: Log normalized pair
-        console.log(`[DEBUG] Normalized pair ${idx + 1}:`, {
+(`[DEBUG] Normalized pair ${idx + 1}:`, {
           buy_id: normalizedPair.buy_id,
           sell_id: normalizedPair.sell_id,
           _pairType: normalizedPair._pairType,
@@ -2703,18 +2294,18 @@ export class TransactionListTab extends Component {
       });
 
     const buildFilteredPairs = (filter) => {
-      console.log(`[DEBUG] ===== FILTER DEBUG START =====`);
-      console.log(`[DEBUG] Filtering with: ${filter}`);
-      console.log(`[DEBUG] normalizedPairs available:`, !!normalizedPairs);
-      console.log(`[DEBUG] Total pairs before filter: ${normalizedPairs ? normalizedPairs.length : 'undefined'}`);
+(`[DEBUG] ===== FILTER DEBUG START =====`);
+(`[DEBUG] Filtering with: ${filter}`);
+(`[DEBUG] normalizedPairs available:`, !!normalizedPairs);
+(`[DEBUG] Total pairs before filter: ${normalizedPairs ? normalizedPairs.length : 'undefined'}`);
       
       if (!normalizedPairs || normalizedPairs.length === 0) {
-        console.log(`[DEBUG] ERROR: normalizedPairs is empty or undefined!`);
+(`[DEBUG] ERROR: normalizedPairs is empty or undefined!`);
         return [];
       }
       
       // Debug: Log tất cả pairs để kiểm tra
-      console.log(`[DEBUG] All pairs data:`, normalizedPairs.map(p => ({
+(`[DEBUG] All pairs data:`, normalizedPairs.map(p => ({
         buy_id: p.buy_id,
         sell_id: p.sell_id,
         buy_investor: p.buy_investor,
@@ -2727,7 +2318,7 @@ export class TransactionListTab extends Component {
       })));
       
       if (filter === 'all') {
-        console.log(`[DEBUG] Showing all pairs: ${normalizedPairs.length}`);
+(`[DEBUG] Showing all pairs: ${normalizedPairs.length}`);
         return normalizedPairs;
       }
       
@@ -2743,7 +2334,7 @@ export class TransactionListTab extends Component {
           const buyInvestor = p.buy_investor || p.buy_name || '';
           const sellInvestor = p.sell_investor || p.sell_name || '';
           
-          console.log(`[DEBUG] Pair ${p.buy_id}-${p.sell_id}: pairType=${pairType}, buyUserType=${buyUserType}, sellUserType=${sellUserType}, sourceType=${sourceType}, buySource=${buySource}, sellSource=${sellSource}, buyInvestor=${buyInvestor}, sellInvestor=${sellInvestor}`);
+(`[DEBUG] Pair ${p.buy_id}-${p.sell_id}: pairType=${pairType}, buyUserType=${buyUserType}, sellUserType=${sellUserType}, sourceType=${sourceType}, buySource=${buySource}, sellSource=${sellSource}, buyInvestor=${buyInvestor}, sellInvestor=${sellInvestor}`);
           
           // Logic chính: kiểm tra userType trước (từ backend logic mới)
           let hasInvestor = false;
@@ -2751,20 +2342,20 @@ export class TransactionListTab extends Component {
           if (buyUserType && sellUserType) {
             // Sử dụng userType từ backend logic mới: dựa trên user_id và partner_id
             hasInvestor = (buyUserType === 'investor' && sellUserType === 'investor');
-            console.log(`[DEBUG] Using userType logic: buyUserType=${buyUserType}, sellUserType=${sellUserType}, hasInvestor=${hasInvestor}`);
+(`[DEBUG] Using userType logic: buyUserType=${buyUserType}, sellUserType=${sellUserType}, hasInvestor=${hasInvestor}`);
           } else if (pairType) {
             // Có _pairType: CHỈ lấy investor_investor, LOẠI BỎ market_maker_investor
             hasInvestor = pairType === 'investor_investor';
-            console.log(`[DEBUG] Using pairType logic: ${hasInvestor} (only investor_investor)`);
+(`[DEBUG] Using pairType logic: ${hasInvestor} (only investor_investor)`);
           } else {
             // Không có _pairType: sử dụng userType nếu có
             if (buyUserType || sellUserType) {
               hasInvestor = (buyUserType === 'investor' && sellUserType === 'investor');
-              console.log(`[DEBUG] Using userType fallback: ${hasInvestor} (both must be investor)`);
+(`[DEBUG] Using userType fallback: ${hasInvestor} (both must be investor)`);
             } else if (buySource && sellSource) {
               // Fallback: sử dụng source field từ transaction.py
               hasInvestor = (buySource === 'portal' && sellSource === 'portal');
-              console.log(`[DEBUG] Using source field fallback: buySource=${buySource}, sellSource=${sellSource}, hasInvestor=${hasInvestor}`);
+(`[DEBUG] Using source field fallback: buySource=${buySource}, sellSource=${sellSource}, hasInvestor=${hasInvestor}`);
             } else {
               // Fallback: sử dụng tên nhà đầu tư để phân biệt
               // Market maker thường có tên đặc biệt hoặc pattern khác
@@ -2785,22 +2376,22 @@ export class TransactionListTab extends Component {
               
               // CHỈ lấy cặp có cả 2 bên đều KHÔNG phải market maker (dựa trên tên)
               hasInvestor = !buyIsMM && !sellIsMM;
-              console.log(`[DEBUG] Using name-based logic: buyIsMM=${buyIsMM}, sellIsMM=${sellIsMM}, hasInvestor=${hasInvestor}`);
+(`[DEBUG] Using name-based logic: buyIsMM=${buyIsMM}, sellIsMM=${sellIsMM}, hasInvestor=${hasInvestor}`);
             }
           }
           
           // Fallback cuối cùng: kiểm tra _sourceType nếu có
           if (!hasInvestor && sourceType) {
             hasInvestor = sourceType === 'investor';
-            console.log(`[DEBUG] Using sourceType fallback: ${hasInvestor}`);
+(`[DEBUG] Using sourceType fallback: ${hasInvestor}`);
           }
           
-          console.log(`[DEBUG] Final hasInvestor: ${hasInvestor}`);
+(`[DEBUG] Final hasInvestor: ${hasInvestor}`);
           return hasInvestor;
         });
         
-        console.log(`[DEBUG] Investor filter result: ${filtered.length} pairs`);
-        console.log(`[DEBUG] ===== FILTER DEBUG END =====`);
+(`[DEBUG] Investor filter result: ${filtered.length} pairs`);
+(`[DEBUG] ===== FILTER DEBUG END =====`);
         return filtered;
       }
       
@@ -2816,7 +2407,7 @@ export class TransactionListTab extends Component {
           const buyInvestor = p.buy_investor || p.buy_name || '';
           const sellInvestor = p.sell_investor || p.sell_name || '';
           
-          console.log(`[DEBUG] Pair ${p.buy_id}-${p.sell_id}: pairType=${pairType}, buyUserType=${buyUserType}, sellUserType=${sellUserType}, sourceType=${sourceType}, buySource=${buySource}, sellSource=${sellSource}, buyInvestor=${buyInvestor}, sellInvestor=${sellInvestor}`);
+(`[DEBUG] Pair ${p.buy_id}-${p.sell_id}: pairType=${pairType}, buyUserType=${buyUserType}, sellUserType=${sellUserType}, sourceType=${sourceType}, buySource=${buySource}, sellSource=${sellSource}, buyInvestor=${buyInvestor}, sellInvestor=${sellInvestor}`);
           
           // Logic chính: kiểm tra userType trước (từ backend logic mới)
           let hasMarketMaker = false;
@@ -2824,20 +2415,20 @@ export class TransactionListTab extends Component {
           if (buyUserType && sellUserType) {
             // Sử dụng userType từ backend logic mới: dựa trên user_id và partner_id
             hasMarketMaker = (buyUserType === 'market_maker' || sellUserType === 'market_maker');
-            console.log(`[DEBUG] Using userType logic: buyUserType=${buyUserType}, sellUserType=${sellUserType}, hasMarketMaker=${hasMarketMaker}`);
+(`[DEBUG] Using userType logic: buyUserType=${buyUserType}, sellUserType=${sellUserType}, hasMarketMaker=${hasMarketMaker}`);
           } else if (pairType) {
             // Có _pairType: lấy cả market_maker_investor và investor_market_maker
             hasMarketMaker = pairType === 'market_maker_investor' || pairType === 'investor_market_maker';
-            console.log(`[DEBUG] Using pairType logic: ${hasMarketMaker} (market_maker_investor or investor_market_maker)`);
+(`[DEBUG] Using pairType logic: ${hasMarketMaker} (market_maker_investor or investor_market_maker)`);
           } else {
             // Không có _pairType: sử dụng userType nếu có
             if (buyUserType || sellUserType) {
               hasMarketMaker = (buyUserType === 'market_maker' || sellUserType === 'market_maker');
-              console.log(`[DEBUG] Using userType fallback: ${hasMarketMaker}`);
+(`[DEBUG] Using userType fallback: ${hasMarketMaker}`);
             } else if (buySource && sellSource) {
               // Fallback: sử dụng source field từ transaction.py
               hasMarketMaker = (buySource !== 'portal' || sellSource !== 'portal');
-              console.log(`[DEBUG] Using source field fallback: buySource=${buySource}, sellSource=${sellSource}, hasMarketMaker=${hasMarketMaker}`);
+(`[DEBUG] Using source field fallback: buySource=${buySource}, sellSource=${sellSource}, hasMarketMaker=${hasMarketMaker}`);
             } else {
               // Fallback: sử dụng tên nhà đầu tư để phân biệt
               // Market maker thường có tên đặc biệt hoặc pattern khác
@@ -2858,27 +2449,27 @@ export class TransactionListTab extends Component {
               
               // Lấy cặp có ÍT NHẤT 1 bên là market maker (dựa trên tên)
               hasMarketMaker = buyIsMM || sellIsMM;
-              console.log(`[DEBUG] Using name-based logic: buyIsMM=${buyIsMM}, sellIsMM=${sellIsMM}, hasMarketMaker=${hasMarketMaker}`);
+(`[DEBUG] Using name-based logic: buyIsMM=${buyIsMM}, sellIsMM=${sellIsMM}, hasMarketMaker=${hasMarketMaker}`);
             }
           }
           
           // Fallback cuối cùng: kiểm tra _sourceType nếu có
           if (!hasMarketMaker && sourceType) {
             hasMarketMaker = sourceType === 'market_maker';
-            console.log(`[DEBUG] Using sourceType fallback: ${hasMarketMaker}`);
+(`[DEBUG] Using sourceType fallback: ${hasMarketMaker}`);
           }
           
-          console.log(`[DEBUG] Final hasMarketMaker: ${hasMarketMaker}`);
+(`[DEBUG] Final hasMarketMaker: ${hasMarketMaker}`);
           return hasMarketMaker;
         });
         
-        console.log(`[DEBUG] Market maker filter result: ${filtered.length} pairs`);
-        console.log(`[DEBUG] ===== FILTER DEBUG END =====`);
+(`[DEBUG] Market maker filter result: ${filtered.length} pairs`);
+(`[DEBUG] ===== FILTER DEBUG END =====`);
         return filtered;
       }
       
-      console.log(`[DEBUG] No filter matched, returning all pairs`);
-      console.log(`[DEBUG] ===== FILTER DEBUG END =====`);
+(`[DEBUG] No filter matched, returning all pairs`);
+(`[DEBUG] ===== FILTER DEBUG END =====`);
       return normalizedPairs;
     };
 
@@ -2916,8 +2507,8 @@ export class TransactionListTab extends Component {
       // Lấy tên cho tất cả pairs
       const pairsWithNames = await Promise.all(pairs.map(async (pair, index) => {
         // Debug: Log dữ liệu pair để kiểm tra
-        console.log(`[DEBUG] Pair ${index + 1}:`, pair);
-        console.log(`[DEBUG] Buy fields:`, {
+(`[DEBUG] Pair ${index + 1}:`, pair);
+(`[DEBUG] Buy fields:`, {
           buy_investor: pair.buy_investor,
           buy_name: pair.buy_name,
           buy_id: pair.buy_id,
@@ -2925,7 +2516,7 @@ export class TransactionListTab extends Component {
           buy_source: pair.buy_source,
           _buySource: pair._buySource
         });
-        console.log(`[DEBUG] Sell fields:`, {
+(`[DEBUG] Sell fields:`, {
           sell_investor: pair.sell_investor,
           sell_name: pair.sell_name,
           sell_id: pair.sell_id,
@@ -2933,7 +2524,7 @@ export class TransactionListTab extends Component {
           sell_source: pair.sell_source,
           _sellSource: pair._sellSource
         });
-        console.log(`[DEBUG] Source fields:`, {
+(`[DEBUG] Source fields:`, {
           buy_source: pair.buy_source,
           sell_source: pair.sell_source,
           _buySource: pair._buySource,
@@ -2949,33 +2540,33 @@ export class TransactionListTab extends Component {
         
         // Luôn lấy tên từ API nếu có transaction_id (để đảm bảo tên chính xác)
         if (pair.buy_id && pair.buy_id !== 'N/A') {
-          console.log(`[DEBUG] Getting buy name for transaction ${pair.buy_id}`);
+(`[DEBUG] Getting buy name for transaction ${pair.buy_id}`);
           const apiBuyName = await getInvestorName(pair.buy_id);
-          console.log(`[DEBUG] API returned buy name: ${apiBuyName}`);
+(`[DEBUG] API returned buy name: ${apiBuyName}`);
           if (apiBuyName && apiBuyName !== 'N/A') {
             buyName = apiBuyName;
-            console.log(`[DEBUG] Updated buy name to: ${buyName}`);
+(`[DEBUG] Updated buy name to: ${buyName}`);
           } else {
             // Fallback: nếu API không trả về tên, sử dụng tên có sẵn hoặc tạo tên từ ID
             if (buyName === 'N/A' || !buyName) {
               buyName = `Investor #${pair.buy_id}`;
-              console.log(`[DEBUG] Using fallback buy name: ${buyName}`);
+(`[DEBUG] Using fallback buy name: ${buyName}`);
             }
           }
         }
         
         if (pair.sell_id && pair.sell_id !== 'N/A') {
-          console.log(`[DEBUG] Getting sell name for transaction ${pair.sell_id}`);
+(`[DEBUG] Getting sell name for transaction ${pair.sell_id}`);
           const apiSellName = await getInvestorName(pair.sell_id);
-          console.log(`[DEBUG] API returned sell name: ${apiSellName}`);
+(`[DEBUG] API returned sell name: ${apiSellName}`);
           if (apiSellName && apiSellName !== 'N/A') {
             sellName = apiSellName;
-            console.log(`[DEBUG] Updated sell name to: ${sellName}`);
+(`[DEBUG] Updated sell name to: ${sellName}`);
           } else {
             // Fallback: nếu API không trả về tên, sử dụng tên có sẵn hoặc tạo tên từ ID
             if (sellName === 'N/A' || !sellName) {
               sellName = `Investor #${pair.sell_id}`;
-              console.log(`[DEBUG] Using fallback sell name: ${sellName}`);
+(`[DEBUG] Using fallback sell name: ${sellName}`);
             }
           }
         }
@@ -3203,7 +2794,7 @@ export class TransactionListTab extends Component {
           <td class="text-center">${startIndex + idx + 1}</td>
           <td class="text-center buyer-cell">
             <div class="investor-info">
-                <div class="investor-name">${p.buy_investor || p.buy_name || 'N/A'}</div>
+                <div class="investor-name ${p.buy_investor?.includes('Market Maker') ? 'market-maker' : ''}">${p.buy_investor || p.buy_name || 'N/A'}</div>
                 <div class="investor-details">
                   ${buySTK && buySTK !== 'N/A' && !p.buy_investor?.includes('Market Maker') ? `<small class="text-muted">STK: ${buySTK}</small><br>` : ''}
                   <small class="text-muted">CCQ: ${buyUnits.toLocaleString('vi-VN')}</small>
@@ -3212,7 +2803,7 @@ export class TransactionListTab extends Component {
           </td>
           <td class="text-center seller-cell">
             <div class="investor-info">
-              <div class="investor-name">${p.sell_investor || p.sell_name || 'N/A'}</div>
+              <div class="investor-name ${p.sell_investor?.includes('Market Maker') ? 'market-maker' : ''}">${p.sell_investor || p.sell_name || 'N/A'}</div>
               <div class="investor-details">
                 ${sellSTK && sellSTK !== 'N/A' && !p.sell_investor?.includes('Market Maker') ? `<small class="text-muted">STK: ${sellSTK}</small><br>` : ''}
                 <small class="text-muted">CCQ: ${sellUnits.toLocaleString('vi-VN')}</small>
@@ -3337,8 +2928,8 @@ export class TransactionListTab extends Component {
             <div class="modal-header">
               <div class="d-flex align-items-center">
                 <div class="me-3">
-                  <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-chart-line" style="font-size: 28px;"></i>
+                  <div class="modal-icon-container">
+                    <i class="fas fa-chart-line modal-icon"></i>
                                   </div>
                                 </div>
                 <div>
@@ -3582,26 +3173,26 @@ export class TransactionListTab extends Component {
         const btn = e.target.closest('.pairs-tab');
         const filter = btn.getAttribute('data-filter');
         
-        console.log(`[DEBUG] Tab clicked: ${filter}`);
-        console.log(`[DEBUG] Button element:`, btn);
-        console.log(`[DEBUG] Current filter data:`, filter);
+(`[DEBUG] Tab clicked: ${filter}`);
+(`[DEBUG] Button element:`, btn);
+(`[DEBUG] Current filter data:`, filter);
         
         if (filter) {
-          console.log(`[DEBUG] ===== CLICK FILTER DEBUG START =====`);
-          console.log(`[DEBUG] Filter clicked: ${filter}`);
-          console.log(`[DEBUG] window.currentPairsData:`, window.currentPairsData);
+(`[DEBUG] ===== CLICK FILTER DEBUG START =====`);
+(`[DEBUG] Filter clicked: ${filter}`);
+(`[DEBUG] window.currentPairsData:`, window.currentPairsData);
           
           window.currentPairsData.currentFilter = filter;
           window.currentPairsData.currentPage = 1;
           
-          console.log(`[DEBUG] Before filtering - total pairs: ${window.currentPairsData.allPairs.length}`);
+(`[DEBUG] Before filtering - total pairs: ${window.currentPairsData.allPairs.length}`);
           const pairs = buildFilteredPairs(filter);
-          console.log(`[DEBUG] After filtering - filtered pairs: ${pairs.length}`);
-          console.log(`[DEBUG] ===== CLICK FILTER DEBUG END =====`);
+(`[DEBUG] After filtering - filtered pairs: ${pairs.length}`);
+(`[DEBUG] ===== CLICK FILTER DEBUG END =====`);
           
           const tableContainer = document.getElementById('pairs-table-container');
           if (tableContainer) {
-            console.log(`[DEBUG] Updating table with ${pairs.length} pairs`);
+(`[DEBUG] Updating table with ${pairs.length} pairs`);
             tableContainer.innerHTML = renderPairsTable(pairs, 1);
             
             // Update active tab
@@ -3613,7 +3204,7 @@ export class TransactionListTab extends Component {
             const pairsCount = document.getElementById('pairs-count');
             if (pairsCount) {
               pairsCount.textContent = `${pairs.length} cặp lệnh`;
-              console.log(`[DEBUG] Updated pairs count to: ${pairs.length}`);
+(`[DEBUG] Updated pairs count to: ${pairs.length}`);
             }
           } else {
             console.error(`[DEBUG] Table container not found!`);
@@ -3643,7 +3234,7 @@ export class TransactionListTab extends Component {
         const btn = e.target.closest('.btn-send-exchange');
         const pairId = btn.getAttribute('data-pair-id');
         
-        console.log(`[DEBUG] Gửi lên sàn cho pair: ${pairId}`);
+(`[DEBUG] Gửi lên sàn cho pair: ${pairId}`);
         
         // Hiển thị thông báo gửi lên sàn
         this.showNotification(`📤 Đang gửi cặp lệnh ${pairId} lên sàn...`, 'info');
@@ -3697,7 +3288,7 @@ export class TransactionListTab extends Component {
       itemsPerPage: 10
     };
     
-    console.log(`[DEBUG] Initialized currentPairsData:`, {
+(`[DEBUG] Initialized currentPairsData:`, {
       totalPairs: window.currentPairsData.allPairs.length,
       currentFilter: window.currentPairsData.currentFilter,
       samplePairTypes: window.currentPairsData.allPairs.slice(0, 3).map(p => ({
@@ -3722,33 +3313,33 @@ export class TransactionListTab extends Component {
     
     // Test function để debug filter
     window.testFilter = (filterType) => {
-      console.log(`[DEBUG] ===== TEST FILTER START =====`);
-      console.log(`[DEBUG] Testing filter: ${filterType}`);
-      console.log(`[DEBUG] window.currentPairsData:`, window.currentPairsData);
+(`[DEBUG] ===== TEST FILTER START =====`);
+(`[DEBUG] Testing filter: ${filterType}`);
+(`[DEBUG] window.currentPairsData:`, window.currentPairsData);
       
       if (window.currentPairsData && window.currentPairsData.allPairs) {
         const testResult = buildFilteredPairs(filterType);
-        console.log(`[DEBUG] Test result: ${testResult.length} pairs`);
-        console.log(`[DEBUG] Test result sample:`, testResult.slice(0, 2));
+(`[DEBUG] Test result: ${testResult.length} pairs`);
+(`[DEBUG] Test result sample:`, testResult.slice(0, 2));
       } else {
-        console.log(`[DEBUG] ERROR: window.currentPairsData not available!`);
+(`[DEBUG] ERROR: window.currentPairsData not available!`);
       }
       
-      console.log(`[DEBUG] ===== TEST FILTER END =====`);
+(`[DEBUG] ===== TEST FILTER END =====`);
     };
     
     // Test function để debug matched orders API
     window.testMatchedOrdersAPI = async () => {
-      console.log(`[DEBUG] ===== TEST MATCHED ORDERS API START =====`);
+(`[DEBUG] ===== TEST MATCHED ORDERS API START =====`);
       try {
         const response = await this.rpc('/api/transaction-list/get-matched-pairs', {});
-        console.log(`[DEBUG] API Response:`, response);
-        console.log(`[DEBUG] Success:`, response?.success);
-        console.log(`[DEBUG] Data length:`, response?.data?.length);
-        console.log(`[DEBUG] Sample data:`, response?.data?.[0]);
+(`[DEBUG] API Response:`, response);
+(`[DEBUG] Success:`, response?.success);
+(`[DEBUG] Data length:`, response?.data?.length);
+(`[DEBUG] Sample data:`, response?.data?.[0]);
         
         if (response?.data?.length > 0) {
-          console.log(`[DEBUG] First pair details:`, {
+(`[DEBUG] First pair details:`, {
             buy_investor: response.data[0].buy_investor,
             sell_investor: response.data[0].sell_investor,
             matched_volume: response.data[0].matched_volume,
@@ -3758,17 +3349,17 @@ export class TransactionListTab extends Component {
       } catch (error) {
         console.error(`[DEBUG] API Error:`, error);
       }
-      console.log(`[DEBUG] ===== TEST MATCHED ORDERS API END =====`);
+(`[DEBUG] ===== TEST MATCHED ORDERS API END =====`);
     };
     
     // Test function để kiểm tra dữ liệu trong state
     window.testMatchedOrdersState = () => {
-      console.log(`[DEBUG] ===== TEST MATCHED ORDERS STATE START =====`);
-      console.log(`[DEBUG] state.matchedOrders:`, this.state.matchedOrders);
-      console.log(`[DEBUG] state.filteredMatchedOrders:`, this.state.filteredMatchedOrders);
-      console.log(`[DEBUG] state.matchedOrders.length:`, this.state.matchedOrders.length);
-      console.log(`[DEBUG] state.filteredMatchedOrders.length:`, this.state.filteredMatchedOrders.length);
-      console.log(`[DEBUG] ===== TEST MATCHED ORDERS STATE END =====`);
+(`[DEBUG] ===== TEST MATCHED ORDERS STATE START =====`);
+(`[DEBUG] state.matchedOrders:`, this.state.matchedOrders);
+(`[DEBUG] state.filteredMatchedOrders:`, this.state.filteredMatchedOrders);
+(`[DEBUG] state.matchedOrders.length:`, this.state.matchedOrders.length);
+(`[DEBUG] state.filteredMatchedOrders.length:`, this.state.filteredMatchedOrders.length);
+(`[DEBUG] ===== TEST MATCHED ORDERS STATE END =====`);
     };
 
     // Bỏ nút xử lý phần còn lại trong modal
@@ -3783,15 +3374,15 @@ export class TransactionListTab extends Component {
       if (detailsContainer) {
         // Sử dụng result.matched_pairs từ lần khớp hiện tại thay vì allMatchedPairs từ backend
         const currentMatchedPairs = result.matched_pairs || [];
-        console.log(`[DEBUG] Rendering details with current matched pairs: ${currentMatchedPairs.length}`);
+(`[DEBUG] Rendering details with current matched pairs: ${currentMatchedPairs.length}`);
         detailsContainer.innerHTML = await renderMatchedPairsDetails(currentMatchedPairs);
       }
       
       // Debug: Log dữ liệu trước khi render
-      console.log(`[DEBUG] ===== RENDER DEBUG START =====`);
-      console.log(`[DEBUG] normalizedPairs length: ${normalizedPairs.length}`);
-      console.log(`[DEBUG] normalizedPairs sample:`, normalizedPairs.slice(0, 2));
-      console.log(`[DEBUG] ===== RENDER DEBUG END =====`);
+(`[DEBUG] ===== RENDER DEBUG START =====`);
+(`[DEBUG] normalizedPairs length: ${normalizedPairs.length}`);
+(`[DEBUG] normalizedPairs sample:`, normalizedPairs.slice(0, 2));
+(`[DEBUG] ===== RENDER DEBUG END =====`);
       
       // Render bảng tổng hợp (vẫn sử dụng tất cả dữ liệu từ backend)
       const tableContainer = document.getElementById('pairs-table-container');
@@ -3818,7 +3409,7 @@ export class TransactionListTab extends Component {
 
   async loadPendingOrders() {
     try {
-      console.log('[DEBUG] Loading pending orders...');
+('[DEBUG] Loading pending orders...');
       
       // Load all pending orders
       const response = await fetch('/api/transaction-list/data', {
@@ -3848,7 +3439,16 @@ export class TransactionListTab extends Component {
           order.transaction_type === 'sell'
         );
         
-        console.log(`[DEBUG] Found ${buyOrders.length} buy orders, ${sellOrders.length} sell orders`);
+(`[DEBUG] Found ${buyOrders.length} buy orders, ${sellOrders.length} sell orders`);
+        
+        // Detect partial orders (pending + matched/remaining)
+        const isPartial = (o) => {
+          const hasMR = typeof o.matched_units === 'number' && typeof o.remaining_units === 'number';
+          if (hasMR) return (o.status === 'pending' && o.matched_units > 0 && o.remaining_units > 0);
+          const s = (o.status || '').toString().toLowerCase();
+          return s.includes('partial') || (s.includes('khớp') && s.includes('phần'));
+        };
+        this.state.partialOrders = allOrders.filter(isPartial);
         
         // Cập nhật số lượng trong header
         this.updatePendingOrdersCount(buyOrders.length, sellOrders.length);
@@ -3896,20 +3496,20 @@ export class TransactionListTab extends Component {
       `;
     }
     
-    console.log(`[DEBUG] Updated counts: Buy=${buyCount}, Sell=${sellCount}`);
+(`[DEBUG] Updated counts: Buy=${buyCount}, Sell=${sellCount}`);
   }
 
   getFundNameFromPair(pair) {
-    console.log('[DEBUG] ===== getFundNameFromPair DEBUG =====');
-    console.log('[DEBUG] Pair object:', pair);
-    console.log('[DEBUG] Pair keys:', Object.keys(pair));
-    console.log('[DEBUG] fundOptions available:', this.state?.fundOptions?.length || 0);
-    console.log('[DEBUG] fundOptions sample:', this.state?.fundOptions?.slice(0, 3));
-    console.log('[DEBUG] filters.matchedFundId:', this.state?.filters?.matchedFundId);
+('[DEBUG] ===== getFundNameFromPair DEBUG =====');
+('[DEBUG] Pair object:', pair);
+('[DEBUG] Pair keys:', Object.keys(pair));
+('[DEBUG] fundOptions available:', this.state?.fundOptions?.length || 0);
+('[DEBUG] fundOptions sample:', this.state?.fundOptions?.slice(0, 3));
+('[DEBUG] filters.matchedFundId:', this.state?.filters?.matchedFundId);
     
     // 1. Thử lấy trực tiếp từ pair data (từ matched orders record)
     const direct = pair.fund_name || pair.buy_fund_name || pair.sell_fund_name || '';
-    console.log('[DEBUG] Direct fund names check:', {
+('[DEBUG] Direct fund names check:', {
       'pair.fund_name': pair.fund_name,
       'pair.buy_fund_name': pair.buy_fund_name,
       'pair.sell_fund_name': pair.sell_fund_name,
@@ -3917,13 +3517,13 @@ export class TransactionListTab extends Component {
     });
     
     if (direct) {
-      console.log('[DEBUG] ✅ Found direct fund name:', direct);
+('[DEBUG] ✅ Found direct fund name:', direct);
       return direct;
     }
     
     // 2. Thử lấy từ fund_id trong pair (từ matched orders record)
     const fundId = pair.fund_id || pair.buy_fund_id || pair.sell_fund_id;
-    console.log('[DEBUG] Fund IDs check:', {
+('[DEBUG] Fund IDs check:', {
       'pair.fund_id': pair.fund_id,
       'pair.buy_fund_id': pair.buy_fund_id,
       'pair.sell_fund_id': pair.sell_fund_id,
@@ -3931,38 +3531,38 @@ export class TransactionListTab extends Component {
     });
     
     if (fundId && this.state?.fundOptions?.length) {
-      console.log('[DEBUG] Looking up fund_id:', fundId, 'in fundOptions');
-      console.log('[DEBUG] fundOptions length:', this.state.fundOptions.length);
+('[DEBUG] Looking up fund_id:', fundId, 'in fundOptions');
+('[DEBUG] fundOptions length:', this.state.fundOptions.length);
       const fundOption = this.state.fundOptions.find(f => String(f.id) === String(fundId));
-      console.log('[DEBUG] Found fundOption:', fundOption);
+('[DEBUG] Found fundOption:', fundOption);
       if (fundOption && fundOption.name) {
-        console.log('[DEBUG] ✅ Found fund name from matched orders fund_id:', fundOption.name);
+('[DEBUG] ✅ Found fund name from matched orders fund_id:', fundOption.name);
         return fundOption.name;
       } else {
-        console.log('[DEBUG] ❌ fundOption not found or no name');
+('[DEBUG] ❌ fundOption not found or no name');
       }
     } else {
-      console.log('[DEBUG] ❌ No fundId or fundOptions not available');
+('[DEBUG] ❌ No fundId or fundOptions not available');
     }
     
     // 3. Fallback theo filter quỹ đang chọn
     const selectedFundId = this.state?.filters?.matchedFundId;
-    console.log('[DEBUG] Selected fund ID from filter:', selectedFundId);
+('[DEBUG] Selected fund ID from filter:', selectedFundId);
     if (selectedFundId && this.state?.fundOptions?.length) {
       const fo = this.state.fundOptions.find(f => String(f.id) === String(selectedFundId));
-      console.log('[DEBUG] Found fund from filter:', fo);
+('[DEBUG] Found fund from filter:', fo);
       if (fo && fo.name) {
-        console.log('[DEBUG] ✅ Found fund name from filter:', fo.name);
+('[DEBUG] ✅ Found fund name from filter:', fo.name);
         return fo.name;
       } else {
-        console.log('[DEBUG] ❌ Filter fund not found or no name');
+('[DEBUG] ❌ Filter fund not found or no name');
       }
     } else {
-      console.log('[DEBUG] ❌ No selectedFundId or fundOptions not available');
+('[DEBUG] ❌ No selectedFundId or fundOptions not available');
     }
     
-    console.log('[DEBUG] ❌ No fund name found, returning N/A');
-    console.log('[DEBUG] ===== END getFundNameFromPair DEBUG =====');
+('[DEBUG] ❌ No fund name found, returning N/A');
+('[DEBUG] ===== END getFundNameFromPair DEBUG =====');
     return 'N/A';
   }
 
@@ -4055,19 +3655,9 @@ export class TransactionListTab extends Component {
       const result = await response.json();
 
       if (result.success) {
-        this.showNotification(`📊 Import thành công: ${result.transactions.length} dòng`, 'success');
-        // Hiển thị danh sách id đã tạo trong modal đơn giản
-        const pairs = result.transactions.map((t, idx) => ({
-          buy_id: t.id,
-          buy_nav: t.current_nav, // Giữ lại cho hiển thị, nhưng không dùng để tính toán
-          buy_base_nav: t.base_nav,
-          buy_variation: t.variation_percent,
-          buy_amount: t.amount,
-          sell_id: '-',
-          sell_nav: 0,
-          sell_amount: 0,
-        }));
-        this.showMatchingResults({ matched_pairs: pairs, remaining: { buys: [], sells: [] } });
+        this.showNotification(`📊 Import thành công: ${result.transactions.length} lệnh (trạng thái pending)`, 'success');
+        // KHÔNG HIỂN THỊ POPUP KHỚP LỆNH - CHỈ IMPORT LỆNH
+        // Các lệnh sẽ ở trạng thái pending và cần khớp thủ công
         this.loadData();
       } else {
         this.showNotification('❌ Lỗi khi import: ' + (result.message || 'Không xác định'), 'error');
@@ -4077,29 +3667,64 @@ export class TransactionListTab extends Component {
     }
   }
 
+  async sendMaturityNotifications() {
+    try {
+      this.showNotification('🔔 Đang kiểm tra và gửi thông báo đáo hạn...', 'info');
+      
+      const response = await this.rpc('/api/transaction-list/send-maturity-notifications', {});
+      
+      if (response && response.success) {
+        const created = response.notifications_created || 0;
+        const sent = response.notifications_sent || 0;
+        this.showNotification(
+          `✅ ${response.message || `Đã tạo ${created} thông báo và gửi ${sent} thông báo qua websocket thành công.`}`,
+          'success'
+        );
+      } else {
+        this.showNotification(
+          `❌ ${response.message || 'Không thể gửi thông báo đáo hạn'}`,
+          'error'
+        );
+      }
+    } catch (error) {
+      console.error('Error sending maturity notifications:', error);
+      this.showNotification(`❌ Lỗi kết nối: ${error.message}`, 'error');
+    }
+  }
+
+  async sendMaturityNotificationsTest() {
+    try {
+      // Xác nhận trước khi gửi
+      if (!confirm('⚠️ CẢNH BÁO: Bạn có chắc muốn gửi thông báo đáo hạn cho TẤT CẢ lệnh?\n\nTính năng này chỉ dùng để TEST và sẽ gửi thông báo qua websocket cho tất cả lệnh mua đã hoàn thành, không kiểm tra ngày đáo hạn.')) {
+        return;
+      }
+      
+      this.showNotification('🧪 [TEST] Đang gửi thông báo đáo hạn cho tất cả lệnh...', 'info');
+      
+      const response = await this.rpc('/api/transaction-list/send-maturity-notifications-test', {});
+      
+      if (response && response.success) {
+        const created = response.notifications_created || 0;
+        const sent = response.notifications_sent || 0;
+        this.showNotification(
+          `✅ [TEST] ${response.message || `Đã tạo ${created} thông báo và gửi ${sent} thông báo qua websocket thành công.`}`,
+          'success'
+        );
+      } else {
+        this.showNotification(
+          `❌ ${response.message || 'Không thể gửi thông báo đáo hạn'}`,
+          'error'
+        );
+      }
+    } catch (error) {
+      console.error('Error sending maturity notifications (TEST):', error);
+      this.showNotification(`❌ Lỗi kết nối: ${error.message}`, 'error');
+    }
+  }
+
   async marketMakerHandleOne(transactionId) {
     try {
-      // Kiểm tra điều kiện CÓ LÃI trước khi tạo lệnh đối ứng
-      // 1) Lấy thông tin giao dịch để biết fund_id
-      const detailResp = await fetch(`/api/transaction-list/get-transaction-details/${transactionId}`, { method: 'GET' });
-      const detail = await detailResp.json();
-      if (!detail || !detail.success || !detail.transaction || !detail.transaction.fund_name) {
-        this.showNotification('❌ Không lấy được thông tin giao dịch.', 'error');
-        return;
-      }
-      const fundId = detail.transaction.fund_id || this.state.selectedFundId || this.state.selectedMatchedFundId;
-      if (!fundId) {
-        this.showNotification('⚠️ Thiếu Fund để kiểm tra điều kiện lãi.', 'warning');
-        return;
-      }
-      const dateStr = this.state.selectedDate || this.state.selectedMatchedDate || '';
-      const profitableIds = await this.getProfitableTxIds(fundId, dateStr || null, dateStr || null);
-      if (!profitableIds.has(Number(transactionId))) {
-        this.showNotification('ℹ️ Lệnh không thỏa điều kiện lãi theo cấu hình hiện hành.', 'info');
-        return;
-      }
-
-      // 2) Tạo lệnh đối ứng
+      // Tạo lệnh đối ứng (không cần kiểm tra lãi)
       const resp = await fetch('/api/transaction-list/market-maker/handle-one', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -4116,12 +3741,12 @@ export class TransactionListTab extends Component {
         // Reload dữ liệu để phản ánh giao dịch mới (nhưng chưa approve)
         this.loadData();
 
-        // Recalc tồn kho cho statcard (today hoặc theo ngày đã chọn)
+        // Recalc tồn kho cho statcard (không cần fund_id cụ thể)
         try {
           await fetch('/nav_management/api/inventory/recalc_after_match', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jsonrpc: '2.0', params: { fund_id: Number(fundId), inventory_date: dateStr || undefined } })
+            body: JSON.stringify({ jsonrpc: '2.0', params: {} })
           });
         } catch (_) {}
       } else {
@@ -4132,27 +3757,6 @@ export class TransactionListTab extends Component {
     }
   }
 
-  // Helper: lấy danh sách transaction IDs có lãi theo cap hiện hành (server-side)
-  async getProfitableTxIds(fundId, fromDate = null, toDate = null) {
-    try {
-      const payload = { jsonrpc: '2.0', params: { fund_id: Number(fundId) } };
-      if (fromDate) payload.params.from_date = fromDate;
-      if (toDate) payload.params.to_date = toDate;
-      const resp = await fetch('/nav_management/api/calculate_nav_transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await resp.json();
-      if (data && data.success && Array.isArray(data.transactions)) {
-        const ids = new Set(data.transactions.map(it => Number(it.id)).filter(Boolean));
-        return ids;
-      }
-      return new Set();
-    } catch (_) {
-      return new Set();
-    }
-  }
 
 
 
@@ -4394,8 +3998,8 @@ export class TransactionListTab extends Component {
 
   async rpc(route, params) {
     try {
-      console.log('RPC call to:', route);
-      console.log('RPC params:', params);
+('RPC call to:', route);
+('RPC params:', params);
       
       const response = await fetch(route, {
         method: 'POST',
@@ -4406,28 +4010,28 @@ export class TransactionListTab extends Component {
         body: JSON.stringify(params)
       });
       
-      console.log('RPC response status:', response.status);
+('RPC response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const data = await response.json();
-      console.log('RPC response data:', data);
+('RPC response data:', data);
       
       // Handle JSON-RPC format
       if (data && data.jsonrpc && data.result) {
-        console.log('Returning JSON-RPC result:', data.result);
+('Returning JSON-RPC result:', data.result);
         return data.result;
       }
       
       // Handle direct response format
       if (data && typeof data === 'object') {
-        console.log('Returning direct response:', data);
+('Returning direct response:', data);
         return data;
       }
       
-      console.log('Returning raw data:', data);
+('Returning raw data:', data);
       return data;
     } catch (error) {
       console.error('RPC Error:', error);
@@ -4438,7 +4042,7 @@ export class TransactionListTab extends Component {
   // Filter functions
   async loadFundOptions() {
     try {
-      console.log('[DEBUG] Loading fund options...');
+('[DEBUG] Loading fund options...');
       
       // First try the funds API
       const response = await fetch('/api/transaction-list/funds', {
@@ -4452,20 +4056,20 @@ export class TransactionListTab extends Component {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('[DEBUG] Funds API response:', data);
+('[DEBUG] Funds API response:', data);
         
         if (data && data.success && data.data && data.data.length > 0) {
           this.state.fundOptions = data.data.map(fund => ({
             value: fund.id,
             label: `${fund.name} (${fund.ticker || fund.symbol || ''})`
           }));
-          console.log('[DEBUG] Loaded fund options:', this.state.fundOptions);
+('[DEBUG] Loaded fund options:', this.state.fundOptions);
           return;
         }
       }
       
       // Fallback: extract from transactions
-      console.log('[DEBUG] Using fallback: extract from transactions');
+('[DEBUG] Using fallback: extract from transactions');
       this.extractFundOptionsFromTransactions();
       
     } catch (error) {
@@ -4513,7 +4117,7 @@ export class TransactionListTab extends Component {
     });
     
     this.state.fundOptions = Array.from(funds.values());
-    console.log('[DEBUG] Extracted fund options from transactions:', this.state.fundOptions);
+('[DEBUG] Extracted fund options from transactions:', this.state.fundOptions);
   }
 
   onFundFilterChange(ev) {
@@ -4575,11 +4179,11 @@ export class TransactionListTab extends Component {
 
 
   applyMatchedFilters() {
-    console.log('[DEBUG] ===== APPLY MATCHED FILTERS DEBUG START =====');
-    console.log('[DEBUG] selectedMatchedFundId:', this.state.selectedMatchedFundId);
-    console.log('[DEBUG] selectedMatchedDate:', this.state.selectedMatchedDate);
-    console.log('[DEBUG] selectedMatchedQuickDate:', this.state.selectedMatchedQuickDate);
-    console.log('[DEBUG] Current filter type:', this.state.matchedOrdersFilter);
+('[DEBUG] ===== APPLY MATCHED FILTERS DEBUG START =====');
+('[DEBUG] selectedMatchedFundId:', this.state.selectedMatchedFundId);
+('[DEBUG] selectedMatchedDate:', this.state.selectedMatchedDate);
+('[DEBUG] selectedMatchedQuickDate:', this.state.selectedMatchedQuickDate);
+('[DEBUG] Current filter type:', this.state.matchedOrdersFilter);
     
     // Start with current filtered data based on type filter
     let filtered = [...this.state.filteredMatchedOrders];
@@ -4679,6 +4283,47 @@ const pendingOrdersCSS = `
 
 .pending-orders-list::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+/* Modal icon styling */
+.modal-icon-container {
+  width: 60px;
+  height: 60px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-icon {
+  font-size: 28px;
+}
+
+/* Market Maker styling */
+.investor-name.market-maker {
+  color: #dc3545;
+  font-weight: bold;
+  background: linear-gradient(45deg, #dc3545, #fd7e14);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.investor-name.market-maker::before {
+  content: "🏢 ";
+  margin-right: 4px;
+}
+
+/* Highlight Market Maker rows */
+.pairs-table-row:has(.market-maker) {
+  background: linear-gradient(90deg, rgba(220, 53, 69, 0.05), rgba(253, 126, 20, 0.05));
+  border-left: 4px solid #dc3545;
+}
+
+.pairs-table-row:has(.market-maker) .investor-name:not(.market-maker) {
+  color: #6c757d;
+  font-style: italic;
 }
 </style>
 `;

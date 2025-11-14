@@ -7,10 +7,11 @@
     "website": "https://www.yourcompany.com",
     "category": "",
     "version": "18.0.0.0.0",
-    "depends": ["base", "crm", "web", "bus"],
+    "depends": ["base", "crm", "web", "bus", "stock_data"],
     "data": [
         "security/ir.model.access.csv",
-        "data/product_data.xml",
+        "data/cron_data.xml",
+        "views/menu_views.xml",
         "views/sidebar.xml",
         "views/fund_certificate/fund_certificate_page.xml",
         "views/fund_certificate/fund_certificate_form.xml",
@@ -30,20 +31,19 @@
         "views/tax_settings/tax_settings_page.xml",
         "views/tax_settings/tax_settings_form.xml",
         "views/tax_settings/tax_settings_edit_form.xml",
-        "views/chatbot_ai/chatbot_menu.xml",
         # Data Management
-        "views/holiday_page.xml",
-        "views/holiday_form.xml",
-        "views/bank_page.xml",
-        "views/bank_form.xml",
-        "views/bank_branch_page.xml",
-        "views/bank_branch_form.xml",
-        "views/country_page.xml",
-        "views/country_form.xml",
-        "views/city_page.xml",
-        "views/city_form.xml",
-        "views/ward_page.xml",
-        "views/ward_form.xml",
+        "views/holiday/holiday_page.xml",
+        "views/holiday/holiday_form.xml",
+        "views/bank/bank_page.xml",
+        "views/bank/bank_form.xml",
+        "views/bank_branch/bank_branch_page.xml",
+        "views/bank_branch/bank_branch_form.xml",
+        "views/country/country_page.xml",
+        "views/country/country_form.xml",
+        "views/city/city_page.xml",
+        "views/city/city_form.xml",
+        "views/ward/ward_page.xml",
+        "views/ward/ward_form.xml",
     ],
     "assets": {
         "web.assets_backend": [
@@ -62,8 +62,6 @@
             "fund_management_control/static/src/js/sip_settings/sip_settings_widget.js",
             # Cài đặt Thuế
             "fund_management_control/static/src/js/tax_settings/tax_settings_widget.js",
-            #
-            "fund_management_control/static/src/js/chatbot_ai/chatbot_ai_widget.js",
             # 3. Tải các file entrypoint CUỐI CÙNG
             # Chứng chỉ quỹ
             "fund_management_control/static/src/js/fund_certificate/entrypoint.js",
@@ -77,8 +75,6 @@
             "fund_management_control/static/src/js/sip_settings/entrypoint.js",
             # Cài đặt Thuế
             "fund_management_control/static/src/js/tax_settings/entrypoint.js",
-            # Chatbot AI widget (Floating Action Button)
-            "fund_management_control/static/src/js/chatbot_ai/entrypoint.js",
             # Data Management
             "fund_management_control/static/src/js/holiday/holiday_widget.js",
             "fund_management_control/static/src/js/holiday/entrypoint.js",

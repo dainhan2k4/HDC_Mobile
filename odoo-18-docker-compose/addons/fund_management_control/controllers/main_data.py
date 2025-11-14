@@ -1,9 +1,13 @@
-from odoo import http
+from odoo import http, _
 from odoo.http import request, Response
 import json
 import logging
+import re
+import requests
 
 _logger = logging.getLogger(__name__)
+
+from odoo.exceptions import UserError
 
 
 class DataManagementController(http.Controller):
@@ -79,6 +83,91 @@ class DataManagementController(http.Controller):
         }
         request.env["data.holiday"].sudo().create(vals)
         return request.redirect("/holiday_list")
+
+    @http.route(
+        "/holiday/sync",
+        type="http",
+        auth="user",
+        methods=["POST"],
+        csrf=False,
+        cors="*",
+    )
+    def holiday_sync(self, **kwargs):
+        payload = {}
+        try:
+            payload = request.get_json_data(force=False, silent=True) or {}
+        except Exception as exc:  # noqa: BLE001
+            _logger.warning("Không thể parse JSON đầu vào khi đồng bộ ngày lễ: %s", exc)
+
+        year = payload.get("year")
+        country_code = payload.get("country_code", "VN")
+
+        try:
+            result = (
+                request.env["data.holiday"]
+                .sudo()
+                .sync_public_holidays(year=year, country_code=country_code)
+            )
+            return Response(json.dumps(result), content_type="application/json")
+        except UserError as exc:
+            return Response(
+                json.dumps({"success": False, "error": str(exc)}),
+                content_type="application/json",
+                status=400,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _logger.error("Lỗi đồng bộ ngày lễ: %s", exc, exc_info=True)
+            return Response(
+                json.dumps(
+                    {
+                        "success": False,
+                        "error": _("Không thể đồng bộ ngày lễ: %s") % str(exc),
+                    }
+                ),
+                content_type="application/json",
+                status=500,
+            )
+
+    @http.route(
+        "/holiday/sync/internal",
+        type="http",
+        auth="user",
+        methods=["POST"],
+        csrf=False,
+        cors="*",
+    )
+    def holiday_sync_internal(self, **kwargs):
+        payload = {}
+        try:
+            payload = request.get_json_data(force=False, silent=True) or {}
+        except Exception as exc:  # noqa: BLE001
+            _logger.warning("Không thể parse JSON đầu vào khi đồng bộ nội bộ ngày lễ: %s", exc)
+
+        year = payload.get("year")
+
+        try:
+            result = (
+                request.env["data.holiday"].sudo().sync_local_holidays(year=year)
+            )
+            return Response(json.dumps(result), content_type="application/json")
+        except UserError as exc:
+            return Response(
+                json.dumps({"success": False, "error": str(exc)}),
+                content_type="application/json",
+                status=400,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _logger.error("Lỗi đồng bộ nội bộ ngày lễ: %s", exc, exc_info=True)
+            return Response(
+                json.dumps(
+                    {
+                        "success": False,
+                        "error": _("Không thể đồng bộ nội bộ ngày lễ: %s") % str(exc),
+                    }
+                ),
+                content_type="application/json",
+                status=500,
+            )
 
     @http.route(
         "/holiday/edit/<int:holiday_id>", type="http", auth="user", website=True
@@ -164,6 +253,38 @@ class DataManagementController(http.Controller):
             content_type="application/json",
         )
 
+    @http.route(
+        "/bank/sync/vietqr",
+        type="http",
+        auth="user",
+        methods=["POST"],
+        csrf=False,
+        cors="*",
+    )
+    def bank_sync_vietqr(self, **kwargs):
+        try:
+            result = request.env["data.bank"].sudo().sync_vietqr_banks()
+            return Response(json.dumps(result), content_type="application/json")
+        except UserError as exc:
+            return Response(
+                json.dumps({"success": False, "error": str(exc)}),
+                content_type="application/json",
+                status=400,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _logger.error("Lỗi đồng bộ ngân hàng VietQR: %s", exc, exc_info=True)
+            return Response(
+                json.dumps(
+                    {
+                        "success": False,
+                        "error": _("Không thể đồng bộ ngân hàng VietQR: %s")
+                        % str(exc),
+                    }
+                ),
+                content_type="application/json",
+                status=500,
+            )
+
     @http.route("/bank/new", type="http", auth="user", website=True)
     def bank_form_page(self, **kwargs):
         return request.render(
@@ -229,6 +350,76 @@ class DataManagementController(http.Controller):
         bank.unlink()
         return request.redirect("/bank_list")
 
+    # ----------- UTILITIES: BUSINESS LOOKUP BY TAX CODE -----------
+    @http.route(
+        "/utils/business_lookup",
+        type="http",
+        auth="user",
+        methods=["POST"],
+        csrf=False,
+        cors="*",
+    )
+    def business_lookup(self, **kwargs):
+        payload = {}
+        try:
+            payload = request.get_json_data(force=False, silent=True) or {}
+        except Exception:
+            pass
+
+        raw_tax_code = (payload.get("tax_code") or payload.get("taxCode") or "").strip()
+        tax_code = re.sub(r"[^0-9]", "", raw_tax_code)
+        if not tax_code:
+            return Response(
+                json.dumps({"success": False, "error": _("Mã số thuế không hợp lệ.")}),
+                content_type="application/json",
+                status=400,
+            )
+
+        api_url = f"https://api.vietqr.io/v2/business/{tax_code}"
+        headers = {"User-Agent": "HDC-FMS/1.0"}
+
+        try:
+            resp = requests.get(api_url, headers=headers, timeout=8)
+        except requests.RequestException as exc:  # noqa: BLE001
+            return Response(
+                json.dumps({"success": False, "error": str(exc)}),
+                content_type="application/json",
+                status=502,
+            )
+
+        if resp.status_code == 429:
+            return Response(
+                json.dumps({
+                    "success": False,
+                    "error": _("Quá giới hạn gọi API (429). Vui lòng thử lại sau."),
+                }),
+                content_type="application/json",
+                status=429,
+            )
+
+        if not resp.ok:
+            return Response(
+                json.dumps({
+                    "success": False,
+                    "error": _("Không thể tra cứu MST (HTTP %s).") % resp.status_code,
+                }),
+                content_type="application/json",
+                status=resp.status_code,
+            )
+
+        try:
+            payload = resp.json()
+        except ValueError:
+            payload = {"code": "99", "desc": "Invalid JSON", "data": {}}
+
+        result = {
+            "success": True,
+            "code": payload.get("code"),
+            "desc": payload.get("desc"),
+            "data": payload.get("data", {}),
+        }
+        return Response(json.dumps(result), content_type="application/json")
+
     # ----------- BANK BRANCH -----------
     @http.route("/bank_branch_list", type="http", auth="user", website=True)
     def bank_branch_list_page(self, **kwargs):
@@ -268,6 +459,93 @@ class DataManagementController(http.Controller):
             json.dumps({"records": data, "total_records": total_records}),
             content_type="application/json",
         )
+
+    @http.route(
+        "/data/seed/vietnam_cities",
+        type="http",
+        auth="user",
+        methods=["POST"],
+        csrf=False,
+        cors="*",
+    )
+    def seed_vietnam_cities(self, **kwargs):
+        try:
+            result = request.env["data.country"].sudo().seed_vietnam_with_cities()
+            return Response(json.dumps(result), content_type="application/json")
+        except UserError as exc:
+            return Response(
+                json.dumps({"success": False, "error": str(exc)}),
+                content_type="application/json",
+                status=400,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _logger.error("Lỗi seed tỉnh/thành: %s", exc, exc_info=True)
+            return Response(
+                json.dumps({
+                    "success": False,
+                    "error": _("Không thể seed tỉnh/thành: %s") % str(exc),
+                }),
+                content_type="application/json",
+                status=500,
+            )
+
+    @http.route(
+        "/bank_branch/sync/basic",
+        type="http",
+        auth="user",
+        methods=["POST"],
+        csrf=False,
+        cors="*",
+    )
+    def bank_branch_sync_basic(self, **kwargs):
+        try:
+            result = request.env["data.bank.branch"].sudo().sync_basic_branches()
+            return Response(json.dumps(result), content_type="application/json")
+        except UserError as exc:
+            return Response(
+                json.dumps({"success": False, "error": str(exc)}),
+                content_type="application/json",
+                status=400,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _logger.error("Lỗi đồng bộ chi nhánh ngân hàng: %s", exc, exc_info=True)
+            return Response(
+                json.dumps({
+                    "success": False,
+                    "error": _("Không thể đồng bộ chi nhánh ngân hàng: %s") % str(exc),
+                }),
+                content_type="application/json",
+                status=500,
+            )
+
+    @http.route(
+        "/bank_branch/sync/nationwide",
+        type="http",
+        auth="user",
+        methods=["POST"],
+        csrf=False,
+        cors="*",
+    )
+    def bank_branch_sync_nationwide(self, **kwargs):
+        try:
+            result = request.env["data.bank.branch"].sudo().sync_branches_nationwide()
+            return Response(json.dumps(result), content_type="application/json")
+        except UserError as exc:
+            return Response(
+                json.dumps({"success": False, "error": str(exc)}),
+                content_type="application/json",
+                status=400,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _logger.error("Lỗi đồng bộ chi nhánh toàn quốc: %s", exc, exc_info=True)
+            return Response(
+                json.dumps({
+                    "success": False,
+                    "error": _("Không thể đồng bộ chi nhánh toàn quốc: %s") % str(exc),
+                }),
+                content_type="application/json",
+                status=500,
+            )
 
     @http.route("/bank_branch/new", type="http", auth="user", website=True)
     def bank_branch_form_page(self, **kwargs):

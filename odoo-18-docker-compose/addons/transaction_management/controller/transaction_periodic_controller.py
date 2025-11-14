@@ -3,6 +3,12 @@ from odoo.http import request
 import json
 from datetime import datetime, timedelta
 
+try:
+    # Prefer relativedelta như @nav_management dùng
+    from dateutil.relativedelta import relativedelta
+except Exception:
+    relativedelta = None
+
 class TransactionPeriodicController(http.Controller):
 
     @http.route('/transaction_management/periodic', type='http', auth='user', website=True)
@@ -14,111 +20,111 @@ class TransactionPeriodicController(http.Controller):
             ('user_id', '=', request.env.user.id)
         ], order='create_date desc')
 
-        # Hàm chuyển đổi loại giao dịch
-        def get_transaction_type_display(type):
-            type_map = {
-                'purchase': 'Mua',
-                'sell': 'Bán',
-                'exchange': 'Hoán đổi'
-            }
-            return type_map.get(type, type)
+        # Helper: MROUND tương tự nav.calculator (bước 50)
+        def mround(value, step=50):
+            try:
+                step = float(step or 0)
+                v = float(value or 0)
+                if step <= 0:
+                    return v
+                return float(round(v / step) * step)
+            except Exception:
+                return value
 
-        # Hàm chuyển đổi trạng thái
-        def get_status_display(status):
-            status_map = {
-                'pending': 'Chờ khớp lệnh',
-                'completed': 'Đã khớp lệnh',
-                'cancelled': 'Đã hủy'
-            }
-            return status_map.get(status, status)
+        # Helper: lấy lãi suất theo kỳ hạn như @nav_management
+        def get_interest_rate_for_months(months):
+            try:
+                TermRate = request.env['nav.term.rate'].sudo()
+                recs = TermRate.search([('active', '=', True)])
+                months_int = int(months or 0)
+                # chọn record theo đúng kỳ hạn, ưu tiên effective gần nhất
+                candidates = recs.filtered(lambda r: int(r.term_months or 0) == months_int)
+                if candidates:
+                    # sort by effective_date desc
+                    return candidates.sorted('effective_date', reverse=True)[0].interest_rate or 0.0
+            except Exception:
+                pass
+            return None
 
         orders = []
-        for transaction in transactions:
+        for tx in transactions:
+            # Số tài khoản (nếu cần thiết cho hiển thị phụ)
             partner = request.env.user.partner_id
             so_tk = ''
             if partner:
                 status_info = request.env['status.info'].sudo().search([('partner_id', '=', partner.id)], limit=1)
                 so_tk = status_info.so_tk if status_info else ''
-            
-            # Tính toán thông tin kỳ hạn cho lệnh mua
-            term_info = {}
-            if transaction.transaction_type == 'purchase':
-                # Lấy thông tin kỳ hạn từ fund_management
-                try:
-                    # Gọi API fund calc để lấy thông tin kỳ hạn
-                    fund_calc_url = f"{request.httprequest.host_url.rstrip('/')}/api/fund/calc"
-                    import requests
-                    response = requests.get(fund_calc_url, timeout=5)
-                    if response.status_code == 200:
-                        terms_data = response.json()
-                        # Tìm kỳ hạn phù hợp dựa trên amount và units
-                        transaction_amount_per_unit = transaction.amount / transaction.units if transaction.units > 0 else 0
-                        
-                        # Tìm kỳ hạn có lãi suất phù hợp
-                        best_term = None
-                        min_diff = float('inf')
-                        
-                        for term in terms_data:
-                            if not term.get('hide', False):  # Chỉ xem kỳ hạn không bị ẩn
-                                # Tính toán lãi suất dựa trên giá mua thực tế
-                                base_value = 13697  # Giá trị cơ bản từ fund_calc
-                                days = term['month'] * 30
-                                expected_price = base_value * (1 + (term['rate'] / 100) / 365 * days)
-                                
-                                # So sánh với giá mua thực tế
-                                diff = abs(expected_price - transaction_amount_per_unit)
-                                if diff < min_diff:
-                                    min_diff = diff
-                                    best_term = term
-                        
-                        if best_term:
-                            term_info = {
-                                'tenor_months': best_term['month'],
-                                'interest_rate': best_term['rate'],
-                                'maturity_date': self._calculate_maturity_date(transaction.created_at, best_term['month']),
-                                'days_to_maturity': self._calculate_days(transaction.created_at, self._calculate_maturity_date(transaction.created_at, best_term['month']))
-                            }
-                except Exception as e:
-                    print(f"Lỗi khi lấy thông tin kỳ hạn: {str(e)}")
-                    # Fallback: tính toán đơn giản dựa trên amount
-                    if transaction.amount > 0 and transaction.units > 0:
-                        amount_per_unit = transaction.amount / transaction.units
-                        # Ước tính kỳ hạn dựa trên giá trị
-                        if amount_per_unit <= 14000:
-                            estimated_term = 1
-                        elif amount_per_unit <= 14500:
-                            estimated_term = 3
-                        elif amount_per_unit <= 15000:
-                            estimated_term = 6
-                        else:
-                            estimated_term = 12
-                        
-                        term_info = {
-                            'tenor_months': estimated_term,
-                            'interest_rate': 'N/A',
-                            'maturity_date': self._calculate_maturity_date(transaction.created_at, estimated_term),
-                            'days_to_maturity': self._calculate_days(transaction.created_at, self._calculate_maturity_date(transaction.created_at, estimated_term))
-                        }
-            
+
+            # Kỳ hạn: ưu tiên field trên transaction, fallback 12
+            try:
+                tenor_months = int(getattr(tx, 'term_months', 0) or 0) or 12
+            except Exception:
+                tenor_months = 12
+
+            # Lãi suất: ưu tiên field trên transaction, sau đó lấy theo kỳ hạn từ nav.term.rate
+            ir = getattr(tx, 'interest_rate', None)
+            if ir is None:
+                rate = get_interest_rate_for_months(tenor_months)
+                ir = rate if rate is not None else 0.0
+
+            # Ngày đáo hạn: dùng created_at (có giờ) hoặc transaction_date, cộng tenor_months
+            base_dt = getattr(tx, 'created_at', False) or tx.transaction_date or tx.create_date
+            maturity_dt = None
+            if base_dt:
+                if relativedelta:
+                    try:
+                        maturity_dt = base_dt + relativedelta(months=tenor_months)
+                    except Exception:
+                        maturity_dt = self._calculate_maturity_date(base_dt, tenor_months)
+                else:
+                    maturity_dt = self._calculate_maturity_date(base_dt, tenor_months)
+
+            # Số ngày còn lại
+            days_left = None
+            try:
+                if base_dt and maturity_dt:
+                    base_date = base_dt.date() if hasattr(base_dt, 'date') else base_dt
+                    maturity_date_only = maturity_dt.date() if hasattr(maturity_dt, 'date') else maturity_dt
+                    days_left = (maturity_date_only - base_date).days
+            except Exception:
+                days_left = None
+
+            # Số tiền đăng ký đầu tư: dùng amount (trade_price), format giống @nav_management khi render
+            amount_value = float(tx.amount or 0.0)
+
+            # Áp dụng MROUND(50) cho giá đơn vị tính toán phụ (không hiển thị) để tương thích logic
+            unit_price = 0.0
+            try:
+                if (tx.units or 0) > 0:
+                    unit_price = float(amount_value) / float(tx.units)
+            except Exception:
+                unit_price = 0.0
+            price2 = mround(unit_price, 50)  # giữ để đồng nhất logic, không sử dụng ở UI
+
             orders.append({
                 'account_number': so_tk,
-                'fund_name': transaction.fund_id.name,
-                'order_date': transaction.created_at.strftime('%d/%m/%Y, %H:%M'),
-                'order_code': transaction.name or f"TX{transaction.id:06d}",
-                'nav': f"{transaction.amount:,.0f}đ" if transaction.amount else "N/A",
-                'amount': f"{transaction.amount:,.0f}",
-                'session_date': transaction.transaction_date.strftime('%d/%m/%Y') if transaction.transaction_date else "N/A",
+                'fund_name': tx.fund_id.name,
+                'order_date': tx.created_at.strftime('%d/%m/%Y, %H:%M') if getattr(tx, 'created_at', False) else (tx.create_date.strftime('%d/%m/%Y, %H:%M') if tx.create_date else ''),
+                'order_code': tx.name or f"TX{tx.id:06d}",
+                # Số tiền đăng ký đầu tư
+                'amount': f"{amount_value:,.0f}",
+                'currency': tx.currency_id.symbol or 'đ',
+                # Kỳ đầu tư tiếp theo: hiển thị ngày đáo hạn (cột "Kỳ đầu tư tiếp theo")
+                'session_date': maturity_dt.strftime('%d/%m/%Y') if maturity_dt else 'N/A',
+                # Thông tin hiển thị khác
                 'status': 'Định kỳ',
-                'status_detail': transaction.description or 'Tự động',
-                'transaction_type': get_transaction_type_display(transaction.transaction_type),
-                'units': f"{transaction.units:,.0f}",
-                'fund_ticker': transaction.fund_id.ticker or '',
-                'currency': transaction.currency_id.symbol or 'đ',
+                'status_detail': tx.description or 'Tự động',
+                'transaction_type': 'Mua',  # chỉ lấy purchase ở domain
+                'units': f"{tx.units:,.0f}",
+                'fund_ticker': tx.fund_id.ticker or '',
                 # Thông tin kỳ hạn
-                'tenor_months': term_info.get('tenor_months', 'N/A'),
-                'interest_rate': f"{term_info.get('interest_rate', 'N/A')}%" if term_info.get('interest_rate') != 'N/A' else 'N/A',
-                'maturity_date': term_info.get('maturity_date', 'N/A').strftime('%d/%m/%Y') if term_info.get('maturity_date') else 'N/A',
-                'days_to_maturity': term_info.get('days_to_maturity', 'N/A')
+                'tenor_months': tenor_months,
+                'interest_rate': f"{ir:.2f}%",
+                'maturity_date': maturity_dt.strftime('%d/%m/%Y') if maturity_dt else 'N/A',
+                'days_to_maturity': days_left if days_left is not None else 'N/A',
+                # Trạng thái đầu tư
+                'invest_status': 'Đang tham gia',
+                'invest_status_detail': '',
             })
 
         orders_json = json.dumps(orders, ensure_ascii=False)

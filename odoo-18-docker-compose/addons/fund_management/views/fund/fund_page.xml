@@ -1,10 +1,11 @@
 <odoo>
   <template id="assets_fund_widget_page" name="Fund Widget Page">
     <t t-call="web.layout">
-      <t t-set="title">Fund OWL Widget</t>
+      <t t-set="title">Fund Management</t>
 
       <t t-call-assets="web.assets_frontend" t-js="true"/>
       <t t-set="head">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
           <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
           <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
 <!--        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>-->
@@ -17,59 +18,13 @@
         <!-- Header Container -->
       <div id="header-container"></div>
 
-      <div class="profile-container">
+      <div class="profile-container fm">
           <div class="max-w-7xl mx-auto bg-white rounded-lg shadow p-6 rounded-4 mt-4">
             <div id="fund-widget-root"></div>
           </div>
       </div>
 
-      <!-- Giao diện chat -->
-      <!-- Nút tròn mở chat -->
-        <div id="chat-toggle-btn" class="btn btn-primary rounded-circle position-fixed bottom-0 end-0 m-3 shadow">
-            💬
-        </div>
 
-        <!-- Khung chat nổi -->
-        <div id="chat-popup" class="card shadow-lg position-fixed bottom-0 end-0 m-3 d-none animate__animated">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <span>Trợ lý ảo</span>
-                <button id="chat-close-btn" class="btn-close btn-close-white"></button>
-            </div>
-
-            <div id="chat-messages" class="card-body" style="height: 350px; overflow-y: auto;"></div>
-
-            <div class="card-footer d-flex">
-                <input type="text" id="prompt" class="form-control me-2" placeholder="Nhập tin nhắn..." />
-                <button id="send-btn" class="btn btn-success">Gửi</button>
-            </div>
-        </div>
-
-      <script>
-
-       document.addEventListener("DOMContentLoaded", () => {
-            const chatPopup = document.getElementById("chat-popup");
-            const toggleBtn = document.getElementById("chat-toggle-btn");
-            const closeBtn = document.getElementById("chat-close-btn");
-
-            toggleBtn.addEventListener("click", () => {
-                if (chatPopup.classList.contains("d-none")) {
-                    chatPopup.classList.remove("d-none", "animate__fadeOutDown");
-                    chatPopup.classList.add("animate__fadeInUp");
-                } else {
-                    chatPopup.classList.remove("animate__fadeInUp");
-                    chatPopup.classList.add("animate__fadeOutDown");
-                    setTimeout(() => chatPopup.classList.add("d-none"), 300);
-                }
-            });
-
-            closeBtn.addEventListener("click", () => {
-                chatPopup.classList.remove("animate__fadeInUp");
-                chatPopup.classList.add("animate__fadeOutDown");
-                setTimeout(() => chatPopup.classList.add("d-none"), 300);
-            });
-        });
-
-      </script>
 
     </t>
   </template>

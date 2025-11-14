@@ -53,45 +53,62 @@ class ReportSellContract(models.Model):
         for record in self:
             record.so_tien = record.amount or 0.0
 
-    @api.depends('transaction_date')
+    @api.depends('created_at')
     def _compute_ngay_hd_ban(self):
-        """Compute ngày HĐ bán từ transaction_date"""
+        """Compute ngày HĐ bán từ created_at"""
         for record in self:
-            record.ngay_hd_ban = record.transaction_date
+            if record.created_at:
+                record.ngay_hd_ban = record.created_at.date()
+            else:
+                record.ngay_hd_ban = False
 
-    @api.depends('transaction_date')
+    @api.depends('created_at')
     def _compute_ngay_ban(self):
-        """Compute ngày bán từ transaction_date"""
+        """Compute ngày bán từ created_at"""
         for record in self:
-            record.ngay_ban = record.transaction_date
+            if record.created_at:
+                record.ngay_ban = record.created_at.date()
+            else:
+                record.ngay_ban = False
 
-    @api.depends('transaction_date')
+    @api.depends('created_at')
     def _compute_ngay_thanh_toan(self):
         """Compute ngày thanh toán"""
         for record in self:
-            # Có thể tính từ transaction_date + số ngày xử lý
-            record.ngay_thanh_toan = record.transaction_date
+            # Có thể tính từ created_at + số ngày xử lý
+            if record.created_at:
+                record.ngay_thanh_toan = record.created_at.date()
+            else:
+                record.ngay_thanh_toan = False
 
-    @api.depends('transaction_date')
+    @api.depends('created_at', 'term_months')
     def _compute_so_ngay_duy_tri(self):
-        """Compute số ngày duy trì từ transaction_date"""
+        """Compute số ngày duy trì - sử dụng nav_days nếu có, fallback về tính toán"""
         for record in self:
-            if record.transaction_date:
+            # Ưu tiên sử dụng nav_days đã tính toán sẵn
+            nav_days = getattr(record, 'nav_days', 0)
+            if nav_days and nav_days > 0:
+                record.so_ngay_duy_tri = nav_days
+            elif record.created_at:
                 from datetime import date
                 today = date.today()
-                delta = today - record.transaction_date
+                transaction_date = record.created_at.date()
+                delta = today - transaction_date
                 record.so_ngay_duy_tri = delta.days
             else:
                 record.so_ngay_duy_tri = 0
 
-    @api.depends('amount')
+    @api.depends('nav_customer_receive', 'amount')
     def _compute_tien_lai(self):
-        """Compute tiền lãi thực tế"""
+        """Compute tiền lãi thực tế - sử dụng NAV customer_receive nếu có"""
         for record in self:
-            # Tính tiền lãi dựa trên số ngày duy trì và lãi suất
-            if record.so_ngay_duy_tri and record.amount:
-                # Giả sử lãi suất 8.5% năm
-                lai_suat_nam = 8.5
+            # Ưu tiên sử dụng nav_customer_receive - amount (nếu có)
+            nav_customer_receive = getattr(record, 'nav_customer_receive', 0.0)
+            if nav_customer_receive > 0 and record.amount:
+                record.tien_lai = nav_customer_receive - record.amount
+            elif record.so_ngay_duy_tri and record.amount:
+                # Fallback: tính từ số ngày duy trì và lãi suất
+                lai_suat_nam = record.interest_rate or 8.5
                 tien_lai = record.amount * (lai_suat_nam / 100) * (record.so_ngay_duy_tri / 365)
                 record.tien_lai = tien_lai
             else:
@@ -160,7 +177,7 @@ class ReportSellContract(models.Model):
             total = self.search_count(domain)
             print(f"Total records found: {total}")
             
-            records = self.search(domain, limit=limit, offset=offset, order='transaction_date desc')
+            records = self.search(domain, limit=limit, offset=offset, order='created_at desc')
             print(f"Records retrieved: {len(records)}")
             
             formatted_records = []

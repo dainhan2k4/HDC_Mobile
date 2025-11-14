@@ -2,177 +2,139 @@
 <odoo>
     <data>
 
-        <record id="view_auth_user_list" model="ir.ui.view">
-            <field name="name">User View</field>
-            <field name="model">auth.user</field>
-            <field name="arch" type="xml">
-                <list>
-                    <field name="id"/>
-                    <field name="name"/>
-                    <field name="email"/>
-                    <field name="email_verified"/>
-                    <field name="image"/>
-                </list>
-            </field>
-        </record>
-
-        <!-- Account -->
-        <record id="view_auth_account_list" model="ir.ui.view">
-            <field name="name">auth.account.list</field>
-            <field name="model">auth.account</field>
-            <field name="arch" type="xml">
-                <list>
-                    <field name="user_id"/>
-                    <field name="provider"/>
-                    <field name="access_token"/>
-                </list>
-            </field>
-        </record>
-
-        <!-- Session -->
-        <record id="view_auth_session_list" model="ir.ui.view">
-            <field name="name">auth.session.list</field>
-            <field name="model">auth.session</field>
-            <field name="arch" type="xml">
-                <list>
-                    <field name="session_token"/>
-                    <field name="user_id"/>
-                    <field name="expires"/>
-                </list>
-            </field>
-        </record>
-
-        <!-- Verification Token -->
-        <record id="view_auth_verification_token_list" model="ir.ui.view">
-            <field name="name">auth.verification_token.list</field>
-            <field name="model">auth.verification_token</field>
-            <field name="arch" type="xml">
-                <list>
-                    <field name="identifier"/>
-                    <field name="token"/>
-                    <field name="expires"/>
-                </list>
-            </field>
-        </record>
-
-        <!-- Investment -->
-        <record id="view_portfolio_investment_list" model="ir.ui.view">
-            <field name="name">portfolio.investment.list</field>
-            <field name="model">portfolio.investment</field>
-            <field name="arch" type="xml">
-                <list>
-                    <field name="user_id"/>
-                    <field name="fund_id"/>
-                    <field name="units"/>
-                    <field name="amount"/>
-                </list>
-            </field>
-        </record>
 
         <!-- Fund -->
         <record id="view_portfolio_fund_list" model="ir.ui.view">
             <field name="name">portfolio.fund.list</field>
             <field name="model">portfolio.fund</field>
             <field name="arch" type="xml">
-                <list>
-                    <field name="name"/>
+                <list string="Funds" decoration-success="profit_loss &gt; 0" decoration-danger="profit_loss &lt; 0">
                     <field name="ticker"/>
-                    <field name="current_nav"/>
-                    <field name="investment_type"/>
-                    <field name="description"/>
+                    <field name="name"/>
+                    <field name="current_nav" widget="monetary"/>
+                    <field name="change"/>
+                    <field name="change_percent" widget="percentage"/>
+                    <field name="volume"/>
+                    <field name="low_price" widget="monetary"/>
+                    <field name="high_price" widget="monetary"/>
+                    <field name="open_price" widget="monetary"/>
+                    <field name="investment_count" sum="Total Investments" widget="number"/>
+                    <field name="total_units" sum="Total Units" widget="float"/>
+                    <field name="total_investment" sum="Total Investment" widget="monetary"/>
+                    <field name="current_value" sum="Current Value" widget="monetary"/>
+                    <field name="profit_loss" sum="Profit/Loss" widget="monetary"/>
+                    <field name="profit_loss_percentage" widget="percentage"/>
+                    <field name="status" widget="badge" decoration-success="status == 'active'" decoration-warning="status == 'inactive'" decoration-danger="status == 'closed'"/>
                 </list>
             </field>
         </record>
 
-        <!-- Transactions -->
-        <record id="view_portfolio_transaction_list" model="ir.ui.view">
-            <field name="name">portfolio.transaction.list</field>
-            <field name="model">portfolio.transaction</field>
+        <!-- Fund Form View -->
+        <record id="view_portfolio_fund_form" model="ir.ui.view">
+            <field name="name">portfolio.fund.form</field>
+            <field name="model">portfolio.fund</field>
+            <field name="type">form</field>
             <field name="arch" type="xml">
-                <list>
-                    <field name="user_id"/>
-                    <field name="fund_id"/>
-                    <field name="transaction_type"/>
-                    <field name="status"/>
-                    <field name="amount"/>
-                    <field name="fee"/>
-                </list>
-            </field>
-        </record>
-
-        <record id="view_portfolio_transaction_form" model="ir.ui.view">
-            <field name="name">portfolio.transaction.form</field>
-            <field name="model">portfolio.transaction</field>
-            <field name="arch" type="xml">
-                <form>
+                <form string="Fund">
+                    <header>
+                        <button name="action_sync_from_certificate" string="Sync from Certificate" type="object" class="btn-primary" help="Sync data from fund.certificate"/>
+                    </header>
                     <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Fund Name"/>
+                            </h1>
+                        </div>
                         <group>
                             <group>
-                                <field name="user_id"/>
-                                <field name="fund_id"/>
-                                <field name="transaction_type"/>
-                                <field name="status"/>
+                                <field name="ticker"/>
+                                <field name="inception_date" widget="date"/>
+                                <field name="investment_type" widget="selection"/>
+                                <field name="is_shariah" widget="boolean_toggle"/>
+                                <field name="status" widget="badge" decoration-success="status == 'active'" decoration-warning="status == 'inactive'" decoration-danger="status == 'closed'"/>
+                                <field name="currency_id"/>
                             </group>
                             <group>
-                                <field name="units"/>
-                                <field name="amount"/>
-                                <field name="fee"/>
-                                <field name="price"/>
+                    <field name="current_nav" widget="monetary"/>
+                    <field name="change"/>
+                    <field name="change_percent" widget="percentage"/>
+                    <field name="volume"/>
+                    <field name="low_price" widget="monetary"/>
+                    <field name="high_price" widget="monetary"/>
+                    <field name="open_price" widget="monetary"/>
+                                <field name="last_update" widget="datetime"/>
+                                <field name="color" widget="color"/>
                             </group>
                         </group>
-                        <group>
-                            <group>
-                                <field name="term_months"/>
-                                <field name="interest_rate"/>
-                                <field name="source"/>
-                            </group>
-                            <group>
-                                <field name="created_at"/>
-                                <field name="date_end"/>
-                                <field name="contract_pdf_path"/>
-                            </group>
-                        </group>
+                        <notebook>
+                            <page string="Investment Details" name="investment_details">
+                                <group>
+                                    <group>
+                                        <field name="investment_count" widget="number"/>
+                                        <field name="total_units" widget="float"/>
+                                        <field name="flex_units" widget="float"/>
+                                        <field name="sip_units" widget="float"/>
+                                    </group>
+                                    <group>
+                                        <field name="total_investment" widget="monetary"/>
+                                        <field name="current_value" widget="monetary"/>
+                                        <field name="profit_loss" widget="monetary" decoration-success="profit_loss &gt; 0" decoration-danger="profit_loss &lt; 0"/>
+                                        <field name="profit_loss_percentage" widget="percentage" decoration-success="profit_loss_percentage &gt; 0" decoration-danger="profit_loss_percentage &lt; 0"/>
+                                    </group>
+                                </group>
+                                <field name="investment_ids" readonly="1">
+                                    <list decoration-success="profit_loss &gt; 0" decoration-danger="profit_loss &lt; 0">
+                                        <field name="name"/>
+                                        <field name="investment_type" widget="selection"/>
+                                        <field name="units" widget="float"/>
+                                        <field name="amount" widget="monetary"/>
+                                        <field name="current_value" widget="monetary"/>
+                                        <field name="profit_loss" widget="monetary"/>
+                                        <field name="profit_loss_percentage" widget="percentage"/>
+                                        <field name="status" widget="badge" decoration-success="status == 'active'" decoration-warning="status == 'inactive'" decoration-danger="status == 'closed'"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Description">
+                                <field name="description" widget="text"/>
+                            </page>
+                            <page string="History">
+                                <field name="ytd_history_json" widget="ace" options="{'mode': 'json'}"/>
+                                <field name="nav_history_json" widget="ace" options="{'mode': 'json'}"/>
+                            </page>
+                        </notebook>
                     </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
                 </form>
             </field>
         </record>
 
-        <!-- Account Balance -->
-        <record id="view_portfolio_account_balance_list" model="ir.ui.view">
-            <field name="name">portfolio.account_balance.list</field>
-            <field name="model">portfolio.account_balance</field>
+        <!-- Fund Search View -->
+        <record id="view_portfolio_fund_search" model="ir.ui.view">
+            <field name="name">portfolio.fund.search</field>
+            <field name="model">portfolio.fund</field>
+            <field name="type">search</field>
             <field name="arch" type="xml">
-                <list>
-                    <field name="user_id"/>
-                    <field name="balance"/>
-                </list>
+                <search string="Funds">
+                    <field name="name"/>
+                    <field name="ticker"/>
+                    <field name="investment_type"/>
+                    <filter string="Active" name="active" domain="[('status','=','active')]"/>
+                    <filter string="Inactive" name="inactive" domain="[('status','=','inactive')]"/>
+                    <filter string="Closed" name="closed" domain="[('status','=','closed')]"/>
+                    <filter string="Shariah" name="shariah" domain="[('is_shariah','=',True)]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Investment Type" name="groupby_investment_type" context="{'group_by':'investment_type'}"/>
+                        <filter string="Status" name="groupby_status" context="{'group_by':'status'}"/>
+                    </group>
+                </search>
             </field>
         </record>
 
-        <!-- Balance History -->
-        <record id="view_portfolio_balance_history_list" model="ir.ui.view">
-            <field name="name">portfolio.balance_history.list</field>
-            <field name="model">portfolio.balance_history</field>
-            <field name="arch" type="xml">
-                <list>
-                    <field name="user_id"/>
-                    <field name="balance"/>
-                    <field name="change_type"/>
-                </list>
-            </field>
-        </record>
-
-        <!-- Comparisons -->
-        <record id="view_portfolio_comparison_list" model="ir.ui.view">
-            <field name="name">portfolio.comparison.list</field>
-            <field name="model">portfolio.comparison</field>
-            <field name="arch" type="xml">
-                <list>
-                    <field name="user_id"/>
-                    <field name="fund_ids"/>
-                </list>
-            </field>
-        </record>
 
     </data>
 </odoo>

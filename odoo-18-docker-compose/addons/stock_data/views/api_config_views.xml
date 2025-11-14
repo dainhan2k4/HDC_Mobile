@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- API Configuration Views -->
+    <record id="view_ssi_api_config_form" model="ir.ui.view">
+        <field name="name">ssi.api.config.form</field>
+        <field name="model">ssi.api.config</field>
+        <field name="arch" type="xml">
+            <form string="SSI API Configuration">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="is_active"/>
+                    </group>
+                    <notebook>
+                        <page string="API Credentials" name="credentials">
+                            <group>
+                                <field name="consumer_id" password="True"/>
+                                <field name="consumer_secret" password="True"/>
+                            </group>
+                        </page>
+                        <page string="API URLs" name="urls">
+                            <group>
+                                <field name="api_url"/>
+                            </group>
+                        </page>
+                        <page string="Sync Status" name="status">
+                            <group>
+                                <field name="last_sync_date" readonly="1"/>
+                                <field name="last_sync_status" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ssi_api_config_tree" model="ir.ui.view">
+        <field name="name">ssi.api.config.tree</field>
+        <field name="model">ssi.api.config</field>
+        <field name="arch" type="xml">
+            <list string="SSI API Configurations">
+                <field name="name"/>
+                <field name="is_active"/>
+                <field name="last_sync_date"/>
+                <field name="last_sync_status"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_ssi_api_config" model="ir.actions.act_window">
+        <field name="name">SSI API Configuration</field>
+        <field name="res_model">ssi.api.config</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>
+
+
+
+

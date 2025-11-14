@@ -30,12 +30,9 @@
         'views/nav_term_rate_views.xml',           # Views cho kỳ hạn / lãi suất
         'views/nav_cap_config_views.xml',          # Views cho chặn trên / chặn dưới
         'views/nav_daily_inventory_views.xml',     # Views cho tồn kho CCQ hàng ngày
-        'views/nav_fund_config_views.xml',         # Views cho cấu hình quỹ
-        
         # Seed data
         'data/nav_seed_data.xml',
         'data/nav_daily_cron.xml',             # Cron job tự động tạo tồn kho hàng ngày
-        'data/nav_fund_config_data.xml',        # Mock data cho cấu hình quỹ
         
         # Website Templates - Trang web frontend
         'views/nav_transaction/nav_transaction_page.xml',  # Trang NAV phiên giao dịch

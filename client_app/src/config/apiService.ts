@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { Platform } from 'react-native';
 
 import { ApiResponse } from '../types/api';
 import { API_CONFIG, API_ENDPOINTS } from './apiConfig';
@@ -14,6 +15,9 @@ export class ApiService {
   private axiosInstance: AxiosInstance;
 
   private constructor() {
+    console.log('🔧 [ApiService] Initializing with BASE_URL:', API_CONFIG.BASE_URL);
+    console.log('🔧 [ApiService] LOCAL_HOST:', API_CONFIG.LOCAL_HOST);
+    
     this.axiosInstance = axios.create({
       baseURL: API_CONFIG.BASE_URL,
       timeout: API_CONFIG.TIMEOUT,
@@ -24,6 +28,13 @@ export class ApiService {
 
     // Request interceptor to attach session cookie
     this.axiosInstance.interceptors.request.use(async (config) => {
+      console.log(`📤 [ApiService] Making request to: ${config.url}`);
+      console.log(`📤 [ApiService] Full URL: ${config.baseURL}${config.url}`);
+      console.log(`📤 [ApiService] Request config:`, {
+        method: config.method,
+        headers: Object.keys(config.headers || {})
+      });
+      
       // Add ngrok-specific headers
       config.headers = {
         ...(config.headers || {}),
@@ -31,19 +42,50 @@ export class ApiService {
       } as any;
       
       // Attach session cookie if available (for authenticated endpoints)
+      // Skip Cookie header on web to avoid browser blocking (CORS/unsafe header)
+      // Use Platform.OS to detect web, not typeof checks (more reliable)
+      const isWeb = Platform.OS === 'web';
+      
       if (this.sessionId) {
-        config.headers = {
-          ...(config.headers || {}),
-          'Cookie': `session_id=${this.sessionId}`,
-        } as any;
-        
-        console.log(`🔐 [ApiService] Adding session cookie: session_id=${this.sessionId.substring(0, 10)}...`);
+        if (!isWeb) {
+          // Native platforms (iOS/Android) can use Cookie header
+          config.headers = {
+            ...(config.headers || {}),
+            'Cookie': `session_id=${this.sessionId}`,
+          } as any;
+          
+          console.log(`🔐 [ApiService] Adding session cookie: session_id=${this.sessionId.substring(0, 10)}...`);
+        } else {
+          console.log('⚠️ [ApiService] Web platform - Cookie header skipped (CORS restriction)');
+          // For web, we might need to use a different auth method
+        }
       } else {
         console.log('⚠️ [ApiService] No session ID available for request to:', config.url);
       }
       
       return config;
     });
+    
+    // Response interceptor for error handling
+    this.axiosInstance.interceptors.response.use(
+      (response) => {
+        console.log(`✅ [ApiService] Response from ${response.config.url}:`, response.status);
+        return response;
+      },
+      (error) => {
+        if (error.code === 'ECONNABORTED') {
+          console.error(`⏱️ [ApiService] Request timeout to ${error.config?.url}`);
+          console.error(`⏱️ [ApiService] Base URL: ${error.config?.baseURL}`);
+        } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+          console.error(`🔌 [ApiService] Connection error to ${error.config?.url}`);
+          console.error(`🔌 [ApiService] Base URL: ${error.config?.baseURL}`);
+          console.error(`🔌 [ApiService] Error: ${error.message}`);
+        } else {
+          console.error(`❌ [ApiService] Request error to ${error.config?.url}:`, error.message);
+        }
+        return Promise.reject(error);
+      }
+    );
   }
 
   static getInstance(): ApiService {
@@ -87,7 +129,7 @@ export class ApiService {
     };
   }
 
-  // Test if current session is valid by calling a simple authenticated endpoint
+  // Test if current session is valid - gọi trực tiếp Odoo
   async testSessionValidity(): Promise<boolean> {
     const sessionId = this.getSessionId();
     if (!sessionId) {
@@ -95,13 +137,23 @@ export class ApiService {
     }
 
     try {
-      const response = await this.axiosInstance.post(API_ENDPOINTS.LEGACY_ODOO.AUTH.SESSION_INFO, {
+      const odooBaseUrl = `http://${API_CONFIG.LOCAL_HOST}:11018`;
+      const authClient = axios.create({
+        baseURL: odooBaseUrl,
+        timeout: API_CONFIG.TIMEOUT,
+        headers: { 
+          ...API_CONFIG.HEADERS,
+          'Cookie': `session_id=${sessionId}`
+        },
+      });
+      
+      const response = await authClient.post('/web/session/get_session_info', {
         jsonrpc: "2.0",
         method: "call",
         params: {}
       });
       
-      const sessionInfo = response?.data as any;
+      const sessionInfo = response?.data?.result as any;
       const isValid = sessionInfo && sessionInfo.uid && sessionInfo.uid !== false;
       
       console.log(`🔐 [ApiService] Session test result:`, isValid ? 'VALID' : 'INVALID');
@@ -145,11 +197,9 @@ export class ApiService {
       config.headers = { ...(config.headers || {}), ...headers };
 
       console.log('📤 [ApiService] Making request to:', endpoint);
-      console.log('📤 [ApiService] Request config:', JSON.stringify(config, null, 2));
+      // Only log id_type if it's actually present (for KYC/verification endpoints)
       if (config.data && config.data.id_type !== undefined) {
         console.log('🔍 [ApiService] id_type in request config:', config.data.id_type);
-      } else {
-        console.log('⚠️ [ApiService] id_type NOT found in request config');
       }
       
       const response: AxiosResponse = await this.axiosInstance.request({
@@ -196,11 +246,9 @@ export class ApiService {
 
   async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     console.log('📤 [ApiService] POST request to:', endpoint);
-    console.log('📤 [ApiService] POST data:', JSON.stringify(data, null, 2));
+    // Only log id_type if it's actually present (for KYC/verification endpoints)
     if (data && data.id_type !== undefined) {
       console.log('🔍 [ApiService] id_type in POST data:', data.id_type);
-    } else {
-      console.log('⚠️ [ApiService] id_type NOT found in POST data');
     }
     return this.makeRequest<T>(endpoint, { method: 'POST', data });
   }
@@ -215,43 +263,34 @@ export class ApiService {
 
   /* ----------------------------- API ENDPOINTS --------------------------- */
 
-  // Authentication methods
+  // Authentication methods - vẫn gọi trực tiếp Odoo vì middleware chưa có auth endpoint
   async login(email: string, password: string, database?: string): Promise<ApiResponse<any>> {
-    console.log(`🔐 [ApiService] Starting login process (middleware: ${API_CONFIG.USE_MIDDLEWARE})`);
+    console.log(`🔐 [ApiService] Starting login process - gọi trực tiếp Odoo cho authentication`);
     
-    // If using middleware, skip authentication - middleware handles it internally
-    if (API_CONFIG.USE_MIDDLEWARE) {
-      console.log('✅ [ApiService] Using middleware - no client authentication needed');
-      // Set dummy session for compatibility
-      this.sessionId = 'middleware-session';
-      return { 
-        success: true, 
-        data: { 
-          result: { 
-            db: 'p2p', 
-            uid: 1, 
-            session_id: 'middleware-session',
-            username: email 
-          } 
-        }
-      };
-    }
+    // Authentication vẫn gọi trực tiếp Odoo (chưa có middleware endpoint)
+    // Tạm thời dùng Odoo base URL trực tiếp cho auth
+    const odooBaseUrl = `http://${API_CONFIG.LOCAL_HOST}:11018`;
     
-    // Direct Odoo authentication
-    return this.loginDirectOdoo(email, password, database);
+    return this.loginDirectOdoo(email, password, database, odooBaseUrl);
   }
 
-  // Direct Odoo authentication method
-  private async loginDirectOdoo(email: string, password: string, database?: string): Promise<ApiResponse<any>> {
+  // Direct Odoo authentication method (chỉ dùng cho auth)
+  private async loginDirectOdoo(email: string, password: string, database?: string, baseUrl?: string): Promise<ApiResponse<any>> {
+    // Tạo axios instance riêng cho Odoo auth
+    const authClient = axios.create({
+      baseURL: baseUrl || `http://${API_CONFIG.LOCAL_HOST}:11018`,
+      timeout: API_CONFIG.TIMEOUT,
+      headers: { ...API_CONFIG.HEADERS },
+    });
     // Try different databases if not specified
-    const databasesToTry = ['p2p'];
+    const databasesToTry = database ? [database] : ['anfan'];
     
     for (const db of databasesToTry) {
       try {
         console.log(`🔐 [ApiService] Trying login with database: ${db}`);
         
         // Use JSON-RPC format for Odoo authentication
-        const res = await this.post(API_ENDPOINTS.LEGACY_ODOO.AUTH.LOGIN, {
+        const res = await authClient.post(API_ENDPOINTS.AUTH.LOGIN, {
           jsonrpc: "2.0",
           method: "call",
           params: {
@@ -264,7 +303,7 @@ export class ApiService {
         console.log(`🔐 [ApiService] Response:`, res);
 
         // If successful, extract session_id from Set-Cookie header
-        const setCookie = (res.rawResponse?.headers as any)?.['set-cookie'] || (res.rawResponse?.headers as any)?.['Set-Cookie'];
+        const setCookie = (res.headers as any)?.['set-cookie'] || (res.headers as any)?.['Set-Cookie'];
         
         if (setCookie) {
           let sessionId = null;
@@ -292,22 +331,27 @@ export class ApiService {
           if (sessionId) {
             this.sessionId = sessionId;
             console.log(`✅ [ApiService] Login successful with database: ${db}, session: ${sessionId}`);
-            return { 
-              success: true, 
-              data: { result: { db: db, uid: 1, session_id: sessionId } }
+            return {
+              success: true,
+              data: { result: { db: db, uid: 1, session_id: sessionId } },
+              rawResponse: res as any
             };
           }
         }
 
         // Check if login was successful from JSON-RPC response
         const responseData = res.data as any;
+        
+        // Wrap response in ApiResponse format
+        const apiResponse: ApiResponse<any> = {
+          success: true,
+          data: responseData,
+          rawResponse: res as any
+        };
         if (responseData && responseData.result && !responseData.error) {
           console.log(`✅ [ApiService] Login successful with database: ${db} (JSON-RPC response)`);
           // Even without session_id in headers, the login might be successful
-          return { 
-            success: true, 
-            data: responseData
-          };
+          return apiResponse;
         }
 
         // Check for error in JSON-RPC response
@@ -325,16 +369,22 @@ export class ApiService {
     throw new Error('Login failed with all available databases');
   }
 
-  // Test database connection
+  // Test database connection - chỉ dùng cho debugging, gọi trực tiếp Odoo
   async testDatabaseConnection() {
     try {
-      const dbList = await this.post('/web/database/list', {
+      const odooBaseUrl = `http://${API_CONFIG.LOCAL_HOST}:11018`;
+      const authClient = axios.create({
+        baseURL: odooBaseUrl,
+        timeout: API_CONFIG.TIMEOUT,
+        headers: { ...API_CONFIG.HEADERS },
+      });
+      const dbList = await authClient.post('/web/database/list', {
         jsonrpc: "2.0",
         method: "call",
         params: {}
       });
       console.log('📊 [ApiService] Available databases:', dbList.data);
-      return dbList.data;
+      return { success: true, data: dbList.data };
     } catch (error) {
       console.log('❌ [ApiService] Database list failed:', error);
       throw error;
@@ -351,8 +401,12 @@ export class ApiService {
     return this.post(API_ENDPOINTS.AUTH.SIGNUP, userData);
   }
 
-  async verifyOtp(otp: string) {
-    return this.post(API_ENDPOINTS.AUTH.VERIFY_OTP, { otp });
+  async requestSignupOtp(email: string) {
+    return this.post(API_ENDPOINTS.AUTH.SIGNUP_OTP, { email });
+  }
+
+  async verifyOtp(email: string, otp: string) {
+    return this.post(API_ENDPOINTS.AUTH.VERIFY_OTP, { email, otp });
   }
 
   async resetPassword(email: string) {
@@ -368,73 +422,84 @@ export class ApiService {
     });
   }
 
-  // Fund methods
+  // Fund methods - dùng middleware endpoints
   async getFunds(params?: {
     page?: number;
     limit?: number;
     search?: string;
     investment_type?: string;
   }) {
-    return this.get(API_ENDPOINTS.FUNDS.LIST, params);
+    return this.get(API_ENDPOINTS.PORTFOLIO.FUNDS, params);
   }
 
   async getFundDetail(id: number) {
-    return this.get(API_ENDPOINTS.FUNDS.DETAIL(id));
+    // Tạm thời lấy từ danh sách funds và filter
+    const funds = await this.getFunds();
+    const fund = (funds.data as any[])?.find((f: any) => f.id === id);
+    if (!fund) {
+      throw new Error('Fund not found');
+    }
+    return { success: true, data: fund };
   }
 
-  // Get user's fund data
-  async getUserFundData() {
-    return this.get(API_ENDPOINTS.FUNDS.USER_DATA);
+  async getFundChart(fundId: number, timeRange: string = '1M') {
+    return this.get(API_ENDPOINTS.PORTFOLIO.FUND_CHART(fundId, timeRange));
   }
 
-  async getFundData() {
-    return this.get('/portfolio/funds');
+  async getTermRates(): Promise<ApiResponse<Array<{ month: number; interest_rate: number }>>> {
+    try {
+      const response = await this.axiosInstance.get(API_ENDPOINTS.PORTFOLIO.TERM_RATES);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [ApiService] Failed to get term rates:', error);
+      throw error;
+    }
   }
 
-  async getFundDataDetail(id: number) {
-    return this.get(API_ENDPOINTS.FUNDS.DETAIL(id));
+  async getFundOHLC(fundId: number, timeRange: string = '1D') {
+    return this.get(API_ENDPOINTS.PORTFOLIO.FUND_OHLC(fundId, timeRange));
   }
 
-  // Investment methods
-  async createInvestment(data: {
-    fund_id: number;
-    amount: number;
-    units: number;
-  }) {
-    return this.post(API_ENDPOINTS.INVESTMENTS.CREATE, data);
+  async getFundComparison(fundIds: number[]) {
+    const idsParam = fundIds.join(',');
+    return this.get(`${API_ENDPOINTS.PORTFOLIO.FUND_COMPARE}?ids=${idsParam}`);
+  }
+
+  // Investment methods - dùng middleware endpoints
+  async getInvestments() {
+    return this.get(API_ENDPOINTS.PORTFOLIO.INVESTMENTS);
   }
 
   async buyFund(data: {
-    fund_id: number;
+    fundId: number;
     amount: number;
     units: number;
-    transaction_type: 'purchase';
   }) {
-    return this.post(API_ENDPOINTS.INVESTMENTS.CREATE, data);
+    return this.post(API_ENDPOINTS.TRANSACTIONS.BUY, data);
   }
 
   async sellFund(data: {
-    fund_id: number;
-    units: number;
-    transaction_type: 'sale';
+    investmentId: number;
+    quantity: number;
+    estimatedValue?: number;
+    debug?: boolean;
   }) {
-    return this.post(API_ENDPOINTS.INVESTMENTS.SELL, data);
+    return this.post(API_ENDPOINTS.PORTFOLIO.FUND_SELL, data);
   }
 
-  // Portfolio methods
+  // Portfolio methods - dùng middleware endpoints
   async getPortfolioOverview() {
-    return this.get(API_ENDPOINTS.PORTFOLIO.DASHBOARD);
-  }
-
-  async getInvestments() {
-    return this.get('/data_investment');
+    return this.get(API_ENDPOINTS.PORTFOLIO.OVERVIEW);
   }
 
   async getInvestmentsByFund(fundId: number) {
-    return this.get(API_ENDPOINTS.INVESTMENTS.BY_FUND(fundId));
+    // Lấy tất cả investments và filter theo fundId
+    const investments = await this.getInvestments();
+    const filtered = (investments.data as any[])?.filter((inv: any) => inv.fund_id === fundId) || [];
+    return { success: true, data: filtered };
   }
 
-  // Transaction methods
+  // Transaction methods - dùng middleware endpoints
   async getTransactions(params?: {
     page?: number;
     limit?: number;
@@ -444,14 +509,18 @@ export class ApiService {
     start_date?: string;
     end_date?: string;
   }) {
-    return this.get(API_ENDPOINTS.TRANSACTIONS.ORDER, params);
+    return this.get(API_ENDPOINTS.TRANSACTIONS.CONTROLLER.ORDER, params);
   }
 
   async getPendingTransactions() {
     return this.get(API_ENDPOINTS.TRANSACTIONS.PENDING);
   }
 
-  // Profile methods
+  async getPeriodicTransactions() {
+    return this.get(API_ENDPOINTS.TRANSACTIONS.CONTROLLER.PERIODIC);
+  }
+
+  // Profile methods - dùng middleware endpoints
   async getProfile(): Promise<ApiResponse<any>> {
     return this.get<any>(API_ENDPOINTS.PROFILE.PERSONAL_DATA);
   }
@@ -503,126 +572,80 @@ export class ApiService {
     return this.post(API_ENDPOINTS.PROFILE.SAVE_ALL, data);
   }
 
-  // Account Balance methods
-  async getBalance() {
-    return this.get(API_ENDPOINTS.ACCOUNT.BALANCE);
+  async getVerificationData() {
+    return this.get(API_ENDPOINTS.PROFILE.VERIFICATION_DATA);
   }
 
-  async getBalanceHistory(params?: {
-    page?: number;
-    limit?: number;
-    start_date?: string;
-    end_date?: string;
-  }) {
-    return this.get(API_ENDPOINTS.ACCOUNT.HISTORY, params);
+  async getStatusInfo() {
+    return this.get(API_ENDPOINTS.PROFILE.STATUS_INFO);
   }
 
-  // Reference Data methods
+  async linkSSIAccount(data: {
+    consumer_id: string;
+    consumer_secret: string;
+    account: string;
+    private_key: string;
+  }): Promise<ApiResponse<any>> {
+    return this.post(API_ENDPOINTS.PROFILE.LINK_SSI_ACCOUNT, data);
+  }
+
+  async getAccountBalance(): Promise<ApiResponse<any>> {
+    return this.post(API_ENDPOINTS.PROFILE.GET_ACCOUNT_BALANCE, {});
+  }
+
+  async uploadIdImage(formData: FormData) {
+    return this.makeRequest(API_ENDPOINTS.PROFILE.UPLOAD_ID, {
+      method: 'POST',
+      data: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  }
+
+  // Reference Data methods - các endpoint này chưa có trong middleware, tạm thời giữ nguyên
   async getCountries() {
-    return this.get(API_ENDPOINTS.REFERENCE.COUNTRIES);
+    // Tạm thời gọi trực tiếp Odoo (chưa có middleware endpoint)
+    const odooBaseUrl = `http://${API_CONFIG.LOCAL_HOST}:11018`;
+    const authClient = axios.create({
+      baseURL: odooBaseUrl,
+      timeout: API_CONFIG.TIMEOUT,
+      headers: { ...API_CONFIG.HEADERS },
+    });
+    if (this.sessionId) {
+      authClient.defaults.headers.common['Cookie'] = `session_id=${this.sessionId}`;
+    }
+    const response = await authClient.get('/get_countries');
+    return { success: true, data: response.data };
   }
 
   async getCurrencies() {
-    return this.get(API_ENDPOINTS.REFERENCE.CURRENCIES);
+    // Tạm thời gọi trực tiếp Odoo (chưa có middleware endpoint)
+    const odooBaseUrl = `http://${API_CONFIG.LOCAL_HOST}:11018`;
+    const authClient = axios.create({
+      baseURL: odooBaseUrl,
+      timeout: API_CONFIG.TIMEOUT,
+      headers: { ...API_CONFIG.HEADERS },
+    });
+    if (this.sessionId) {
+      authClient.defaults.headers.common['Cookie'] = `session_id=${this.sessionId}`;
+    }
+    const response = await authClient.get('/get_currencies');
+    return { success: true, data: response.data };
   }
 
-  // Asset Management methods
+  // Asset Management methods - dùng middleware endpoints
   async getAssetManagement() {
     return this.get(API_ENDPOINTS.ASSET.MANAGEMENT);
   }
 
-  // Odoo Dataset API methods for direct model access
-  async searchReadModel(modelName: string, fields: string[] = ['name', 'id'], domain: any[] = [], limit: number = 10) {
-    return this.post('/web/dataset/search_read', {
-      jsonrpc: "2.0",
-      method: "call",
-      params: {
-        model: modelName,
-        fields: fields,
-        domain: domain,
-        limit: limit
-      }
-    });
+  // OTP methods - dùng middleware endpoints
+  async getOTPConfig(): Promise<ApiResponse<any>> {
+    return this.get(API_ENDPOINTS.OTP.CONFIG);
   }
 
-  // Get fund data directly from Odoo models  
-  async getFundDataFromModel() {
-    const possibleModels = [
-      'fund.fund',
-      'fund_management.fund', 
-      'asset_management.fund',
-      'investment.fund'
-    ];
-
-    for (const modelName of possibleModels) {
-      try {
-        const response = await this.searchReadModel(
-          modelName,
-          ['name', 'id', 'current_nav', 'investment_type', 'description'],
-          [],
-          20
-        );
-        if (response.data && (response.data as any).records?.length > 0) {
-          return response;
-        }
-      } catch (error) {
-        continue; // Try next model
-      }
-    }
-    throw new Error('No fund model found');
-  }
-
-  // Get investment data directly from Odoo models
-  async getInvestmentDataFromModel() {
-    const possibleModels = [
-      'investment.investment',
-      'fund_management.investment',
-      'asset_management.investment', 
-      'portfolio.investment'
-    ];
-
-    for (const modelName of possibleModels) {
-      try {
-        const response = await this.searchReadModel(
-          modelName,
-          ['name', 'id', 'amount', 'fund_id', 'current_value', 'profit_loss'],
-          [],
-          20
-        );
-        if (response.data && (response.data as any).records?.length > 0) {
-          return response;
-        }
-      } catch (error) {
-        continue;
-      }
-    }
-    throw new Error('No investment model found');
-  }
-
-  // Get user portfolio data
-  async getPortfolioDataFromModel() {
-    try {
-      // Try to get current user's investments
-      const userContext = await this.post('/web/session/get_session_info', {
-        jsonrpc: "2.0",
-        method: "call",
-        params: {}
-      });
-      
-      const userId = (userContext.data as any)?.result?.uid;
-      if (userId) {
-        // Search for user's investments
-        return this.searchReadModel(
-          'investment.investment',
-          ['name', 'amount', 'current_value', 'profit_loss', 'fund_id'],
-          [['user_id', '=', userId]],
-          50
-        );
-      }
-    } catch (error) {
-      console.log('Could not get user portfolio data:', error);
-    }
-    throw new Error('No portfolio data found');
+  async verifyOTP(otp: string, debugMode: boolean = false): Promise<ApiResponse<any>> {
+    return this.post(API_ENDPOINTS.OTP.VERIFY, { otp, debugMode });
   }
 }
 

@@ -6,6 +6,7 @@ access_fund_fee_schedule,access.fund.fee.schedule,model_fund_fee_schedule,base.g
 access_fund_fee_schedule,access.fund.sip.settings,model_fund_fee_schedule,base.group_user,1,1,1,1
 access_fund_sip_settings,access.fund.sip.settings,model_fund_sip_settings,base.group_user,1,1,1,1
 access_fund_tax_settings,access.fund.tax.settings,model_fund_tax_settings,base.group_user,1,1,1,1
+access_auto_fund_certificate_creator,access.auto.fund.certificate.creator,model_auto_fund_certificate_creator,base.group_user,1,1,1,0
 
 access_data_holiday,access.data.holiday,model_data_holiday,base.group_user,1,1,1,1
 access_data_bank,access.data.bank,model_data_bank,base.group_user,1,1,1,1

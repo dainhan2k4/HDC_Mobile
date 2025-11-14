@@ -3,6 +3,7 @@ from odoo.exceptions import ValidationError
 import re
 import base64
 import logging
+import os
 
 _logger = logging.getLogger(__name__)
 
@@ -67,8 +68,10 @@ class InvestorProfile(models.Model):
     def _check_phone(self):
         for record in self:
             if record.phone:
-                if not re.match(r'^\+?[0-9]{10,15}$', record.phone):
-                    raise ValidationError(_('Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại có 10-15 chữ số.'))
+                # Remove all non-digit characters for validation
+                phone_digits = re.sub(r'[^0-9]', '', record.phone)
+                if len(phone_digits) != 10:
+                    raise ValidationError(_('Số điện thoại phải có đúng 10 chữ số.'))
 
     @api.constrains('email')
     def _check_email(self):
@@ -162,4 +165,40 @@ class InvestorProfile(models.Model):
         """Auto-set filename when id_back is uploaded"""
         if self.id_back and not self.id_back_filename:
             self.id_back_filename = 'cccd_back.jpg'
+
+    def get_id_front_url(self):
+        """Get URL for front ID image"""
+        if self.id_front_path and os.path.exists(self.id_front_path):
+            return f"/id_images/{os.path.basename(self.id_front_path)}"
+        elif self.id_front:
+            return f"/web/image?model=investor.profile&field=id_front&id={self.id}"
+        return False
+
+    def get_id_back_url(self):
+        """Get URL for back ID image"""
+        if self.id_back_path and os.path.exists(self.id_back_path):
+            return f"/id_images/{os.path.basename(self.id_back_path)}"
+        elif self.id_back:
+            return f"/web/image?model=investor.profile&field=id_back&id={self.id}"
+        return False
+
+    def download_id_front(self):
+        """Download front ID image"""
+        if self.id_front:
+            return {
+                'type': 'ir.actions.act_url',
+                'url': self.get_id_front_url(),
+                'target': 'new',
+            }
+        return False
+
+    def download_id_back(self):
+        """Download back ID image"""
+        if self.id_back:
+            return {
+                'type': 'ir.actions.act_url',
+                'url': self.get_id_back_url(),
+                'target': 'new',
+            }
+        return False
 

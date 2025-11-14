@@ -14,6 +14,7 @@
         'web',
         'mail',
         'portal',
+        'fund_management',
         'overview_fund_management'
     ],
     'data': [

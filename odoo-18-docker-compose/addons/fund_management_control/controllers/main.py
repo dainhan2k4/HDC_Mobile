@@ -3,7 +3,6 @@ from odoo.http import request, Response
 import json
 import logging
 import base64
-from .ai_chat_controller import AiChatController
 
 _logger = logging.getLogger(__name__)
 
@@ -12,7 +11,7 @@ class FundManagementProduct(http.Controller):
     # Route của chứng chỉ quỹ
     @http.route("/fund_certificate_list", type="http", auth="user", website=True)
     def fund_certificate_list_page(self, **kwargs):
-        """Renders the Fund Certificate list page."""
+        """Hiển thị trang danh sách Chứng chỉ quỹ."""
         return request.render(
             "fund_management_control.fund_certificate_list",
             {"active_page": "fund_certificate"},
@@ -28,19 +27,21 @@ class FundManagementProduct(http.Controller):
     )
     def get_fund_certificate_data(self, page=1, limit=10, search="", **kwargs):
         """
-        API endpoint to fetch a paginated and searchable list of fund certificates.
+        API endpoint để lấy danh sách Chứng chỉ quỹ có phân trang và tìm kiếm.
         """
-        _logger.info(f">>> API called: page={page}, limit={limit}, search='{search}'")
+        _logger.info(f">>> API được gọi: page={page}, limit={limit}, search='{search}'")
 
         try:
-            # Build a dynamic domain for searching
+            # Xây dựng domain động cho tìm kiếm
             domain = []
             if search:
-                # Search in both full_name and short_name fields
+                # Tìm kiếm trong các trường symbol, short_name_vn, short_name_en
                 domain = [
                     "|",
-                    ("full_name", "ilike", search),
-                    ("short_name", "ilike", search),
+                    "|",
+                    ("symbol", "ilike", search),
+                    ("short_name_vn", "ilike", search),
+                    ("short_name_en", "ilike", search),
                 ]
 
             total_records = request.env["fund.certificate"].search_count(domain)
@@ -54,10 +55,12 @@ class FundManagementProduct(http.Controller):
                 data.append(
                     {
                         "id": cert.id,
-                        "full_name": cert.full_name or "",
-                        "short_name": cert.short_name or "",
+                        "symbol": cert.symbol or "",
+                        "short_name_vn": cert.short_name_vn or "",
+                        "short_name_en": cert.short_name_en or "",
                         "fund_color": cert.fund_color or "#FFFFFF",
-                        "current_nav": cert.current_nav or 0,
+                        "current_price": cert.current_price or 0.0,
+                        "reference_price": cert.reference_price or 0.0,
                         "product_type": dict(
                             cert._fields["product_type"].selection
                         ).get(cert.product_type, ""),
@@ -70,7 +73,7 @@ class FundManagementProduct(http.Controller):
                             else ""
                         ),
                         "report_website": cert.report_website or "#",
-                        # FIX: Correct fallback image path to point within this module
+                        # FIX: Đường dẫn hình ảnh fallback đúng trong module này
                         "fund_image": (
                             f"/web/image?model=fund.certificate&field=fund_image&id={cert.id}"
                             if cert.fund_image
@@ -85,7 +88,7 @@ class FundManagementProduct(http.Controller):
 
         except Exception as e:
             _logger.error(
-                f"!!! Error in /get_fund_certificate_data: {str(e)}", exc_info=True
+                f"!!! Lỗi trong /get_fund_certificate_data: {str(e)}", exc_info=True
             )
             return Response(
                 json.dumps({"error": str(e)}),
@@ -96,8 +99,8 @@ class FundManagementProduct(http.Controller):
     @http.route("/fund_certificate/new", type="http", auth="user", website=True)
     def fund_certificate_form_page(self, **kwargs):
         """
-        Renders the page with the form to create a new fund certificate.
-        It also fetches selection field options dynamically from the model.
+        Hiển thị trang form để tạo mới Chứng chỉ quỹ.
+        Cũng lấy các tùy chọn từ các trường Selection trong model.
         """
         # Lấy model 'fund.certificate'
         FundCertificate = request.env["fund.certificate"]
@@ -127,10 +130,10 @@ class FundManagementProduct(http.Controller):
     )
     def create_fund_certificate(self, **post):
         """
-        API endpoint to receive form data and create a new fund certificate.
+        API endpoint để nhận dữ liệu form và tạo mới Chứng chỉ quỹ.
         """
         try:
-            _logger.info("Received data for new fund certificate: %s", post)
+            _logger.info("Nhận dữ liệu cho chứng chỉ quỹ mới: %s", post)
 
             # Xử lý các trường boolean (ngày trong tuần)
             weekdays = {
@@ -152,11 +155,13 @@ class FundManagementProduct(http.Controller):
 
             # Chuẩn bị dữ liệu để tạo bản ghi
             vals = {
-                "full_name": post.get("full_name"),
-                "english_name": post.get("english_name"),
-                "short_name": post.get("short_name"),
+                "symbol": post.get("symbol"),
+                "market": post.get("market") or "HOSE",
+                "short_name_vn": post.get("short_name_vn"),
+                "short_name_en": post.get("short_name_en"),
                 "fund_color": post.get("fund_color"),
-                "current_nav": float(post.get("current_nav", 0)),
+                "current_price": float(post.get("current_price", 0)),
+                "reference_price": float(post.get("reference_price", 0)),
                 # Odoo tự động chuyển đổi chuỗi ngày/giờ sang định dạng Datetime
                 "inception_date": (
                     post.get("inception_date") if post.get("inception_date") else None
@@ -184,7 +189,7 @@ class FundManagementProduct(http.Controller):
             # Tạo bản ghi mới
             new_cert = request.env["fund.certificate"].sudo().create(vals)
             _logger.info(
-                "Successfully created new fund certificate with ID: %s", new_cert.id
+                "Tạo thành công chứng chỉ quỹ mới với ID: %s", new_cert.id
             )
 
             # Chuyển hướng về trang danh sách sau khi tạo thành công
@@ -192,7 +197,7 @@ class FundManagementProduct(http.Controller):
 
         except Exception as e:
             _logger.error(
-                "!!! Error creating fund certificate: %s", str(e), exc_info=True
+                "!!! Lỗi khi tạo chứng chỉ quỹ: %s", str(e), exc_info=True
             )
             # Nếu có lỗi, có thể trả về một trang lỗi hoặc quay lại form với thông báo
             # Tạm thời chuyển hướng về trang danh sách
@@ -203,21 +208,21 @@ class FundManagementProduct(http.Controller):
     )
     def fund_certificate_edit_page(self, cert_id, **kwargs):
         """
-        Renders the page to edit an existing fund certificate.
+        Hiển thị trang để chỉnh sửa Chứng chỉ quỹ đã tồn tại.
         """
         try:
-            # Fetch the specific certificate record
+            # Lấy bản ghi chứng chỉ quỹ cụ thể
             certificate = request.env["fund.certificate"].sudo().browse(cert_id)
             if not certificate.exists():
                 _logger.warning(
-                    f"Attempted to edit non-existent fund certificate with ID: {cert_id}"
+                    f"Thử chỉnh sửa chứng chỉ quỹ không tồn tại với ID: {cert_id}"
                 )
                 return request.redirect("/fund_certificate_list")
 
-            # Fetch selection options from the model
+            # Lấy các tùy chọn Selection từ model
             FundCertificate = request.env["fund.certificate"]
             render_values = {
-                "cert": certificate,  # Pass the record to the template
+                "cert": certificate,  # Truyền bản ghi vào template
                 "fund_types": FundCertificate._fields["fund_type"].selection,
                 "risk_levels": FundCertificate._fields["risk_level"].selection,
                 "product_types": FundCertificate._fields["product_type"].selection,
@@ -230,12 +235,12 @@ class FundManagementProduct(http.Controller):
             )
         except Exception as e:
             _logger.error(
-                f"!!! Error rendering edit page for fund certificate ID {cert_id}: {str(e)}",
+                f"!!! Lỗi khi hiển thị trang chỉnh sửa cho chứng chỉ quỹ ID {cert_id}: {str(e)}",
                 exc_info=True,
             )
             return request.redirect("/fund_certificate_list")
 
-    # === NEW: Route to handle the update logic ===
+    # === NEW: Route để xử lý logic cập nhật ===
     @http.route(
         "/fund_certificate/update",
         type="http",
@@ -246,21 +251,21 @@ class FundManagementProduct(http.Controller):
     )
     def update_fund_certificate(self, **post):
         """
-        API endpoint to receive form data and update an existing fund certificate.
+        API endpoint để nhận dữ liệu form và cập nhật Chứng chỉ quỹ đã tồn tại.
         """
         cert_id = post.get("cert_id")
         if not cert_id:
-            _logger.error("!!! Update failed: cert_id not provided in POST data.")
+            _logger.error("!!! Cập nhật thất bại: cert_id không được cung cấp trong dữ liệu POST.")
             return request.redirect("/fund_certificate_list")
 
         try:
             _logger.info(
-                f"Received data for updating fund certificate ID {cert_id}: {post}"
+                f"Nhận dữ liệu để cập nhật chứng chỉ quỹ ID {cert_id}: {post}"
             )
             certificate = request.env["fund.certificate"].sudo().browse(int(cert_id))
             if not certificate.exists():
                 _logger.error(
-                    f"!!! Update failed: Fund certificate with ID {cert_id} not found."
+                    f"!!! Cập nhật thất bại: Không tìm thấy Chứng chỉ quỹ với ID {cert_id}."
                 )
                 return request.redirect("/fund_certificate_list")
 
@@ -275,11 +280,13 @@ class FundManagementProduct(http.Controller):
             }
 
             vals = {
-                "full_name": post.get("full_name"),
-                "english_name": post.get("english_name"),
-                "short_name": post.get("short_name"),
+                "symbol": post.get("symbol"),
+                "market": post.get("market") or "HOSE",
+                "short_name_vn": post.get("short_name_vn"),
+                "short_name_en": post.get("short_name_en"),
                 "fund_color": post.get("fund_color"),
-                "current_nav": float(post.get("current_nav", 0)),
+                "current_price": float(post.get("current_price", 0)),
+                "reference_price": float(post.get("reference_price", 0)),
                 "inception_date": (
                     post.get("inception_date") if post.get("inception_date") else None
                 ),
@@ -302,24 +309,24 @@ class FundManagementProduct(http.Controller):
                 **weekdays,
             }
 
-            # Only update the image if a new one was uploaded
+            # Chỉ cập nhật hình ảnh nếu có hình mới được upload
             if "fund_image" in request.httprequest.files:
                 image_file = request.httprequest.files.get("fund_image")
                 if image_file and image_file.filename:
                     vals["fund_image"] = base64.b64encode(image_file.read())
 
             certificate.write(vals)
-            _logger.info(f"Successfully updated fund certificate with ID: {cert_id}")
+            _logger.info(f"Cập nhật thành công chứng chỉ quỹ với ID: {cert_id}")
             return request.redirect("/fund_certificate_list")
 
         except Exception as e:
             _logger.error(
-                f"!!! Error updating fund certificate ID {cert_id}: {str(e)}",
+                f"!!! Lỗi khi cập nhật chứng chỉ quỹ ID {cert_id}: {str(e)}",
                 exc_info=True,
             )
             return request.redirect(
                 f"/fund_certificate/edit/{cert_id}"
-            )  # Redirect back to edit page on error
+            )  # Chuyển hướng về trang chỉnh sửa khi có lỗi
 
     @http.route(
         "/fund_certificate/delete",
@@ -331,8 +338,8 @@ class FundManagementProduct(http.Controller):
     )
     def delete_fund_certificate(self, **kwargs):
         """
-        API endpoint to delete a fund certificate.
-        Uses type='http' to return a raw JSON response that the frontend can easily handle.
+        API endpoint để xóa Chứng chỉ quỹ.
+        Sử dụng type='http' để trả về JSON response mà frontend có thể xử lý dễ dàng.
         """
         try:
             # Lấy dữ liệu từ body của request HTTP
@@ -340,7 +347,7 @@ class FundManagementProduct(http.Controller):
             cert_id = data.get("cert_id")
 
             if not cert_id:
-                _logger.error("!!! Delete failed: cert_id not provided in JSON data.")
+                _logger.error("!!! Xóa thất bại: cert_id không được cung cấp trong dữ liệu JSON.")
                 error_payload = json.dumps(
                     {"success": False, "error": "ID Chứng chỉ quỹ không được cung cấp."}
                 )
@@ -348,13 +355,13 @@ class FundManagementProduct(http.Controller):
                     error_payload, content_type="application/json", status=400
                 )
 
-            _logger.info(f"Attempting to delete fund certificate with ID: {cert_id}")
+            _logger.info(f"Đang thử xóa chứng chỉ quỹ với ID: {cert_id}")
 
             certificate = request.env["fund.certificate"].sudo().browse(int(cert_id))
 
             if not certificate.exists():
                 _logger.warning(
-                    f"Attempted to delete non-existent fund certificate with ID: {cert_id}"
+                    f"Thử xóa chứng chỉ quỹ không tồn tại với ID: {cert_id}"
                 )
                 error_payload = json.dumps(
                     {"success": False, "error": "Không tìm thấy bản ghi để xóa."}
@@ -363,23 +370,23 @@ class FundManagementProduct(http.Controller):
                     error_payload, content_type="application/json", status=404
                 )
 
-            cert_name = certificate.full_name or f"ID: {cert_id}"
+            cert_name = certificate.short_name_vn or certificate.symbol or f"ID: {cert_id}"
 
             certificate.unlink()
 
-            _logger.info(f"Successfully deleted fund certificate: {cert_name}")
+            _logger.info(f"Xóa thành công chứng chỉ quỹ: {cert_name}")
             success_payload = json.dumps(
                 {"success": True, "message": f"Đã xóa thành công {cert_name}"}
             )
             return Response(success_payload, content_type="application/json")
 
         except ValueError as ve:
-            _logger.error(f"!!! ValueError when deleting fund certificate: {str(ve)}")
+            _logger.error(f"!!! ValueError khi xóa chứng chỉ quỹ: {str(ve)}")
             error_payload = json.dumps({"success": False, "error": "ID không hợp lệ."})
             return Response(error_payload, content_type="application/json", status=400)
         except Exception as e:
             _logger.error(
-                f"!!! Error deleting fund certificate: {str(e)}", exc_info=True
+                f"!!! Lỗi khi xóa chứng chỉ quỹ: {str(e)}", exc_info=True
             )
             error_payload = json.dumps(
                 {"success": False, "error": f"Lỗi máy chủ: {str(e)}"}

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { PersonalInfo, BankInfo, AddressInfo } from '../../types/profile';
 import { apiService } from '../../config/apiService';
 import { useNavigation } from '@react-navigation/native';
+import formatVND from '../../hooks/formatCurrency';
 
 export const ProfileScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState('personal');
@@ -14,6 +15,16 @@ export const ProfileScreen: React.FC = () => {
   const [addressInfo, setAddressInfo] = useState<AddressInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingTab, setIsLoadingTab] = useState(false);
+  const [accountBalance, setAccountBalance] = useState<any>(null);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [linkFormData, setLinkFormData] = useState({
+    consumer_id: '',
+    consumer_secret: '',
+    account: '',
+    private_key: ''
+  });
   const { signOut } = useAuth();
   const navigation = useNavigation();
   // API fetch functions
@@ -110,6 +121,69 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
+  const fetchAccountBalance = async () => {
+    try {
+      setIsLoadingBalance(true);
+      console.log('💰 [Profile] Fetching account balance...');
+      const response = await apiService.getAccountBalance();
+      console.log('📊 [Profile] Account balance response:', JSON.stringify(response, null, 2));
+      
+      // Kiểm tra nhiều format response
+      let balanceData = null;
+      
+      if (response.success && response.data) {
+        // Format 1: response.data.status === 'success' && response.data.balance (từ Odoo)
+        if (response.data.status === 'success' && response.data.balance) {
+          const balance = response.data.balance;
+          // Transform từ Odoo format sang client format
+          balanceData = {
+            account: balance.raw_data?.account || balance.account || 'N/A',
+            available_balance: balance.available_cash || balance.cash_balance || 0,
+            balance: balance.cash_balance || 0,
+            purchasing_power: balance.purchasing_power || 0,
+            last_sync: balance.last_sync,
+            raw_data: balance.raw_data
+          };
+        }
+        // Format 2: response.data.status === 'success' && response.data.data
+        else if (response.data.status === 'success' && response.data.data) {
+          balanceData = response.data.data;
+        }
+        // Format 3: response.data trực tiếp là balance data
+        else if (response.data.account || response.data.available_balance !== undefined || response.data.available_cash !== undefined) {
+          balanceData = response.data;
+        }
+        // Format 4: response.data có nested data
+        else if (response.data.data && (response.data.data.account || response.data.data.available_balance !== undefined)) {
+          balanceData = response.data.data;
+        }
+      }
+      // Format 5: response trực tiếp là balance data
+      else if (response.account || response.available_balance !== undefined) {
+        balanceData = response;
+      }
+      
+      if (balanceData) {
+        console.log('✅ [Profile] Account balance data:', balanceData);
+        setAccountBalance(balanceData);
+      } else {
+        console.log('⚠️ [Profile] No balance data found in response');
+        // Nếu có message lỗi, log ra
+        if (response.data?.message) {
+          console.log('📝 [Profile] Response message:', response.data.message);
+        }
+        setAccountBalance(null);
+      }
+    } catch (error: any) {
+      console.error('❌ [Profile] Account balance fetch error:', error);
+      const errorMessage = error.response?.data?.message || error.message;
+      console.error('❌ [Profile] Error details:', errorMessage);
+      setAccountBalance(null);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
   const handleTabChange = async (tab: string) => {
     setActiveTab(tab);
     
@@ -121,6 +195,73 @@ export const ProfileScreen: React.FC = () => {
       setIsLoadingTab(true);
       await fetchAddressInfo();
       setIsLoadingTab(false);
+    } else if (tab === 'account') {
+      await fetchAccountBalance();
+    }
+  };
+
+  const handleLinkAccount = async () => {
+    if (!linkFormData.consumer_id || !linkFormData.consumer_secret || !linkFormData.account || !linkFormData.private_key) {
+      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+
+    try {
+      setIsLinking(true);
+      console.log('🔗 [Profile] Linking SSI account...', {
+        consumer_id: linkFormData.consumer_id.substring(0, 10) + '...',
+        account: linkFormData.account,
+        has_secret: !!linkFormData.consumer_secret,
+        has_key: !!linkFormData.private_key
+      });
+      
+      const response = await apiService.linkSSIAccount(linkFormData);
+      console.log('📊 [Profile] Link account response:', JSON.stringify(response, null, 2));
+      
+      // Kiểm tra response structure
+      const isSuccess = response.success === true || 
+                        (response.data && response.data.status === 'success') ||
+                        (response.status === 'success');
+      
+      if (isSuccess) {
+        const successMessage = response.message || 
+                              response.data?.message || 
+                              'Đã liên kết tài khoản SSI thành công';
+        
+        Alert.alert('Thành công', successMessage, [
+          {
+            text: 'OK',
+            onPress: async () => {
+              setShowLinkModal(false);
+              setLinkFormData({
+                consumer_id: '',
+                consumer_secret: '',
+                account: '',
+                private_key: ''
+              });
+              // Đợi một chút rồi fetch balance để đảm bảo data đã được lưu
+              setTimeout(() => {
+                fetchAccountBalance();
+              }, 500);
+            }
+          }
+        ]);
+      } else {
+        const errorMessage = response.message || 
+                            response.data?.message || 
+                            response.error ||
+                            'Không thể liên kết tài khoản';
+        console.error('❌ [Profile] Link account failed:', errorMessage);
+        Alert.alert('Lỗi', errorMessage);
+      }
+    } catch (error: any) {
+      console.error('❌ [Profile] Link account error:', error);
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'Không thể liên kết tài khoản SSI';
+      Alert.alert('Lỗi', errorMessage);
+    } finally {
+      setIsLinking(false);
     }
   };
 
@@ -286,6 +427,79 @@ export const ProfileScreen: React.FC = () => {
     );
   };
   
+  const renderAccountInfo = () => {
+    if (isLoadingBalance) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2B4BFF" />
+          <Text style={styles.loadingText}>Đang tải thông tin tài khoản...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.sectionContainer}>
+        {/* Account Balance Section */}
+        <View style={styles.accountCard}>
+          <View style={styles.accountCardHeader}>
+            <Text style={styles.accountCardTitle}>Số dư tài khoản</Text>
+            <TouchableOpacity onPress={fetchAccountBalance}>
+              <Ionicons name="refresh" size={20} color="#2B4BFF" />
+            </TouchableOpacity>
+          </View>
+          
+          {accountBalance ? (
+            <View style={styles.accountCardBody}>
+              <Text style={styles.accountNumber}>
+                Số TK {accountBalance.account || accountBalance.account_number || 'N/A'}
+              </Text>
+              <Text style={styles.accountBalance}>
+                {formatVND(accountBalance.available_balance || accountBalance.balance || 0)}
+              </Text>
+              <Text style={styles.accountBalanceLabel}>Số dư khả dụng</Text>
+              {accountBalance.last_sync && (
+                <Text style={styles.lastSyncText}>
+                  Cập nhật: {new Date(accountBalance.last_sync).toLocaleString('vi-VN')}
+                </Text>
+              )}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="wallet-outline" size={64} color="#DEE2E6" />
+              <Text style={styles.emptyText}>Chưa có số dư</Text>
+              <Text style={styles.emptySubtext}>
+                {accountBalance === null 
+                  ? 'Vui lòng liên kết tài khoản để xem số dư' 
+                  : 'Đang tải số dư...'}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Link Account Section */}
+        <View style={styles.linkAccountCard}>
+          <View style={styles.linkAccountHeader}>
+            <Ionicons name="link" size={24} color="#28A745" />
+            <Text style={styles.linkAccountTitle}>Liên kết tài khoản</Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.linkAccountButton}
+            onPress={() => setShowLinkModal(true)}
+          >
+            <View style={styles.ssiLogoWrapper}>
+              <Text style={styles.ssiLogoText}>SSI</Text>
+            </View>
+            <View style={styles.linkAccountButtonContent}>
+              <Text style={styles.linkAccountButtonTitle}>SSI</Text>
+              <Text style={styles.linkAccountButtonSubtitle}>Nhấp để liên kết</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   const renderAddressInfo = () => {
     if (isLoadingTab) {
       return (
@@ -396,12 +610,22 @@ export const ProfileScreen: React.FC = () => {
             Địa chỉ
           </Text>
         </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'account' && styles.activeTab]} 
+          onPress={() => handleTabChange('account')}
+        >
+          <Text style={[styles.tabText, activeTab === 'account' && styles.activeTabText]}>
+            Tài khoản
+          </Text>
+        </TouchableOpacity>
       </View>
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {activeTab === 'personal' && renderPersonalInfo()}
         {activeTab === 'bank' && renderBankInfo()}
         {activeTab === 'address' && renderAddressInfo()}
+        {activeTab === 'account' && renderAccountInfo()}
       </ScrollView>
 
       <View style={styles.logoutContainer}>
@@ -410,6 +634,102 @@ export const ProfileScreen: React.FC = () => {
           <Text style={styles.logoutButtonText}>Đăng xuất</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Link Account Modal */}
+      <Modal
+        visible={showLinkModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLinkModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderLeft}>
+                <Ionicons name="link" size={24} color="#FFFFFF" />
+                <Text style={styles.modalTitle}>Liên kết tài khoản</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowLinkModal(false)}>
+                <Ionicons name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>
+                  Consumer ID <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={linkFormData.consumer_id}
+                  onChangeText={(text) => setLinkFormData({ ...linkFormData, consumer_id: text })}
+                  placeholder="Nhập Consumer ID từ SSI"
+                  editable={!isLinking}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>
+                  Consumer Secret <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={linkFormData.consumer_secret}
+                  onChangeText={(text) => setLinkFormData({ ...linkFormData, consumer_secret: text })}
+                  placeholder="Nhập Consumer Secret từ SSI"
+                  secureTextEntry
+                  editable={!isLinking}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>
+                  Số tài khoản <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={linkFormData.account}
+                  onChangeText={(text) => setLinkFormData({ ...linkFormData, account: text })}
+                  placeholder="Nhập số tài khoản SSI"
+                  editable={!isLinking}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>
+                  Private Key (Base64) <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={[styles.formInput, styles.formTextArea]}
+                  value={linkFormData.private_key}
+                  onChangeText={(text) => setLinkFormData({ ...linkFormData, private_key: text })}
+                  placeholder="Nhập Private Key từ SSI"
+                  multiline
+                  numberOfLines={6}
+                  textAlignVertical="top"
+                  editable={!isLinking}
+                />
+                <Text style={styles.formHint}>Vui lòng nhập Private Key từ SSI</Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.linkButton, isLinking && styles.linkButtonDisabled]}
+                onPress={handleLinkAccount}
+                disabled={isLinking}
+              >
+                {isLinking ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="link" size={20} color="#FFFFFF" />
+                    <Text style={styles.linkButtonText}>Liên kết tài khoản</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -691,5 +1011,199 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     marginLeft: 4,
+  },
+  accountCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  accountCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  accountCardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#212529',
+  },
+  accountCardBody: {
+    borderTopWidth: 1,
+    borderTopColor: '#F1F3F5',
+    paddingTop: 16,
+  },
+  accountNumber: {
+    fontSize: 14,
+    color: '#6C757D',
+    marginBottom: 8,
+  },
+  accountBalance: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginBottom: 4,
+  },
+  accountBalanceLabel: {
+    fontSize: 12,
+    color: '#6C757D',
+  },
+  lastSyncText: {
+    fontSize: 11,
+    color: '#6C757D',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6C757D',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  linkAccountCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  linkAccountHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  linkAccountTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginLeft: 8,
+  },
+  linkAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DEE2E6',
+    borderStyle: 'dashed',
+  },
+  ssiLogoWrapper: {
+    width: 60,
+    height: 60,
+    backgroundColor: '#28A745',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  ssiLogoText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  linkAccountButtonContent: {
+    flex: 1,
+  },
+  linkAccountButtonTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginBottom: 4,
+  },
+  linkAccountButtonSubtitle: {
+    fontSize: 12,
+    color: '#6C757D',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#28A745',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  modalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  modalBody: {
+    padding: 16,
+    maxHeight: 600,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#495057',
+    marginBottom: 8,
+  },
+  required: {
+    color: '#FF5733',
+  },
+  formInput: {
+    borderWidth: 1,
+    borderColor: '#DEE2E6',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  formTextArea: {
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  formHint: {
+    fontSize: 12,
+    color: '#6C757D',
+    marginTop: 4,
+  },
+  linkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF6B35',
+    paddingVertical: 14,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 8,
+  },
+  linkButtonDisabled: {
+    opacity: 0.6,
+  },
+  linkButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 }); 

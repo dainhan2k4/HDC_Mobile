@@ -1,7 +1,21 @@
+// Helper function để resolve PDF URL (có thể được gọi từ mọi nơi)
+function resolvePdfUrl() {
+  const fromMeta = document.querySelector('meta[name="contract-pdf-url"]')?.getAttribute('content');
+  if (fromMeta) {
+    return fromMeta;
+  }
+  if (window.Contract && window.Contract.pdfUrl) {
+    return window.Contract.pdfUrl;
+  }
+  return '/fund_management/static/src/pdf/terms2.pdf';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initFundSelect();
   initShareQuantityInput();
   initPaymentButton();
+  initDebugButton();
+  initFundBuyDebugToggle(); // Thêm init debug toggle
 
   const amountInput = document.getElementById('amount-input');
   formatAmountInputWithRaw(amountInput);
@@ -21,11 +35,196 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
 
+// Khởi tạo debug toggle cho fund_buy
+function initFundBuyDebugToggle() {
+  const debugToggle = document.getElementById('fund-buy-debug-toggle');
+  const debugWarning = document.getElementById('fund-buy-debug-warning');
+  
+  if (!debugToggle) return;
+  
+  // Load từ localStorage
+  const savedDebugMode = localStorage.getItem('fund_buy_debug_mode') === 'true';
+  debugToggle.checked = savedDebugMode;
+  if (debugWarning) {
+    debugWarning.style.display = savedDebugMode ? 'block' : 'none';
+  }
+  
+  // Lắng nghe thay đổi
+  debugToggle.addEventListener('change', (e) => {
+    const isEnabled = e.target.checked;
+    localStorage.setItem('fund_buy_debug_mode', isEnabled.toString());
+    
+    if (debugWarning) {
+      debugWarning.style.display = isEnabled ? 'block' : 'none';
+    }
+    
+    console.log('[Fund Buy Debug] Debug mode:', isEnabled ? 'ENABLED' : 'DISABLED');
+    
+    // Trigger lại check profitability để cập nhật button state
+    const fundSelect = document.getElementById('fund-select');
+    const termSelect = document.getElementById('term-select');
+    if (fundSelect && termSelect && fundSelect.selectedIndex > 0) {
+      const selectedOption = fundSelect.options[fundSelect.selectedIndex];
+      const fundId = selectedOption.dataset.id;
+      const selectedTermOption = termSelect.options[termSelect.selectedIndex];
+      const months = parseInt(selectedTermOption.value, 10) || 0;
+      const rate = parseFloat(selectedTermOption.dataset.rate) || 0;
+      
+      if (fundId && months > 0 && rate > 0) {
+        const investmentAmountInput = document.getElementById('investment-amount-input');
+        const shareQuantityInput = document.getElementById('share-quantity-input');
+        let amount = parseFloat(investmentAmountInput.value.replace(/[^0-9]/g, "")) || 0;
+        if (amount === 0) {
+          const shares = parseFloat(shareQuantityInput.value) || 0;
+          const nav = window.currentNavPrice || 0;
+          amount = shares * nav;
+        }
+        
+        if (amount >= 1000000) {
+          checkProfitability(fundId, amount, months, rate);
+        }
+      }
+    }
+  });
+}
+
 function format_date_today()
 {
   const today = new Date();
   const formatted = today.toLocaleDateString("vi-VN"); // ra dạng 25/08/2025
   document.getElementById("today-date").textContent = formatted;
+}
+
+// DEBUG: Hiển thị phân tích tính toán đáo hạn và lãi/lỗ
+function initDebugButton() {
+  const btn = document.getElementById('debug-btn');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    try {
+      const fundName = document.getElementById('summary-fund-name')?.textContent || '';
+      const termSelect = document.getElementById('term-select');
+      const selectedOption = termSelect?.options[termSelect.selectedIndex];
+      const months = selectedOption ? (parseInt(selectedOption.value, 10) || 0) : 0;
+      let rate = selectedOption ? (parseFloat(selectedOption.dataset.rate) || 0) : 0;
+
+      // Lấy số tiền từ input đã chuẩn hóa (amount-input) hoặc từ investment-amount-input
+      const actualAmountInput = document.getElementById('amount-input');
+      const investmentAmountInput = document.getElementById('investment-amount-input');
+      let amount = 0;
+      if (actualAmountInput && actualAmountInput.value) {
+        amount = parseFloat(actualAmountInput.value.replace(/[^0-9]/g, '')) || 0;
+      }
+      if (!amount && investmentAmountInput && investmentAmountInput.value) {
+        amount = parseFloat(investmentAmountInput.value.replace(/[^0-9]/g, '')) || 0;
+      }
+
+      const shareQuantityInput = document.getElementById('share-quantity-input');
+      let shares = parseFloat(shareQuantityInput?.value || '0') || 0;
+      const nav = window.currentNavPrice || 0;
+      if (!amount && shares > 0 && nav > 0) amount = shares * nav;
+      if (amount > 0 && shares === 0 && nav > 0) shares = Math.floor(amount / nav);
+
+      if (amount <= 0 || months === 0 || rate === 0) {
+        Swal.fire({ icon: 'warning', title: 'Thiếu dữ liệu', text: 'Vui lòng nhập số tiền/kỳ hạn/lãi suất hợp lệ.' });
+        return;
+      }
+
+      // Ngày và số ngày kỳ hạn - tính giống Python backend
+      const today = new Date();
+      const maturityDate = calculateMaturityDate(today, months);
+      const days = calculateDaysBetween(today, maturityDate);
+
+      // Lấy giá CCQ tại thời điểm mua (J) từ currentNavPrice
+      const pricePerUnit = nav; // J: Giá CCQ tại thời điểm mua
+      
+      // Lấy phí mua (K) từ fee-input hoặc summary-fee (số tiền tuyệt đối)
+      const feeInput = document.getElementById('fee-input');
+      const summaryFee = document.getElementById('summary-fee');
+      let feeAmount = 0;
+      if (feeInput && feeInput.value) {
+          feeAmount = parseFloat(feeInput.value.replace(/[^0-9]/g, '')) || 0;
+      } else if (summaryFee && summaryFee.textContent) {
+          feeAmount = parseFloat(summaryFee.textContent.replace(/[^0-9]/g, '')) || 0;
+      }
+      
+      // L: Giá trị mua = I * J + K (I = shares, J = pricePerUnit, K = feeAmount)
+      const purchaseValue = (shares * pricePerUnit) + feeAmount;
+
+      // Giá trị bán 1 (U) theo công thức nav_management
+      const sellValue1 = purchaseValue * (rate / 100) / 365 * days + purchaseValue;
+      // Giá bán 1 (S) = ROUND(Giá trị bán 1 / Số lượng CCQ, 0)
+      const sellPrice1 = shares > 0 ? Math.round(sellValue1 / shares) : 0;
+      // Giá bán 2 (T) = MROUND(Giá bán 1, 50)
+      const sellPrice2 = sellPrice1 ? (Math.round(sellPrice1 / 50) * 50) : 0;
+
+      // Lấy cap config để kiểm tra lãi/lỗ nếu có
+      let capUpper = null, capLower = null, rNew = 0, delta = 0, isProfitable = null;
+      try {
+        const capResponse = await fetch('/nav_management/api/cap_config');
+        const capData = await capResponse.json();
+        if (capData && capData.success && days > 0 && sellPrice2 > 0) {
+          // J = Giá CCQ tại thời điểm mua = pricePerUnit
+          // Lãi suất quy đổi (O) = (Giá bán 2 / Giá mua - 1) * 365 / Số ngày * 100
+          rNew = (pricePerUnit > 0) ? ((sellPrice2 / pricePerUnit - 1) * 365 / days * 100) : 0;
+          // Chênh lệch lãi suất (Q) = Lãi suất quy đổi - Lãi suất
+          delta = rNew - rate;
+          capUpper = parseFloat(capData.cap_upper);
+          capLower = parseFloat(capData.cap_lower);
+          isProfitable = delta >= capLower && delta <= capUpper;
+        }
+      } catch (_) {}
+
+      const sellValueRounded = Math.round(sellValue1 / 50) * 50;
+
+      const lines = [
+        `Quỹ: ${fundName}`,
+        `Số tiền đầu tư (amount-input): ${amount.toLocaleString('vi-VN')} đ`,
+        `Số lượng CCQ (I): ${shares}`,
+        `Giá CCQ tại thời điểm mua (J): ${pricePerUnit.toLocaleString('vi-VN')} đ`,
+        `Phí mua (K): ${feeAmount.toLocaleString('vi-VN')} đ`,
+        `NAV hiện tại: ${nav.toLocaleString('vi-VN')} đ`,
+        `Kỳ hạn: ${months} tháng (~${days} ngày)`,
+        `Lãi suất (N): ${rate}%`,
+        '',
+        '— Công thức chi tiết —',
+        `L (Giá trị mua) = I × J + K`,
+        `                  = ${shares} × ${pricePerUnit.toLocaleString('vi-VN')} + ${feeAmount.toLocaleString('vi-VN')}`,
+        `                  = ${purchaseValue.toLocaleString('vi-VN')} đ`,
+        '',
+        `U (Giá trị bán 1) = L × N / 365 × G + L`,
+        `                  = ${purchaseValue.toLocaleString('vi-VN')} × (${rate}/100) / 365 × ${days} + ${purchaseValue.toLocaleString('vi-VN')}`,
+        `                  = ${sellValue1.toLocaleString('vi-VN')} đ`,
+        `Giá trị bán 1 (MROUND 50): ${sellValueRounded.toLocaleString('vi-VN')} đ`,
+        '',
+        `S (Giá bán 1) = ROUND(U / I, 0)`,
+        `              = ROUND(${sellValue1.toLocaleString('vi-VN')} / ${shares || 0}, 0) = ${sellPrice1.toLocaleString('vi-VN')} đ/CCQ`,
+        `T (Giá bán 2) = MROUND(S, 50) = MROUND(${sellPrice1.toLocaleString('vi-VN')}, 50) = ${sellPrice2.toLocaleString('vi-VN')} đ/CCQ`,
+      ];
+        if (isProfitable !== null && capUpper !== null && capLower !== null) {
+        lines.push(
+          '',
+          `O (Lãi suất quy đổi) = (T / J - 1) × 365 / G × 100`,
+          `                     = (${sellPrice2.toLocaleString('vi-VN')} / ${pricePerUnit.toLocaleString('vi-VN')} - 1) × 365 / ${days} × 100 = ${rNew.toFixed(4)}%`,
+          `Q (Chênh lệch lãi suất) = O - N = ${rNew.toFixed(4)}% - ${rate}% = ${delta.toFixed(4)}%`,
+          `Ngưỡng: ${capLower}% → ${capUpper}%`,
+          `Kết luận: ${isProfitable ? '✅ Trong ngưỡng' : '❌ Ngoài ngưỡng'}`
+        );
+      } else {
+        lines.push('Không đủ dữ liệu cấu hình chặn trên/dưới để kiểm tra lãi/lỗ.');
+      }
+
+      Swal.fire({
+        icon: 'info',
+        title: 'DEBUG tính toán đáo hạn',
+        html: `<pre style="text-align:left;white-space:pre-wrap">${lines.join('\n')}</pre>`,
+        width: 700
+      });
+    } catch (err) {
+      console.error('DEBUG error', err);
+      Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Không thể hiển thị DEBUG.' });
+    }
+  });
 }
 
 // Load kỳ hạn từ nav_management API
@@ -108,6 +307,7 @@ function showFallbackTermSelect() {
 // Xử lý chọn chứng chỉ quỹ
 function initFundSelect() {
   const fundSelect = document.getElementById('fund-select');
+  let fundSearch = document.getElementById('fund-search');
   const fundNameDisplay = document.getElementById('summary-fund-name');
   const navDisplay = document.getElementById('current-nav');
   const currentId = document.getElementById('current-id');
@@ -115,6 +315,31 @@ function initFundSelect() {
   const amountDisplay = document.getElementById('summary-amount');
 
   const selectedTickerFromStorage = sessionStorage.getItem('selectedTicker');
+
+  // Ẩn hẳn dropdown nếu còn hiển thị do cache/template cũ
+  try {
+    if (fundSelect) {
+      fundSelect.style.display = 'none';
+      fundSelect.setAttribute('aria-hidden', 'true');
+      fundSelect.setAttribute('tabindex', '-1');
+    }
+  } catch (_) {}
+
+  // Fallback: nếu input tìm kiếm chưa có trong template, tạo động để đảm bảo luôn nhập được
+  try {
+    if (fundSelect && !fundSearch) {
+      const parent = fundSelect.parentElement;
+      if (parent) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'fund-search';
+        input.className = 'form-control mb-2';
+        input.placeholder = 'Tìm theo tên/mã CCQ...';
+        parent.insertBefore(input, fundSelect);
+        fundSearch = input;
+      }
+    }
+  } catch (_) {}
 
   fetch('/data_fund')
     .then(res => res.json())
@@ -131,6 +356,140 @@ function initFundSelect() {
         fundSelect.appendChild(option);
       });
 
+      // Tìm kiếm realtime nâng cao (autocomplete + danh sách gợi ý giống ô search)
+      if (fundSearch) {
+        // Tạo suggestion panel
+        const panel = document.createElement('div');
+        panel.id = 'fund-suggest-panel';
+        panel.style.position = 'absolute';
+        panel.style.zIndex = '1050';
+        panel.style.left = '0';
+        panel.style.right = '0';
+        panel.style.maxHeight = '280px';
+        panel.style.overflowY = 'auto';
+        panel.style.background = '#fff';
+        panel.style.border = '1px solid #e5e7eb';
+        panel.style.borderTop = 'none';
+        panel.style.boxShadow = '0 8px 24px rgba(0,0,0,.12)';
+        panel.style.display = 'none';
+
+        // wrapper để định vị tuyệt đối theo input
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'relative';
+        fundSearch.parentElement.insertBefore(wrapper, fundSearch);
+        wrapper.appendChild(fundSearch);
+        wrapper.appendChild(panel);
+
+        let activeIdx = -1; // index đang chọn bằng phím
+
+        const renderPanel = (items) => {
+          panel.innerHTML = '';
+          activeIdx = -1;
+          items.forEach((f, idx) => {
+            const row = document.createElement('div');
+            row.style.padding = '8px 12px';
+            row.style.cursor = 'pointer';
+            row.style.display = 'flex';
+            row.style.alignItems = 'center';
+            row.style.gap = '8px';
+            row.onmouseenter = () => highlight(idx);
+            row.onclick = () => choose(f);
+
+            const badge = document.createElement('span');
+            badge.textContent = f.ticker;
+            badge.style.minWidth = '56px';
+            badge.style.textAlign = 'center';
+            badge.style.padding = '2px 8px';
+            badge.style.borderRadius = '999px';
+            badge.style.background = '#f3f4f6';
+            badge.style.fontWeight = '600';
+
+            const name = document.createElement('div');
+            name.textContent = f.name || '';
+            name.style.flex = '1';
+            name.style.whiteSpace = 'nowrap';
+            name.style.overflow = 'hidden';
+            name.style.textOverflow = 'ellipsis';
+
+            const price = document.createElement('div');
+            price.textContent = (Number(f.current_nav || 0)).toLocaleString('vi-VN');
+            price.style.color = '#64748b';
+
+            row.appendChild(badge);
+            row.appendChild(name);
+            row.appendChild(price);
+            panel.appendChild(row);
+          });
+          panel.style.display = items.length ? 'block' : 'none';
+        };
+
+        const highlight = (idx) => {
+          const children = Array.from(panel.children);
+          children.forEach((el, i) => {
+            el.style.background = i === idx ? '#f1f5f9' : '#fff';
+          });
+          activeIdx = idx;
+        };
+
+        const choose = (fund) => {
+          // set select & trigger change
+          fundSelect.value = fund.ticker;
+          fundSelect.dispatchEvent(new Event('change'));
+          if (fundSearch) {
+            fundSearch.value = `${fund.name} (${fund.ticker})`;
+          }
+          panel.style.display = 'none';
+        };
+
+        const doFilter = () => {
+          const q = (fundSearch.value || '').trim().toLowerCase();
+          const source = fundData;
+          const matches = (q ? source
+            .filter(f => (f.name || '').toLowerCase().includes(q) || (f.ticker || '').toLowerCase().includes(q))
+            : source)
+            .slice(0, 10);
+          renderPanel(matches);
+          if (!q && matches.length === 0) panel.style.display = 'none';
+        };
+
+        fundSearch.addEventListener('input', doFilter);
+        fundSearch.addEventListener('keydown', (e) => {
+          const visible = panel.style.display !== 'none';
+          if (!visible) return;
+          const children = Array.from(panel.children);
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlight(Math.min(children.length - 1, activeIdx + 1));
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlight(Math.max(0, activeIdx - 1));
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIdx >= 0 && children[activeIdx]) {
+              children[activeIdx].click();
+            } else {
+              const matches = fundData
+                .filter(f => (f.name || '').toLowerCase().includes((fundSearch.value||'').toLowerCase()) || (f.ticker||'').toLowerCase().includes((fundSearch.value||'').toLowerCase()))
+                .slice(0,1);
+              if (matches[0]) choose(matches[0]);
+            }
+          } else if (e.key === 'Escape') {
+            panel.style.display = 'none';
+          }
+        });
+
+        document.addEventListener('click', (ev) => {
+          if (!panel.contains(ev.target) && ev.target !== fundSearch) {
+            panel.style.display = 'none';
+          }
+        });
+
+        // Hiển thị gợi ý khi focus
+        fundSearch.addEventListener('focus', () => {
+          doFilter();
+        });
+      }
+
       // 👉 Tự động chọn nếu có dữ liệu
       const selectedTicker = selectedTickerFromStorage;
       if (selectedTicker) {
@@ -138,6 +497,10 @@ function initFundSelect() {
         setTimeout(() => {
           fundSelect.value = selectedTicker;
           fundSelect.dispatchEvent(new Event('change'));
+          const selected = fundData.find(f => f.ticker === selectedTicker);
+          if (selected && fundSearch) {
+            fundSearch.value = `${selected.name} (${selected.ticker})`;
+          }
           sessionStorage.removeItem('selectedTicker'); // cleanup
         }, 0);
       }
@@ -147,6 +510,9 @@ function initFundSelect() {
         if (selected) {
           fundNameDisplay.textContent = selected.name;
           currentId.textContent = selected.id;
+          if (fundSearch) {
+            fundSearch.value = `${selected.name} (${selected.ticker})`;
+          }
           
           // Lấy opening_avg_price hôm nay + chi phí vốn (đã cộng)
           try {
@@ -257,6 +623,125 @@ function initFundSelect() {
     });
 }
 
+// Kiểm tra lãi/lỗ dựa trên chặn trên/dưới - Định nghĩa ở global scope để có thể gọi từ mọi nơi
+async function checkProfitability(fundId, amount, months, rate) {
+  const paymentBtn = document.getElementById('payment-btn');
+  if (!paymentBtn) {
+    console.warn('Payment button not found');
+    return;
+  }
+
+  try {
+    // Kiểm tra debug mode
+    const debugToggle = document.getElementById('fund-buy-debug-toggle');
+    const debugMode = debugToggle && debugToggle.checked;
+    
+    if (debugMode) {
+      paymentBtn.disabled = false;
+      paymentBtn.style.opacity = '1';
+      return;
+    }
+    
+    // Lấy cấu hình chặn trên/dưới từ nav_management
+    const capResponse = await fetch('/nav_management/api/cap_config');
+    const capData = await capResponse.json();
+    
+    if (!capData.success || !capData.cap_upper || !capData.cap_lower) {
+      console.warn('Không thể lấy cấu hình chặn trên/dưới, cho phép thanh toán');
+      paymentBtn.disabled = false;
+      paymentBtn.style.opacity = '1';
+      return;
+    }
+    
+    // Lấy NAV hiện tại của quỹ
+    const nav = window.currentNavPrice || 0;
+    if (nav <= 0) {
+      console.warn('Không có NAV hiện tại, cho phép thanh toán');
+      paymentBtn.disabled = false;
+      paymentBtn.style.opacity = '1';
+      return;
+    }
+    
+    // Số ngày theo kỳ hạn - tính giống Python backend
+    const today = new Date();
+    const maturityDate = calculateMaturityDate(today, months);
+    const days = calculateDaysBetween(today, maturityDate);
+    
+    // Đọc số lượng CCQ từ input (fallback 1 nếu thiếu)
+    const qtyInput = document.getElementById('share-quantity-input');
+    const units = qtyInput ? (parseFloat(qtyInput.value) || 0) : 0;
+    
+    // Lấy giá CCQ tại thời điểm mua (J) từ currentNavPrice
+    const pricePerUnit = nav; // J: Giá CCQ tại thời điểm mua
+    
+    // Lấy phí mua (K) từ fee-input hoặc summary-fee (số tiền tuyệt đối)
+    const feeInput = document.getElementById('fee-input');
+    const summaryFee = document.getElementById('summary-fee');
+    let feeAmount = 0;
+    if (feeInput && feeInput.value) {
+        feeAmount = parseFloat(feeInput.value.replace(/[^0-9]/g, '')) || 0;
+    } else if (summaryFee && summaryFee.textContent) {
+        feeAmount = parseFloat(summaryFee.textContent.replace(/[^0-9]/g, '')) || 0;
+    }
+    
+    // L: Giá trị mua = I * J + K (I = units, J = pricePerUnit, K = feeAmount)
+    const purchaseValue = (units * pricePerUnit) + feeAmount;
+    
+    // Giá trị bán 1 (U) = Giá trị mua * Lãi suất / 365 * Số ngày + Giá trị mua
+    const sellValue1 = purchaseValue * (rate / 100) / 365 * days + purchaseValue;
+    
+    // Giá bán 1 (S) = ROUND(Giá trị bán 1 / Số lượng CCQ, 0)
+    const sellPrice1 = (units > 0) ? Math.round(sellValue1 / units) : 0;
+    
+    // Giá bán 2 (T) = MROUND(Giá bán 1, 50)
+    const sellPrice2 = sellPrice1 ? (Math.round(sellPrice1 / 50) * 50) : 0;
+    
+    // Tính lãi suất quy đổi (O) = (Giá bán 2 / Giá mua - 1) * 365 / Số ngày * 100
+    // J = Giá CCQ tại thời điểm mua = pricePerUnit
+    const r_new = (pricePerUnit > 0 && days > 0 && sellPrice2 > 0) ? ((sellPrice2 / pricePerUnit - 1) * 365 / days * 100) : 0;
+    
+    // Tính chênh lệch lãi suất
+    const delta = r_new - rate;
+    
+    // Kiểm tra lãi/lỗ
+    const capUpper = parseFloat(capData.cap_upper);
+    const capLower = parseFloat(capData.cap_lower);
+    
+    const isProfitable = delta >= capLower && delta <= capUpper;
+    
+    console.log(`📊 Kiểm tra lãi/lỗ:`);
+    console.log(`   - NAV: ${nav}`);
+    console.log(`   - Số lượng CCQ: ${units}`);
+    console.log(`   - Giá CCQ tại thời điểm mua (J): ${pricePerUnit}`);
+    console.log(`   - Phí mua (K): ${feeAmount}`);
+    console.log(`   - Giá trị mua (L = I * J + K): ${purchaseValue}`);
+    console.log(`   - Lãi suất gốc: ${rate}%`);
+    console.log(`   - Giá trị bán 1 (U): ${sellValue1}`);
+    console.log(`   - Giá bán 1 (S): ${sellPrice1}`);
+    console.log(`   - Giá bán 2 (T): ${sellPrice2}`);
+    console.log(`   - Lãi suất quy đổi (O): ${r_new}%`);
+    console.log(`   - Chênh lệch: ${delta}%`);
+    console.log(`   - Chặn trên: ${capUpper}%, Chặn dưới: ${capLower}%`);
+    console.log(`   - Có lãi: ${isProfitable}`);
+    
+    if (isProfitable) {
+      paymentBtn.disabled = false;
+      paymentBtn.style.opacity = '1';
+      paymentBtn.title = 'Đầu tư có lãi - Có thể thanh toán';
+    } else {
+      paymentBtn.disabled = true;
+      paymentBtn.style.opacity = '0.5';
+      paymentBtn.title = `Đầu tư không có lãi (chênh lệch: ${delta.toFixed(2)}% ngoài khoảng ${capLower}%-${capUpper}%)`;
+    }
+    
+  } catch (error) {
+    console.error('Lỗi kiểm tra lãi/lỗ:', error);
+    // Nếu có lỗi, cho phép thanh toán để không block user
+    paymentBtn.disabled = false;
+    paymentBtn.style.opacity = '1';
+  }
+}
+
 // Xử lý nút thanh toán
 function initPaymentButton() {
   const paymentBtn = document.getElementById('payment-btn');
@@ -266,6 +751,16 @@ function initPaymentButton() {
 
   // Kiểm tra lãi/lỗ và enable/disable button
   function checkProfitabilityAndUpdateButton() {
+    // Kiểm tra debug mode trước
+    const debugToggle = document.getElementById('fund-buy-debug-toggle');
+    const debugMode = debugToggle && debugToggle.checked;
+    
+    if (debugMode) {
+      paymentBtn.disabled = false;
+      paymentBtn.style.opacity = '1';
+      return;
+    }
+    
     const selectedOption = fundSelect.options[fundSelect.selectedIndex];
     const fundId = selectedOption.dataset.id;
     const investmentAmountInput = document.getElementById('investment-amount-input');
@@ -279,11 +774,14 @@ function initPaymentButton() {
       amount = shares * nav;
     }
     
+
     if (!fundId || amount < 1000000) {
       paymentBtn.disabled = true;
       paymentBtn.style.opacity = '0.5';
       return;
     }
+
+    // Không auto-chặn theo sức mua ở bước này; kiểm tra tại thời điểm bấm thanh toán
     
     // Lấy thông tin lãi suất và kiểm tra lãi/lỗ
     const termSelect = document.getElementById('term-select');
@@ -301,91 +799,7 @@ function initPaymentButton() {
     checkProfitability(fundId, amount, months, rate);
   }
 
-  // Kiểm tra lãi/lỗ dựa trên chặn trên/dưới
-  async function checkProfitability(fundId, amount, months, rate) {
-    try {
-      // Lấy cấu hình chặn trên/dưới từ nav_management
-      const capResponse = await fetch('/nav_management/api/cap_config');
-      const capData = await capResponse.json();
-      
-      if (!capData.success || !capData.cap_upper || !capData.cap_lower) {
-        console.warn('Không thể lấy cấu hình chặn trên/dưới, cho phép thanh toán');
-        paymentBtn.disabled = false;
-        paymentBtn.style.opacity = '1';
-        return;
-      }
-      
-      // Lấy NAV hiện tại của quỹ
-      const nav = window.currentNavPrice || 0;
-      if (nav <= 0) {
-        console.warn('Không có NAV hiện tại, cho phép thanh toán');
-        paymentBtn.disabled = false;
-        paymentBtn.style.opacity = '1';
-        return;
-      }
-      
-      // Số ngày theo kỳ hạn
-      const today = new Date();
-      const maturityDate = new Date(today);
-      maturityDate.setMonth(today.getMonth() + months);
-      const days = Math.ceil((maturityDate - today) / (1000 * 60 * 60 * 24));
-      
-      // Đọc số lượng CCQ từ input (fallback 1 nếu thiếu)
-      const qtyInput = document.getElementById('share-quantity-input');
-      const units = qtyInput ? (parseFloat(qtyInput.value) || 0) : 0;
-      
-      // Giá trị mua/bán theo Excel: amount * rate/365 * days + amount
-      const finalValue = amount * (rate / 100) / 365 * days + amount;
-      
-      // Giá bán 1 = ROUND(Giá trị mua/bán / Số lượng CCQ, 0)
-      const price1 = (units > 0) ? Math.round(finalValue / units) : 0;
-      
-      // Giá bán 2 = MROUND(giá 1, 50)
-      const price2 = price1 ? (Math.round(price1 / 50) * 50) : 0;
-      
-      // Tính lãi suất suy ra từ giá bán 2 (công thức Excel: =(T9/J9-1)*365/G9)
-      // Chuyển đổi từ lãi suất ngày sang lãi suất năm
-      // Tính số ngày thực tế từ ngày hiện tại + kỳ hạn
-      const r_new = (nav > 0 && days > 0 && price2 > 0) ? ((price2 / nav - 1) * 365 / days * 100) : 0;
-      
-      // Tính chênh lệch lãi suất
-      const delta = r_new - rate;
-      
-      // Kiểm tra lãi/lỗ
-      const capUpper = parseFloat(capData.cap_upper);
-      const capLower = parseFloat(capData.cap_lower);
-      
-      const isProfitable = delta >= capLower && delta <= capUpper;
-      
-      console.log(`📊 Kiểm tra lãi/lỗ:`);
-      console.log(`   - NAV: ${nav}`);
-      console.log(`   - Lãi suất gốc: ${rate}%`);
-      console.log(`   - Giá bán 1: ${price1}`);
-      console.log(`   - Giá bán 2: ${price2}`);
-      console.log(`   - Lãi suất mới: ${r_new}%`);
-      console.log(`   - Chênh lệch: ${delta}%`);
-      console.log(`   - Chặn trên: ${capUpper}%, Chặn dưới: ${capLower}%`);
-      console.log(`   - Có lãi: ${isProfitable}`);
-      
-      if (isProfitable) {
-        paymentBtn.disabled = false;
-        paymentBtn.style.opacity = '1';
-        paymentBtn.title = 'Đầu tư có lãi - Có thể thanh toán';
-      } else {
-        paymentBtn.disabled = true;
-        paymentBtn.style.opacity = '0.5';
-        paymentBtn.title = `Đầu tư không có lãi (chênh lệch: ${delta.toFixed(2)}% ngoài khoảng ${capLower}%-${capUpper}%)`;
-      }
-      
-    } catch (error) {
-      console.error('Lỗi kiểm tra lãi/lỗ:', error);
-      // Nếu có lỗi, cho phép thanh toán để không block user
-      paymentBtn.disabled = false;
-      paymentBtn.style.opacity = '1';
-    }
-  }
-
-  paymentBtn.addEventListener('click', () => {
+  paymentBtn.addEventListener('click', async () => {
     const fundName = document.getElementById('summary-fund-name').textContent;
     const units = document.getElementById('summary-units').textContent;
     const investmentAmount = document.getElementById('summary-investment-amount').textContent.replace(/[^0-9]/g, '');
@@ -472,19 +886,261 @@ function initPaymentButton() {
 
     // Lưu kỳ hạn và lãi suất đã chọn để hiển thị/submit ở bước sau
     const termSelect = document.getElementById('term-select');
-    const selectedTerm = termSelect ? parseInt(termSelect.value || '0', 10) : 0;
-    const selectedRate = termSelect ? parseFloat(termSelect.options[termSelect.selectedIndex]?.dataset?.rate || '0') : 0;
+    let selectedTerm = 0;
+    let selectedRate = 0;
+    
+    if (termSelect && termSelect.selectedIndex >= 0) {
+      const selectedOption = termSelect.options[termSelect.selectedIndex];
+      selectedTerm = parseInt(selectedOption.value || '0', 10);
+      selectedRate = parseFloat(selectedOption.dataset.rate || '0');
+      
+      console.log('💾 Lưu dữ liệu kỳ hạn:', {
+        termMonths: selectedTerm,
+        interestRate: selectedRate,
+        optionValue: selectedOption.value,
+        optionRate: selectedOption.dataset.rate
+      });
+    }
+    
     sessionStorage.setItem('selected_term_months', String(selectedTerm));
     sessionStorage.setItem('selected_interest_rate', String(selectedRate));
 
     // ✅ Mở điều khoản
 //    const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
 
-    // ✅ Hiển thị modal ký tên
-    const signatureModal = new bootstrap.Modal(document.getElementById('signatureModal'));
+    // ✅ Kiểm tra sức mua realtime trước khi OTP (tạm thời bypass)
+    const BYPASS_PURCHASING_POWER = true;
+    if (!BYPASS_PURCHASING_POWER) {
+      try {
+        const resp = await fetch('/my-account/get_balance', {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({})
+        });
+        const j = await resp.json().catch(() => ({}));
+        const totalToPay = parseInt((document.getElementById('summary-total')?.textContent || '0').replace(/[^0-9]/g, ''), 10) || finalAmount;
+        const bal = (j && j.status === 'success') ? (Number(j.balance?.available_cash || j.balance?.purchasing_power || 0) || 0) : 0;
+        if (bal > 0 && totalToPay > bal) {
+          await Swal.fire({
+            icon: 'warning',
+            title: 'Không đủ sức mua',
+            text: 'Số dư tài khoản không đủ. Vui lòng nạp thêm tiền để tiếp tục.',
+            confirmButtonText: 'Đã hiểu'
+          });
+          return;
+        }
+      } catch (_) {
+        // Không block nếu lỗi kiểm tra sức mua
+      }
+    }
 
-    signatureModal.show();
-    // window.location.href = '/fund_confirm';
+    // ✅ Smart OTP trước khi hiển thị hợp đồng/ký tên
+    // Hiển thị modal signature để ký tên
+    const showSignature = () => {
+      try {
+        const signatureModalElement = document.getElementById('signatureModal');
+        if (!signatureModalElement) {
+          console.warn('[Signature] Modal element not found, redirecting to fund_confirm');
+          window.location.href = '/fund_confirm';
+          return;
+        }
+        
+        // Kiểm tra xem Bootstrap có sẵn không
+        if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+          console.error('[Signature] Bootstrap Modal is not available, redirecting to fund_confirm');
+          window.location.href = '/fund_confirm';
+          return;
+        }
+        
+        // Kiểm tra xem modal đã được khởi tạo chưa
+        let signatureModal = bootstrap.Modal.getInstance(signatureModalElement);
+        if (!signatureModal) {
+          signatureModal = new bootstrap.Modal(signatureModalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+          });
+        }
+        
+        // Load PDF contract vào viewer nếu có
+        const pdfViewer = document.getElementById('contract-pdf-viewer');
+        if (pdfViewer) {
+          const pdfUrl = resolvePdfUrl();
+          if (pdfUrl) {
+            pdfViewer.src = pdfUrl + '#toolbar=0';
+          }
+        }
+        
+      signatureModal.show();
+      } catch (error) {
+        console.error('[Signature] Error showing signature modal:', error);
+        // Fallback: chuyển sang trang fund_confirm
+        window.location.href = '/fund_confirm';
+      }
+    };
+
+    try {
+      // Kiểm tra write token còn hiệu lực không trước khi yêu cầu OTP
+      let otpType = 'smart'; // Default
+      let hasValidToken = false;
+      let tokenExpiresIn = '';
+      
+      try {
+        const configResponse = await fetch('/api/otp/config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {}
+          })
+        });
+        const configResult = await configResponse.json().catch(() => ({}));
+        const configData = configResult.result || configResult;
+        if (configData) {
+          if (configData.otp_type) {
+            otpType = configData.otp_type;
+          }
+          if (configData.has_valid_write_token !== undefined) {
+            hasValidToken = configData.has_valid_write_token;
+          }
+          if (configData.write_token_expires_in) {
+            tokenExpiresIn = configData.write_token_expires_in;
+          }
+        }
+        console.log('[OTP] OTP Type:', otpType, 'Has valid token:', hasValidToken, 'Expires in:', tokenExpiresIn);
+      } catch (configError) {
+        console.warn('[OTP] Failed to get OTP config, using default:', configError);
+      }
+      
+      // Nếu write token còn hiệu lực, skip OTP và hiển thị hợp đồng luôn
+      if (hasValidToken) {
+        console.log('[OTP] Write token còn hiệu lực, skip OTP verification');
+        // Hiển thị thông báo ngắn về token còn hiệu lực
+        if (tokenExpiresIn) {
+          await Swal.fire({
+            icon: 'info',
+            title: 'Xác thực thành công',
+            text: `Smart OTP còn hiệu lực (${tokenExpiresIn}). Đang tiếp tục...`,
+            timer: 2000,
+            timerProgressBar: true,
+            showConfirmButton: false
+          });
+        }
+        // Hiển thị hợp đồng luôn, không cần verify OTP
+        showSignature();
+        return;
+      }
+      
+      // Nếu token hết hạn hoặc chưa có, yêu cầu verify OTP
+      console.log('[OTP] Write token đã hết hạn hoặc chưa có, yêu cầu verify OTP');
+      
+      // Mở popup OTP để user nhập mã (không gửi OTP tự động)
+      if (window.FundManagementSmartOTP && typeof window.FundManagementSmartOTP.open === 'function') {
+        window.FundManagementSmartOTP.open({
+          otpType: otpType, // Truyền loại OTP vào popup
+          onConfirm: async (otp, debugMode) => {
+            // Verify OTP giống stock_trading: /api/otp/verify -> lấy write token
+            try {
+              console.log('[OTP Verify] Sending OTP:', otp?.substring(0, 2) + '****', 'Debug Mode:', debugMode);
+              
+              // Gọi API với type='json' - cần gửi JSON-RPC format
+              const response = await fetch('/api/otp/verify', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ 
+                  jsonrpc: '2.0', 
+                  method: 'call', 
+                  params: { 
+                    otp: otp || '',
+                    debug: debugMode || false
+                  } 
+                })
+              });
+              
+              const jsonRpcResponse = await response.json().catch(() => ({}));
+              console.log('[OTP Verify] Response:', response.status, jsonRpcResponse);
+              
+              // Với type='json', Odoo trả về JSON-RPC format: {jsonrpc: '2.0', id: null, result: {...}}
+              // Dữ liệu thực tế nằm trong result
+              const data = jsonRpcResponse.result || jsonRpcResponse;
+              
+              if (!data || data.success !== true) {
+                const errorMsg = data?.message || jsonRpcResponse?.error?.message || jsonRpcResponse?.error || 'Mã OTP không hợp lệ';
+                console.error('[OTP Verify] Error:', errorMsg, 'Full response:', jsonRpcResponse);
+                throw new Error(errorMsg);
+              }
+              
+              // OTP verify thành công - hiển thị thông báo thành công trước
+              console.log('[OTP Verify] Success');
+              try {
+              await Swal.fire({
+                icon: 'success',
+                title: 'Xác thực thành công',
+                text: data?.message || 'Mã Smart OTP đã được xác thực thành công. Bạn có thể tiếp tục ký hợp đồng.',
+                confirmButtonText: 'Tiếp tục',
+                timer: 3000,
+                  timerProgressBar: true,
+                  allowOutsideClick: false,
+                  allowEscapeKey: false,
+                  backdrop: true,
+                  showClass: {
+                    popup: 'animate__animated animate__fadeInDown'
+                  },
+                  hideClass: {
+                    popup: 'animate__animated animate__fadeOutUp'
+                  }
+                });
+              } catch (swalError) {
+                console.warn('[OTP] Swal error (non-critical):', swalError);
+              }
+              
+              // Sau khi hiển thị thông báo thành công, mới hiển thị hợp đồng
+              showSignature();
+            } catch (e) {
+              // Hiển thị SweetAlert phía trước popup OTP
+              // SweetAlert tự động có z-index cao (1060), không cần set thủ công
+              try {
+              await Swal.fire({ 
+                icon: 'error', 
+                title: 'Smart OTP không chính xác', 
+                  text: e?.message || 'Vui lòng kiểm tra lại mã OTP',
+                  allowOutsideClick: false,
+                  allowEscapeKey: false,
+                  backdrop: true,
+                  showClass: {
+                    popup: 'animate__animated animate__shakeX'
+                  },
+                  hideClass: {
+                    popup: 'animate__animated animate__fadeOutUp'
+                  }
+                });
+              } catch (swalError) {
+                console.error('[OTP] Swal error:', swalError);
+                // Fallback: hiển thị alert thông thường nếu Swal lỗi
+                alert('Smart OTP không chính xác: ' + (e?.message || 'Vui lòng kiểm tra lại mã OTP'));
+              }
+              throw e; // Re-throw để popup OTP không đóng
+            }
+          },
+          onResend: null, // Không hỗ trợ gửi lại OTP
+        });
+      } else {
+        // Fallback nếu chưa có component OTP
+        showSignature();
+      }
+    } catch (_) {
+      showSignature();
+    }
   });
 
   backBtn.addEventListener('click', () => {
@@ -592,14 +1248,17 @@ function initInvestmentAmountCalculation() {
     
     if (nav > 0 && investmentAmount > 0) {
       // Tính số lượng CCQ = Số tiền đầu tư / Giá CCQ
-      const shares = Math.floor(investmentAmount / nav);
+      const sharesRaw = investmentAmount / nav;
+      // Làm tròn số CCQ theo bội số 50 gần nhất
+      const shares = Math.round(sharesRaw / 50) * 50;
+      // Cập nhật số lượng CCQ (đảm bảo không âm)
+      shareQuantityInput.value = shares > 0 ? shares : '';
       
-      // Cập nhật số lượng CCQ
-      shareQuantityInput.value = shares;
-      
-      // Tính số tiền mua CCQ thực tế (MROUND 50)
-      const actualAmount = Math.round(investmentAmount / 50) * 50;
-      const formattedAmount = actualAmount.toLocaleString('vi-VN');
+      // Tính lại số tiền đầu tư theo số CCQ đã làm tròn
+      let actualAmount = shares * nav;
+      // Chuẩn hóa MROUND 50 cho số tiền
+      actualAmount = Math.round(actualAmount / 50) * 50;
+      const formattedAmount = actualAmount ? actualAmount.toLocaleString('vi-VN') : '';
       amountInput.value = formattedAmount;
 
       // Tính phí dựa trên actualAmount thực tế
@@ -623,6 +1282,24 @@ function initInvestmentAmountCalculation() {
       summaryTotal.textContent = totalRounded.toLocaleString('vi-VN') + 'đ';
       summaryUnits.textContent = shares;
 
+      // Cập nhật trạng thái sức mua nếu đã có dữ liệu
+      const purchasingPower = window.__stockPurchasingPower__ || 0;
+      const statusEl = document.getElementById('purchasing-power-status');
+      const statusSumEl = document.getElementById('summary-purchasing-power-status');
+      if (purchasingPower > 0) {
+        const hasEnough = totalRounded <= purchasingPower;
+        if (statusEl) {
+          statusEl.textContent = hasEnough ? 'Đủ sức mua' : 'Không đủ sức mua';
+          statusEl.classList.remove('text-success', 'text-danger');
+          statusEl.classList.add(hasEnough ? 'text-success' : 'text-danger');
+        }
+        if (statusSumEl) {
+          statusSumEl.textContent = hasEnough ? 'Đủ sức mua' : 'Không đủ sức mua';
+          statusSumEl.classList.remove('text-success', 'text-danger');
+          statusSumEl.classList.add(hasEnough ? 'text-success' : 'text-danger');
+        }
+      }
+
       // Tính giá mua khi đáo hạn
       calculateMaturityPrice(shares, nav);
     } else {
@@ -639,87 +1316,67 @@ function initInvestmentAmountCalculation() {
     }
     isUpdatingFromInvestment = false;
   });
+
+  // Commit khi Enter/blur: làm tròn shares theo bội số 50 và cập nhật lại số tiền đầu tư tương ứng
+  const commitFromInvestment = () => {
+    if (isUpdatingFromInvestment) return;
+    const nav = window.currentNavPrice || 0;
+    let rawAmount = investmentAmountInput.value.replace(/[^0-9]/g, '');
+    const investmentAmount = parseFloat(rawAmount || '0');
+    if (nav <= 0 || investmentAmount <= 0) return;
+    // Tính shares và MROUND 50 cho shares
+    const shares = Math.round((investmentAmount / nav) / 50) * 50;
+    // Cập nhật số CCQ đã làm tròn
+    shareQuantityInput.value = shares > 0 ? String(shares) : '';
+    // Tính lại amount theo shares (MROUND 50)
+    let actualAmount = shares * nav;
+    actualAmount = Math.round(actualAmount / 50) * 50;
+    amountInput.value = actualAmount ? actualAmount.toLocaleString('vi-VN') : '';
+    // Kích hoạt lại luồng tính toán để cập nhật fee/summary
+    shareQuantityInput.dispatchEvent(new Event('input'));
+  };
+
+  investmentAmountInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitFromInvestment();
+      investmentAmountInput.blur();
+    }
+  });
+  investmentAmountInput.addEventListener('blur', commitFromInvestment);
 }
 
-// Cập nhật hiển thị giá trị đáo hạn với chỉ báo trực quan
+// Cập nhật hiển thị giá trị đáo hạn
 function updateFinalValueDisplay(finalValue, isProfitable, delta = 0) {
   const finalValueField = document.getElementById('final-value');
-  const profitIcon = document.getElementById('profit-icon');
-  const lossIcon = document.getElementById('loss-icon');
-  const profitStatus = document.getElementById('profit-status');
   const paymentBtn = document.getElementById('payment-btn');
+
+  // Kiểm tra null để tránh lỗi
+  if (!finalValueField) {
+    console.error('Element with id "final-value" not found');
+    return;
+  }
 
   // Hiển thị giá trị
   finalValueField.textContent = finalValue.toLocaleString("vi-VN") + " đ";
 
-  // Ẩn tất cả icon trước
-  profitIcon.style.display = 'none';
-  lossIcon.style.display = 'none';
-
-  if (isProfitable === true) {
-    // Lệnh có lãi - màu xanh
-    finalValueField.style.color = '#28a745';
-    finalValueField.style.backgroundColor = '#d4edda';
-    finalValueField.style.borderColor = '#c3e6cb';
-    
-    // Hiển thị icon lãi
-    profitIcon.style.display = 'inline-block';
-    profitIcon.className = 'badge bg-success';
-    profitIcon.textContent = '📈';
-    
-    // Hiển thị trạng thái
-    profitStatus.textContent = `✅ Lệnh có lãi (chênh lệch: +${delta.toFixed(2)}%)`;
-    profitStatus.style.color = '#28a745';
-    
-    // Enable button thanh toán
-    if (paymentBtn) {
-      paymentBtn.disabled = false;
-      paymentBtn.style.opacity = '1';
-      paymentBtn.className = 'btn btn-pill btn-buy';
-      paymentBtn.title = 'Đầu tư có lãi - Có thể thanh toán';
-    }
-  } else if (isProfitable === false) {
-    // Lệnh không có lãi - màu đỏ
-    finalValueField.style.color = '#dc3545';
-    finalValueField.style.backgroundColor = '#f8d7da';
-    finalValueField.style.borderColor = '#f5c6cb';
-    
-    // Hiển thị icon lỗ
-    lossIcon.style.display = 'inline-block';
-    lossIcon.className = 'badge bg-danger';
-    lossIcon.textContent = '📉';
-    
-    // Hiển thị trạng thái
-    profitStatus.textContent = `❌ Lệnh không có lãi (chênh lệch: ${delta.toFixed(2)}% ngoài khoảng cho phép)`;
-    profitStatus.style.color = '#dc3545';
-    
-    // Disable button thanh toán
-    if (paymentBtn) {
+  // Reset về màu mặc định (không tô màu)
+  finalValueField.style.color = '';
+  finalValueField.style.backgroundColor = '';
+  finalValueField.style.borderColor = '';
+  
+  // Điều khiển button thanh toán dựa trên trạng thái lãi/lỗ
+  if (paymentBtn) {
+    if (isProfitable === false) {
+      // Nếu lỗ - disable button
       paymentBtn.disabled = true;
       paymentBtn.style.opacity = '0.5';
       paymentBtn.className = 'btn btn-pill btn-secondary';
-      paymentBtn.title = 'Đầu tư không có lãi - Không thể thanh toán';
-    }
-  } else {
-    // Trạng thái không xác định - màu xám
-    finalValueField.style.color = '#6c757d';
-    finalValueField.style.backgroundColor = '#f8f9fa';
-    finalValueField.style.borderColor = '#dee2e6';
-    
-    // Ẩn tất cả icon
-    profitIcon.style.display = 'none';
-    lossIcon.style.display = 'none';
-    
-    // Hiển thị trạng thái
-    profitStatus.textContent = '⚠️ Không thể kiểm tra lãi/lỗ';
-    profitStatus.style.color = '#6c757d';
-    
-    // Cho phép thanh toán khi không xác định được
-    if (paymentBtn) {
+    } else {
+      // Nếu lãi hoặc không xác định - enable button
       paymentBtn.disabled = false;
       paymentBtn.style.opacity = '1';
       paymentBtn.className = 'btn btn-pill btn-buy';
-      paymentBtn.title = 'Không thể kiểm tra lãi/lỗ - Cho phép thanh toán';
     }
   }
 }
@@ -733,36 +1390,40 @@ function calculateMaturityPrice(shares, nav) {
   const rate = parseFloat(selectedOption.dataset.rate) || 0;
 
   if (months > 0 && rate > 0 && shares > 0) {
-    // Công thức từ nav_management: Giá trị bán = Giá trị lệnh * lãi suất / 365 * Số ngày + Giá trị lệnh
-    // Tính số ngày thực tế từ ngày hiện tại + kỳ hạn
+    // Công thức NAV mới: Tính toán đầy đủ theo công thức từ nav_management
+    // Tính ngày đáo hạn từ ngày hiện tại + kỳ hạn (giống Python backend)
     const today = new Date();
-    const maturityDate = new Date(today);
-    maturityDate.setMonth(today.getMonth() + months);
-    const days = Math.ceil((maturityDate - today) / (1000 * 60 * 60 * 24));
+    const maturityDate = calculateMaturityDate(today, months);
     
-    // Sử dụng giá trị lệnh thực tế từ form
-    const actualAmountInput = document.getElementById('amount-input');
-    let amount = 0;
+    // Tính số ngày thực tế giữa ngày mua và ngày đáo hạn (giống Python backend)
+    const days = calculateDaysBetween(today, maturityDate);
     
-    if (actualAmountInput && actualAmountInput.value) {
-      amount = parseFloat(actualAmountInput.value.replace(/[^0-9]/g, "")) || 0;
+    // Lấy giá CCQ tại thời điểm mua (J) từ nav
+    const pricePerUnit = nav; // J: Giá CCQ tại thời điểm mua
+    
+    // Lấy phí mua (K) từ fee-input hoặc summary-fee (số tiền tuyệt đối)
+    const feeInput = document.getElementById('fee-input');
+    const summaryFee = document.getElementById('summary-fee');
+    let feeAmount = 0;
+    if (feeInput && feeInput.value) {
+        feeAmount = parseFloat(feeInput.value.replace(/[^0-9]/g, '')) || 0;
+    } else if (summaryFee && summaryFee.textContent) {
+        feeAmount = parseFloat(summaryFee.textContent.replace(/[^0-9]/g, '')) || 0;
     }
     
-    // Fallback: tính từ shares * nav nếu không có actualAmount
-    if (amount === 0) {
-      amount = shares * nav;
-    }
+    // L: Giá trị mua = I * J + K (I = shares, J = pricePerUnit, K = feeAmount)
+    const purchaseValue = (shares * pricePerUnit) + feeAmount;
     
-    // Giá trị bán = amount * (rate / 100) / 365 * days + amount
-    const sellValue = amount * (rate / 100) / 365 * days + amount;
+    // U: Giá trị bán 1 = L * N / 365 * G + L
+    const sellValue1 = purchaseValue * (rate / 100) / 365 * days + purchaseValue;
     
-    // Giá bán 1 = ROUND(Giá trị bán / Số lượng CCQ, 0)
-    const price1 = Math.round(sellValue / shares);
+    // S: Giá bán 1 = ROUND(U / I, 0)
+    const sellPrice1 = Math.round(sellValue1 / shares);
     
-    // Giá bán 2 = MROUND(Giá bán 1, 50)
-    const price2 = Math.round(price1 / 50) * 50;
+    // T: Giá bán 2 = MROUND(S, 50)
+    const sellPrice2 = Math.round(sellPrice1 / 50) * 50;
     
-    maturityPriceDisplay.textContent = price2.toLocaleString('vi-VN') + 'đ';
+    maturityPriceDisplay.textContent = sellPrice2.toLocaleString('vi-VN') + 'đ';
   } else {
     maturityPriceDisplay.textContent = '...';
   }
@@ -835,6 +1496,24 @@ function initShareQuantityCalculation() {
       summaryTotal.textContent = totalRounded.toLocaleString('vi-VN') + 'đ';
       summaryUnits.textContent = shares;
 
+      // Cập nhật trạng thái sức mua nếu đã có dữ liệu
+      const purchasingPower = window.__stockPurchasingPower__ || 0;
+      const statusEl = document.getElementById('purchasing-power-status');
+      const statusSumEl = document.getElementById('summary-purchasing-power-status');
+      if (purchasingPower > 0) {
+        const hasEnough = totalRounded <= purchasingPower;
+        if (statusEl) {
+          statusEl.textContent = hasEnough ? 'Đủ sức mua' : 'Không đủ sức mua';
+          statusEl.classList.remove('text-success', 'text-danger');
+          statusEl.classList.add(hasEnough ? 'text-success' : 'text-danger');
+        }
+        if (statusSumEl) {
+          statusSumEl.textContent = hasEnough ? 'Đủ sức mua' : 'Không đủ sức mua';
+          statusSumEl.classList.remove('text-success', 'text-danger');
+          statusSumEl.classList.add(hasEnough ? 'text-success' : 'text-danger');
+        }
+      }
+
       // Tính giá mua khi đáo hạn
       calculateMaturityPrice(shares, nav);
     } else {
@@ -852,7 +1531,7 @@ function initShareQuantityCalculation() {
     isUpdatingFromShares = false;
   });
 
-  // Thêm validation cho bội số 50
+  // Thêm validation cho bội số 50 (tự động làm tròn, không popup)
   shareInput.addEventListener('blur', () => {
     let value = parseInt(shareInput.value, 10);
 
@@ -863,16 +1542,8 @@ function initShareQuantityCalculation() {
       return;
     }
 
-    // Nếu không phải bội số 50 thì cảnh báo và làm tròn tới bội số 50 gần nhất
+    // Nếu không phải bội số 50 thì tự động làm tròn tới bội số 50 gần nhất (không popup)
     if (value % 50 !== 0) {
-      if (window.Swal && typeof window.Swal.fire === 'function') {
-        window.Swal.fire({
-          icon: 'warning',
-          title: 'Số lượng không hợp lệ',
-          text: 'Số lượng CCQ phải là bội số của 50.',
-          confirmButtonText: 'OK'
-        });
-      }
       value = Math.round(value / 50) * 50;
     }
 
@@ -887,6 +1558,44 @@ function initShareQuantityCalculation() {
       shareInput.value = String(value);
       shareInput.dispatchEvent(new Event('input'));
     }
+  });
+}
+
+// Nạp sức mua từ stock_trading và chỉ hiển thị trạng thái (không hiển thị số dư)
+function initPurchasingPowerCheck() {
+  fetch('/my-account/get_balance', {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({})
+  }).then(async (res) => {
+    const statusEl = document.getElementById('purchasing-power-status');
+    const statusSumEl = document.getElementById('summary-purchasing-power-status');
+    if (!res.ok) { if (statusEl) statusEl.textContent = 'Không xác định'; if (statusSumEl) statusSumEl.textContent = 'Không xác định'; return; }
+    const data = await res.json();
+    if (!data || data.status !== 'success') { if (statusEl) statusEl.textContent = 'Không xác định'; if (statusSumEl) statusSumEl.textContent = 'Không xác định'; return; }
+    const bal = Math.max(0, Number((data.balance && (data.balance.available_cash || data.balance.purchasing_power)) || 0));
+    window.__stockPurchasingPower__ = bal;
+
+    // Sau khi có sức mua, cập nhật trạng thái ngay theo tổng cần thanh toán
+    const totalEl = document.getElementById('summary-total');
+    const total = totalEl ? parseFloat((totalEl.textContent || '0').replace(/[^0-9]/g, '')) || 0 : 0;
+    const hasEnough = bal > 0 ? (total <= bal) : true;
+    if (statusEl) {
+      statusEl.textContent = hasEnough ? 'Đủ sức mua' : 'Không đủ sức mua';
+      statusEl.classList.remove('text-success', 'text-danger');
+      statusEl.classList.add(hasEnough ? 'text-success' : 'text-danger');
+    }
+    if (statusSumEl) {
+      statusSumEl.textContent = hasEnough ? 'Đủ sức mua' : 'Không đủ sức mua';
+      statusSumEl.classList.remove('text-success', 'text-danger');
+      statusSumEl.classList.add(hasEnough ? 'text-success' : 'text-danger');
+    }
+  }).catch(() => {
+    const statusEl = document.getElementById('purchasing-power-status');
+    const statusSumEl = document.getElementById('summary-purchasing-power-status');
+    if (statusEl) { statusEl.textContent = 'Không xác định'; statusEl.classList.remove('text-success', 'text-danger'); }
+    if (statusSumEl) { statusSumEl.textContent = 'Không xác định'; statusSumEl.classList.remove('text-success', 'text-danger'); }
   });
 }
 
@@ -937,8 +1646,43 @@ function initTermsModalActions() {
     }
 
     // ✅ Hiển thị modal ký tên
-    const signatureModal = new bootstrap.Modal(document.getElementById('signatureModal'));
+    try {
+      const signatureModalElement = document.getElementById('signatureModal');
+      if (!signatureModalElement) {
+        console.warn('[Terms] Modal element not found, redirecting to fund_confirm');
+        window.location.href = '/fund_confirm';
+        return;
+      }
+      
+      if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+        console.error('[Terms] Bootstrap Modal is not available, redirecting to fund_confirm');
+        window.location.href = '/fund_confirm';
+        return;
+      }
+      
+      let signatureModal = bootstrap.Modal.getInstance(signatureModalElement);
+      if (!signatureModal) {
+        signatureModal = new bootstrap.Modal(signatureModalElement, {
+          backdrop: true,
+          keyboard: true,
+          focus: true
+        });
+      }
+      
+      // Load PDF contract vào viewer nếu có
+      const pdfViewer = document.getElementById('contract-pdf-viewer');
+      if (pdfViewer) {
+        const pdfUrl = resolvePdfUrl();
+        if (pdfUrl) {
+          pdfViewer.src = pdfUrl + '#toolbar=0';
+        }
+      }
+      
     signatureModal.show();
+    } catch (error) {
+      console.error('[Terms] Error showing signature modal:', error);
+      window.location.href = '/fund_confirm';
+    }
   });
 }
 
@@ -964,8 +1708,18 @@ function initShareQuantityInput() {
       btnDec.className = 'btn btn-light btn-sm share-stepper';
       btnDec.addEventListener('click', () => {
         const current = parseInt(input.value.replace(/[^0-9]/g, ''), 10) || 0;
-        const next = Math.max(0, current - 50);
+        const nextRaw = Math.max(0, current - 100); // step 100
+        const next = nextRaw > 0 ? Math.round(nextRaw / 50) * 50 : 0; // chuẩn hóa bội số 50 như nhập tay
         input.value = next > 0 ? String(next) : '';
+        // Cập nhật amount-input ngay để thuật toán đáo hạn dùng đúng dữ liệu như nhập tay
+        const amountEl = document.getElementById('amount-input');
+        const nav = window.currentNavPrice || 0;
+        const investmentAmount = (next > 0 && nav > 0) ? (next * nav) : 0;
+        const actualAmount = Math.round(investmentAmount / 50) * 50;
+        if (amountEl) {
+          amountEl.value = actualAmount ? actualAmount.toLocaleString('vi-VN') : '';
+          amountEl.dispatchEvent(new Event('input'));
+        }
         input.dispatchEvent(new Event('input'));
       });
 
@@ -975,8 +1729,18 @@ function initShareQuantityInput() {
       btnInc.className = 'btn btn-light btn-sm share-stepper';
       btnInc.addEventListener('click', () => {
         const current = parseInt(input.value.replace(/[^0-9]/g, ''), 10) || 0;
-        const next = current + 50;
+        const nextRaw = current + 100; // step 100
+        const next = Math.round(nextRaw / 50) * 50; // chuẩn hóa bội số 50 như nhập tay
         input.value = String(next);
+        // Cập nhật amount-input ngay để thuật toán đáo hạn dùng đúng dữ liệu như nhập tay
+        const amountEl = document.getElementById('amount-input');
+        const nav = window.currentNavPrice || 0;
+        const investmentAmount = (next > 0 && nav > 0) ? (next * nav) : 0;
+        const actualAmount = Math.round(investmentAmount / 50) * 50;
+        if (amountEl) {
+          amountEl.value = actualAmount ? actualAmount.toLocaleString('vi-VN') : '';
+          amountEl.dispatchEvent(new Event('input'));
+        }
         input.dispatchEvent(new Event('input'));
       });
 
@@ -1051,7 +1815,10 @@ function initInvestmentCalculator() {
     const rateField = document.getElementById('interest-rate');
     const investmentAmountInput = document.getElementById('investment-amount-input');
     const shareQuantityInput = document.getElementById('share-quantity-input');
+    const actualAmountInput = document.getElementById('amount-input');
     const finalValueField = document.getElementById('final-value');
+    const resaleDateField = document.getElementById('resale-date');
+    const maturityDateField = document.getElementById('maturity-date');
 
     if (!select || !rateField || !investmentAmountInput || !finalValueField) return;
 
@@ -1096,6 +1863,8 @@ function initInvestmentCalculator() {
 
         if (amount < 1000000 || months === 0 || rate === 0) {
             finalValueField.textContent = "...";
+            if (resaleDateField) resaleDateField.textContent = "...";
+            if (maturityDateField) maturityDateField.textContent = "...";
             return;
         }
 
@@ -1112,50 +1881,89 @@ function initInvestmentCalculator() {
             let delta = 0;
             
             if (capData.success && capData.cap_upper && capData.cap_lower && currentNav > 0) {
-                // Công thức từ nav_management: Giá trị bán = Giá trị lệnh * lãi suất / 365 * Số ngày + Giá trị lệnh
-                // Tính số ngày thực tế từ ngày hiện tại + kỳ hạn
+                // Công thức NAV mới: Tính toán đầy đủ theo công thức từ nav_management
+                // Tính ngày đáo hạn từ ngày hiện tại + kỳ hạn (giống Python backend)
                 const today = new Date();
-                const maturityDate = new Date(today);
-                maturityDate.setMonth(today.getMonth() + months);
-                const days = Math.ceil((maturityDate - today) / (1000 * 60 * 60 * 24));
+                const maturityDate = calculateMaturityDate(today, months);
                 
-                // Giá trị bán = amount * (rate / 100) / 365 * days + amount
-                const sellValue = amount * (rate / 100) / 365 * days + amount;
+                // Tính số ngày thực tế giữa ngày mua và ngày đáo hạn (giống Python backend)
+                const days = calculateDaysBetween(today, maturityDate);
+
+                // Cập nhật ngày đáo hạn và ngày bán lại (trừ 2 ngày làm việc)
+                if (maturityDateField) maturityDateField.textContent = formatDateDDMMYYYY(maturityDate);
+                if (resaleDateField) resaleDateField.textContent = formatDateDDMMYYYY(subtractBusinessDays(maturityDate, 2));
                 
-                // Giá bán 1 = ROUND(Giá trị bán / Số lượng CCQ, 0)
-                // Sử dụng số lượng CCQ thực tế từ form thay vì tính từ currentNav
+                // Lấy số lượng CCQ thực tế từ form
                 const shareQuantityInput = document.getElementById('share-quantity-input');
                 let shares = parseFloat(shareQuantityInput.value) || 0;
-                let price1;
                 
-                if (shares > 0) {
-                    price1 = Math.round(sellValue / shares);
-                } else {
-                    // Fallback: tính từ currentNav nếu không có shares
-                    shares = amount / currentNav;
-                    price1 = Math.round(sellValue / shares);
+                // Lấy giá CCQ tại thời điểm mua (J) từ currentNavPrice
+                const pricePerUnit = currentNav; // J: Giá CCQ tại thời điểm mua
+                
+                // Lấy phí mua (K) từ fee-input hoặc summary-fee (số tiền tuyệt đối)
+                const feeInput = document.getElementById('fee-input');
+                const summaryFee = document.getElementById('summary-fee');
+                let feeAmount = 0;
+                if (feeInput && feeInput.value) {
+                    feeAmount = parseFloat(feeInput.value.replace(/[^0-9]/g, '')) || 0;
+                } else if (summaryFee && summaryFee.textContent) {
+                    feeAmount = parseFloat(summaryFee.textContent.replace(/[^0-9]/g, '')) || 0;
                 }
                 
-                // Giá bán 2 = MROUND(Giá bán 1, 50)
-                const price2 = Math.round(price1 / 50) * 50;
+                // Tính lại amount nếu chưa có (từ shares và pricePerUnit)
+                if (amount === 0 && shares > 0 && pricePerUnit > 0) {
+                    amount = shares * pricePerUnit;
+                    amount = Math.round(amount / 50) * 50; // MROUND 50
+                }
                 
-                // Tính lãi suất suy ra từ giá bán 2 (công thức từ nav_management)
-                // LS quy đổi = (Giá bán 2 / Giá mua/bán - 1) * 365 / Số ngày * 100
-                // Sử dụng giá mua thực tế từ form thay vì currentNav
-                const actualPrice = shares > 0 ? (amount / shares) : currentNav;
-                const r_new = (price2 / actualPrice - 1) * 365 / days * 100;
+                // L: Giá trị mua = I * J + K (I = shares, J = pricePerUnit, K = feeAmount)
+                const purchaseValue = (shares * pricePerUnit) + feeAmount;
                 
-                // Tính chênh lệch lãi suất
+                // U: Giá trị bán 1 = L * N / 365 * G + L
+                //    = purchaseValue * (rate / 100) / 365 * days + purchaseValue
+                const sellValue1 = purchaseValue * (rate / 100) / 365 * days + purchaseValue;
+                
+                // S: Giá bán 1 = ROUND(U / I, 0)
+                const sellPrice1 = shares > 0 ? Math.round(sellValue1 / shares) : 0;
+                
+                // T: Giá bán 2 = MROUND(S, 50)
+                const sellPrice2 = sellPrice1 > 0 ? (Math.round(sellPrice1 / 50) * 50) : 0;
+                
+                // V: Giá trị bán 2 = I * T
+                const sellValue2 = shares * sellPrice2;
+                
+                // Tính lãi suất quy đổi (O) = (T / J - 1) * 365 / G * 100
+                // J = Giá CCQ tại thời điểm mua = pricePerUnit
+                const r_new = (pricePerUnit > 0 && days > 0 && sellPrice2 > 0) ? ((sellPrice2 / pricePerUnit - 1) * 365 / days * 100) : 0;
+                
+                // Q: Chênh lệch lãi suất = O - N
                 delta = r_new - rate;
                 
-                console.log(`🔍 Debug tính toán lãi/lỗ:`);
-                console.log(`   - amount: ${amount}`);
-                console.log(`   - shares: ${shares}`);
-                console.log(`   - actualPrice: ${actualPrice}`);
-                console.log(`   - price2: ${price2}`);
-                console.log(`   - r_new: ${r_new}`);
-                console.log(`   - rate: ${rate}`);
-                console.log(`   - delta: ${delta}`);
+                // X: Phí bán (mặc định 0 nếu chưa có cấu hình)
+                const sellFee = 0; // Có thể lấy từ cấu hình sau
+                
+                // Y: Thuế (mặc định 0 nếu chưa có cấu hình)
+                const tax = 0; // Có thể lấy từ cấu hình sau
+                
+                // Z: Khách hàng thực nhận = U - X - Y
+                const customerReceive = sellValue1 - sellFee - tax;
+                
+                console.log(`🔍 Debug tính toán NAV mới:`);
+                console.log(`   - I (Số lượng CCQ): ${shares}`);
+                console.log(`   - J (Giá CCQ tại thời điểm mua): ${pricePerUnit.toLocaleString('vi-VN')} đ`);
+                console.log(`   - K (Phí mua - số tiền): ${feeAmount.toLocaleString('vi-VN')} đ`);
+                console.log(`   - L (Giá trị mua = I * J + K): ${purchaseValue.toLocaleString('vi-VN')} đ`);
+                console.log(`   - N (Lãi suất): ${rate}%`);
+                console.log(`   - G (Số ngày): ${days}`);
+                console.log(`   - U (Giá trị bán 1 = L * N / 365 * G + L): ${sellValue1.toLocaleString('vi-VN')} đ`);
+                console.log(`   - S (Giá bán 1 = ROUND(U / I, 0)): ${sellPrice1.toLocaleString('vi-VN')} đ/CCQ`);
+                console.log(`   - T (Giá bán 2 = MROUND(S, 50)): ${sellPrice2.toLocaleString('vi-VN')} đ/CCQ`);
+                console.log(`   - V (Giá trị bán 2 = I * T): ${sellValue2.toLocaleString('vi-VN')} đ`);
+                console.log(`   - O (Lãi suất quy đổi = (T / J - 1) * 365 / G * 100): ${r_new.toFixed(4)}%`);
+                console.log(`   - Q (Chênh lệch lãi suất = O - N): ${delta.toFixed(4)}%`);
+                console.log(`   - X (Phí bán): ${sellFee.toLocaleString('vi-VN')} đ`);
+                console.log(`   - Y (Thuế): ${tax.toLocaleString('vi-VN')} đ`);
+                console.log(`   - Z (Khách hàng thực nhận = U - X - Y): ${customerReceive.toLocaleString('vi-VN')} đ`);
                 
                 // Kiểm tra lãi/lỗ
                 const capUpper = parseFloat(capData.cap_upper);
@@ -1170,43 +1978,89 @@ function initInvestmentCalculator() {
                 console.log(`   - delta: ${delta}`);
                 console.log(`   - isProfitable: ${isProfitable}`);
                 
-                // Nếu có lãi, sử dụng giá trị đáo hạn thực tế từ công thức nav_management
-                if (isProfitable) {
-                    // Sử dụng giá trị bán đã tính (sellValue) thay vì công thức đơn giản
-                    finalValue = sellValue;
-                }
+                // Sử dụng giá trị khách hàng thực nhận (Z) làm giá trị đáo hạn
+                finalValue = customerReceive;
                 
-                console.log(`🧮 Tính toán giá trị đáo hạn với kiểm tra lãi/lỗ:`);
-                console.log(`   - Số tiền đầu tư: ${amount.toLocaleString('vi-VN')} đ`);
-                console.log(`   - Giá mua thực tế: ${actualPrice.toLocaleString('vi-VN')} đ`);
+                console.log(`🧮 Tính toán giá trị đáo hạn với công thức NAV mới:`);
+                console.log(`   - Số tiền đầu tư (amount-input): ${amount.toLocaleString('vi-VN')} đ`);
                 console.log(`   - Số lượng CCQ: ${shares}`);
+                console.log(`   - Giá CCQ tại thời điểm mua: ${pricePerUnit.toLocaleString('vi-VN')} đ`);
+                console.log(`   - Phí mua: ${feeAmount.toLocaleString('vi-VN')} đ`);
+                console.log(`   - Giá trị mua (L): ${purchaseValue.toLocaleString('vi-VN')} đ`);
                 console.log(`   - Lãi suất gốc: ${rate}% cho ${months} tháng`);
-                console.log(`   - Giá bán 1: ${price1}`);
-                console.log(`   - Giá bán 2: ${price2}`);
-                console.log(`   - Lãi suất mới: ${r_new}%`);
-                console.log(`   - Chênh lệch: ${delta}%`);
+                console.log(`   - Giá trị bán 1 (U): ${sellValue1.toLocaleString('vi-VN')} đ`);
+                console.log(`   - Giá bán 1 (S): ${sellPrice1.toLocaleString('vi-VN')} đ/CCQ`);
+                console.log(`   - Giá bán 2 (T): ${sellPrice2.toLocaleString('vi-VN')} đ/CCQ`);
+                console.log(`   - Giá trị bán 2 (V): ${sellValue2.toLocaleString('vi-VN')} đ`);
+                console.log(`   - Lãi suất quy đổi (O): ${r_new.toFixed(4)}%`);
+                console.log(`   - Chênh lệch lãi suất (Q): ${delta.toFixed(4)}%`);
+                console.log(`   - Phí bán (X): ${sellFee.toLocaleString('vi-VN')} đ`);
+                console.log(`   - Thuế (Y): ${tax.toLocaleString('vi-VN')} đ`);
+                console.log(`   - Khách hàng thực nhận (Z): ${finalValue.toLocaleString('vi-VN')} đ`);
                 console.log(`   - Chặn trên: ${capUpper}%, Chặn dưới: ${capLower}%`);
                 console.log(`   - Có lãi: ${isProfitable}`);
-                console.log(`   - Giá trị đáo hạn: ${finalValue.toLocaleString('vi-VN')} đ`);
             } else {
-                // Sử dụng công thức từ nav_management ngay cả khi không kiểm tra lãi/lỗ
+                // Sử dụng công thức NAV mới ngay cả khi không kiểm tra lãi/lỗ
                 const today = new Date();
-                const maturityDate = new Date(today);
-                maturityDate.setMonth(today.getMonth() + months);
-                const days = Math.ceil((maturityDate - today) / (1000 * 60 * 60 * 24));
+                const maturityDate = calculateMaturityDate(today, months);
                 
-                // Giá trị bán = amount * (rate / 100) / 365 * days + amount
-                finalValue = amount * (rate / 100) / 365 * days + amount;
+                // Tính số ngày thực tế giữa ngày mua và ngày đáo hạn (giống Python backend)
+                const days = calculateDaysBetween(today, maturityDate);
+
+                // Cập nhật ngày đáo hạn và ngày bán lại (trừ 2 ngày làm việc)
+                if (maturityDateField) maturityDateField.textContent = formatDateDDMMYYYY(maturityDate);
+                if (resaleDateField) resaleDateField.textContent = formatDateDDMMYYYY(subtractBusinessDays(maturityDate, 2));
+                
+                // Lấy số lượng CCQ thực tế từ form
+                const shareQuantityInput = document.getElementById('share-quantity-input');
+                let shares = parseFloat(shareQuantityInput.value) || 0;
+                if (shares === 0 && currentNav > 0) {
+                    shares = amount / currentNav;
+                }
+                
+                // Lấy giá CCQ tại thời điểm mua (J) từ currentNavPrice
+                const pricePerUnit = currentNav; // J: Giá CCQ tại thời điểm mua
+                
+                // Lấy phí mua (K) từ fee-input hoặc summary-fee (số tiền tuyệt đối)
+                const feeInput = document.getElementById('fee-input');
+                const summaryFee = document.getElementById('summary-fee');
+                let feeAmount = 0;
+                if (feeInput && feeInput.value) {
+                    feeAmount = parseFloat(feeInput.value.replace(/[^0-9]/g, '')) || 0;
+                } else if (summaryFee && summaryFee.textContent) {
+                    feeAmount = parseFloat(summaryFee.textContent.replace(/[^0-9]/g, '')) || 0;
+                }
+                
+                // L: Giá trị mua = I * J + K (I = shares, J = pricePerUnit, K = feeAmount)
+                const purchaseValue = (shares * pricePerUnit) + feeAmount;
+                
+                // U: Giá trị bán 1 = L * N / 365 * G + L
+                const sellValue1 = purchaseValue * (rate / 100) / 365 * days + purchaseValue;
+                
+                // X: Phí bán (mặc định 0)
+                const sellFee = 0;
+                
+                // Y: Thuế (mặc định 0)
+                const tax = 0;
+                
+                // Z: Khách hàng thực nhận = U - X - Y
+                finalValue = sellValue1 - sellFee - tax;
                 
                 // Không thể kiểm tra lãi/lỗ khi không có dữ liệu cap
                 isProfitable = null;
                 delta = 0;
                 
-                console.log(`🧮 Tính toán giá trị đáo hạn (công thức nav_management):`);
+                console.log(`🧮 Tính toán giá trị đáo hạn (công thức NAV mới):`);
                 console.log(`   - Số tiền đầu tư: ${amount.toLocaleString('vi-VN')} đ`);
+                console.log(`   - Số lượng CCQ: ${shares}`);
+                console.log(`   - Giá CCQ tại thời điểm mua: ${pricePerUnit.toLocaleString('vi-VN')} đ`);
+                console.log(`   - Phí mua: ${feeAmount.toLocaleString('vi-VN')} đ`);
+                console.log(`   - L (Giá trị mua = I * J + K): ${purchaseValue.toLocaleString('vi-VN')} đ`);
                 console.log(`   - Lãi suất: ${rate}% cho ${months} tháng (${days} ngày)`);
-                console.log(`   - Công thức: ${amount} × (${rate}/100) / 365 × ${days} + ${amount}`);
-                console.log(`   - Kết quả: ${finalValue.toLocaleString('vi-VN')} đ`);
+                console.log(`   - U (Giá trị bán 1): ${sellValue1.toLocaleString('vi-VN')} đ`);
+                console.log(`   - X (Phí bán): ${sellFee.toLocaleString('vi-VN')} đ`);
+                console.log(`   - Y (Thuế): ${tax.toLocaleString('vi-VN')} đ`);
+                console.log(`   - Z (Khách hàng thực nhận): ${finalValue.toLocaleString('vi-VN')} đ`);
                 console.log(`   - Không thể kiểm tra lãi/lỗ: ${isProfitable}`);
             }
 
@@ -1228,13 +2082,57 @@ function initInvestmentCalculator() {
             
         } catch (error) {
             console.error('Lỗi kiểm tra lãi/lỗ:', error);
-            // Fallback về tính toán cơ bản
-            let finalValue = amount * (1 + rate / 100);
+            // Fallback về tính toán cơ bản theo công thức NAV mới
+            const today = new Date();
+            const maturityDate = calculateMaturityDate(today, months);
+            
+            // Tính số ngày thực tế giữa ngày mua và ngày đáo hạn (giống Python backend)
+            const days = calculateDaysBetween(today, maturityDate);
+            
+            // Lấy số lượng CCQ thực tế từ form
+            const shareQuantityInput = document.getElementById('share-quantity-input');
+            let shares = parseFloat(shareQuantityInput.value) || 0;
+            if (shares === 0 && window.currentNavPrice > 0) {
+                shares = amount / window.currentNavPrice;
+            }
+            
+            // Lấy giá CCQ tại thời điểm mua (J)
+            const pricePerUnit = window.currentNavPrice || 0;
+            
+            // Lấy phí mua (K) từ fee-input hoặc summary-fee
+            const feeInput = document.getElementById('fee-input');
+            const summaryFee = document.getElementById('summary-fee');
+            let feeAmount = 0;
+            if (feeInput && feeInput.value) {
+                feeAmount = parseFloat(feeInput.value.replace(/[^0-9]/g, '')) || 0;
+            } else if (summaryFee && summaryFee.textContent) {
+                feeAmount = parseFloat(summaryFee.textContent.replace(/[^0-9]/g, '')) || 0;
+            }
+            
+            // L: Giá trị mua = I * J + K
+            const purchaseValue = (shares * pricePerUnit) + feeAmount;
+            
+            // U: Giá trị bán 1 = L * N / 365 * G + L
+            let finalValue = purchaseValue * (rate / 100) / 365 * days + purchaseValue;
+            
+            // X: Phí bán (mặc định 0)
+            const sellFee = 0;
+            
+            // Y: Thuế (mặc định 0)
+            const tax = 0;
+            
+            // Z: Khách hàng thực nhận = U - X - Y
+            finalValue = finalValue - sellFee - tax;
+            
             // MROUND 50
             finalValue = Math.round(finalValue / 50) * 50;
             
             // Hiển thị với trạng thái không xác định
             updateFinalValueDisplay(finalValue, null, 0);
+
+            // Reset ngày đáo hạn/bán lại
+            if (resaleDateField) resaleDateField.textContent = "...";
+            if (maturityDateField) maturityDateField.textContent = "...";
             
             // Reset về trạng thái mặc định
             const finalValueField = document.getElementById('final-value');
@@ -1261,9 +2159,109 @@ function initInvestmentCalculator() {
     select.addEventListener('change', calculate);
     investmentAmountInput.addEventListener('input', calculate);
     shareQuantityInput.addEventListener('input', calculate);
+    if (actualAmountInput) {
+      const commitAmount = () => {
+        const raw = actualAmountInput.value.replace(/[^0-9]/g, '');
+        const num = parseInt(raw || '0', 10) || 0;
+        const committed = Math.round(num / 50) * 50; // chuẩn hóa MROUND 50
+        actualAmountInput.value = committed ? committed.toLocaleString('vi-VN') : '';
+        calculate();
+      };
+      actualAmountInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commitAmount();
+          actualAmountInput.blur();
+        }
+      });
+      actualAmountInput.addEventListener('blur', commitAmount);
+    }
 
     // Khởi tạo lần đầu
     calculate();
+}
+
+// Trừ đi N ngày làm việc (bỏ qua T7/CN) - giống Python WORKDAY
+function subtractBusinessDays(date, n) {
+  const d = new Date(date);
+  let remaining = n;
+  while (remaining > 0) {
+    d.setDate(d.getDate() - 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) {
+      remaining--;
+    }
+  }
+  return d;
+}
+
+// Tính ngày đáo hạn từ ngày mua và kỳ hạn (tháng) - giống Python backend
+// Sử dụng relativedelta logic: cộng tháng và điều chỉnh nếu rơi vào cuối tuần
+function calculateMaturityDate(purchaseDate, termMonths) {
+    if (!purchaseDate || !termMonths) return null;
+    
+    const maturityDate = new Date(purchaseDate);
+    // Cộng tháng: xử lý trường hợp tháng có số ngày khác nhau (giống relativedelta)
+    const currentMonth = maturityDate.getMonth();
+    const currentYear = maturityDate.getFullYear();
+    const currentDay = maturityDate.getDate();
+    
+    // Tính tháng và năm mới
+    let newMonth = currentMonth + termMonths;
+    let newYear = currentYear;
+    
+    // Xử lý tràn năm
+    while (newMonth >= 12) {
+        newMonth -= 12;
+        newYear += 1;
+    }
+    while (newMonth < 0) {
+        newMonth += 12;
+        newYear -= 1;
+    }
+    
+    // Tạo ngày đáo hạn, xử lý trường hợp ngày không hợp lệ (ví dụ: 31/02 -> 28/02 hoặc 29/02)
+    const daysInNewMonth = new Date(newYear, newMonth + 1, 0).getDate();
+    const adjustedDay = Math.min(currentDay, daysInNewMonth);
+    
+    maturityDate.setFullYear(newYear, newMonth, adjustedDay);
+    
+    // Kiểm tra nếu rơi vào cuối tuần (Saturday=6, Sunday=0) - giống Python backend
+    // Python weekday return_type=2: Monday=1, Sunday=7, Saturday=6
+    // JavaScript getDay(): Sunday=0, Monday=1, ..., Saturday=6
+    const weekday = maturityDate.getDay();
+    if (weekday === 0 || weekday === 6) {
+        // Chuyển sang thứ 2 tuần sau
+        // Sunday (0) -> Monday (+1), Saturday (6) -> Monday (+2)
+        const daysToAdd = weekday === 0 ? 1 : 2;
+        maturityDate.setDate(maturityDate.getDate() + daysToAdd);
+    }
+    
+    return maturityDate;
+}
+
+// Tính số ngày giữa 2 ngày (chỉ tính phần ngày, không tính giờ) - giống Python backend
+// Python: (maturity_dt - purchase_dt).days
+function calculateDaysBetween(date1, date2) {
+    if (!date1 || !date2) return 0;
+    
+    // Chuyển về cùng múi giờ và chỉ lấy phần ngày (bỏ qua giờ/phút/giây)
+    const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+    const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+    
+    // Tính số milliseconds và chuyển sang ngày
+    const diffTime = d2.getTime() - d1.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+}
+
+function pad2(x) { return String(x).padStart(2, '0'); }
+function formatDateDDMMYYYY(d) {
+  const dd = pad2(d.getDate());
+  const mm = pad2(d.getMonth() + 1);
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 // Gọi API ẩn kỳ hạn (sử dụng nav_management)

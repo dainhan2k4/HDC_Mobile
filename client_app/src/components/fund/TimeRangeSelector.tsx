@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 
-type TimeRange = '1M' | '3M' | '6M' | '1Y';
+type TimeRange = '1D' | '5D' | '1M' | '3M';
 
 interface TimeRangeSelectorProps {
   selectedRange: TimeRange;
@@ -17,10 +17,10 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   onRangeChange,
 }) => {
   const ranges: { key: TimeRange; label: string; shortLabel: string }[] = [
-    { key: '1M', label: '1 Tháng', shortLabel: '1T' },
-    { key: '3M', label: '3 Tháng', shortLabel: '3T' },
-    { key: '6M', label: '6 Tháng', shortLabel: '6T' },
-    { key: '1Y', label: '1 Năm', shortLabel: '1N' },
+    { key: '1D', label: '1 Ngày', shortLabel: '1D' },
+    { key: '5D', label: '5 Ngày', shortLabel: '5D' },
+    { key: '1M', label: '1 Tháng', shortLabel: '1M' },
+    { key: '3M', label: '3 Tháng', shortLabel: '3M' },
   ];
 
   return (

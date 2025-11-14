@@ -1,21 +1,22 @@
-from ..utils import mround
 from odoo import http, fields
 from odoo.http import request, Response
+from psycopg2 import IntegrityError
 import json
+import logging
 
-# Ở đầu file controller
-last_signed_pdf_path = None
+from ..utils import mround, fee_utils, investment_utils, constants
+
+_logger = logging.getLogger(__name__)
+
 
 class InvestmentController(http.Controller):
 
     @http.route('/save_signed_pdf_path', type='http', auth='public', csrf=False, methods=['POST'])
     def save_signed_pdf_path(self, **kwargs):
-        global last_signed_pdf_path  # ⬅ khai báo để sửa biến toàn cục
-        print("Kwargs:", kwargs)
+        """Save signed PDF path to session"""
         file_path = kwargs.get("file_path")
-        request.session["signed_pdf_path"] = file_path
-        last_signed_pdf_path = file_path
-        print("💾 Đã lưu file_path vào session:", file_path)
+        if file_path:
+            request.session["signed_pdf_path"] = file_path
         return Response(
             json.dumps({"success": True}),
             content_type="application/json"
@@ -23,124 +24,67 @@ class InvestmentController(http.Controller):
 
     @http.route('/create_investment', type='http', auth='user', methods=['POST'], csrf=False)
     def create_investment(self, **kwargs):
-        print("=== CREATE INVESTMENT ===")
-        print("Kwargs:", kwargs)
-        print("Request method:", request.httprequest.method)
-        print("Content type:", request.httprequest.content_type)
-
+        """Create investment transaction"""
         try:
-            # Lấy dữ liệu từ form
+            # Get form data
             fund_id = kwargs.get('fund_id')
             units = kwargs.get('units')
-            amount = kwargs.get('amount')  # Lấy giá trị lệnh thực tế từ form
+            amount = kwargs.get('amount')
             term_months = kwargs.get('term_months')
             interest_rate = kwargs.get('interest_rate')
 
-            print("fund_id:", fund_id)
-            print("units:", units)
-            print("amount:", amount)
-
             if not fund_id or not units or not amount:
-                return self._json_response({"success": False, "message": "Thiếu thông tin"})
+                return self._json_response({"success": False, "message": "Missing required information"})
 
             user_id = request.env.user.id
-            print("user_id:", user_id)
-
-            # Truy vấn fund để lấy current_nav
             fund = request.env['portfolio.fund'].sudo().browse(int(fund_id))
             if not fund.exists():
-                return self._json_response({"success": False, "message": "Fund không tồn tại"})
+                return self._json_response({"success": False, "message": "Fund not found"})
 
-            # Sử dụng giá trị lệnh thực tế từ form (đã được MROUND 50)
+            # Calculate values
             units_float = float(units)
-            calculated_amount = float(amount)  # Sử dụng giá trị lệnh từ form
-
-            # Tính đơn giá thực tế từ amount và units
+            calculated_amount = float(amount)
             effective_unit_price = calculated_amount / units_float if units_float > 0 else 0
+            fee = fee_utils.calculate_fee(calculated_amount)
+            total_amount = calculated_amount + fee
 
-            fee = self.calculate_fee(calculated_amount)         # Tính fee
+            # Get PDF path from session
+            pdf_path = request.session.get("signed_pdf_path")
 
-            # MROUND 50 cho tất cả giá trị
-            calculated_amount = mround(calculated_amount, 50)
-            effective_unit_price = mround(effective_unit_price, 50)
-            fee = mround(fee, 50)
-
-            # Tổng thanh toán = giá trị lệnh + phí
-            total_amount = mround(calculated_amount + fee, 50)
-
-            print("calculated_amount:", calculated_amount)
-            print("fee:", fee)
-            print("total_amount:", total_amount)
-
-            # Tạo investment với giá trị lệnh thực tế
-            investment = self.upsert_investment_with_amount(user_id, int(fund_id), float(units), calculated_amount, 'purchase')
-
-            # Lấy file_path từ session
-            print("📄 File path từ session:", last_signed_pdf_path)
-
-            # Idempotent guard: nếu đã tồn tại giao dịch tương tự rất gần thời gian (chống double-click)
-            try:
-                from datetime import datetime, timedelta
-                cutoff = fields.Datetime.to_string(fields.Datetime.now() - timedelta(minutes=2))
-                existing_tx = request.env['portfolio.transaction'].sudo().search([
-                    ('user_id', '=', user_id),
-                    ('fund_id', '=', fund.id),
-                    ('transaction_type', '=', 'purchase'),
-                    ('units', '=', units_float),
-                    ('price', '=', effective_unit_price),
-                    ('amount', '=', calculated_amount),  # Sử dụng giá trị lệnh thực tế (không bao gồm phí)
-                    ('fee', '=', fee),  # Kiểm tra phí mua
-                    ('create_date', '>=', cutoff),
-                ], order='id desc', limit=1)
-                if existing_tx:
-                    print("[Idempotent] Found existing recent transaction, skip create:", existing_tx.id)
-                    return self._json_response({
-                        "success": True,
-                        "message": "Giao dịch đã được ghi nhận (idempotent)",
-                        "id": investment.id,
-                        "tx_id": existing_tx.id
-                    })
-            except Exception as _e:
-                print("[Idempotent] Guard check error:", _e)
-
-            # Ghi lại transaction
+            # Create transaction
             tx_vals = {
                 'user_id': user_id,
                 'fund_id': fund.id,
-                'transaction_type': 'purchase',
+                'transaction_type': constants.TRANSACTION_TYPE_PURCHASE,
+                'status': constants.STATUS_PENDING,
                 'units': units_float,
-                'amount': calculated_amount,  # Sử dụng giá trị lệnh thực tế (không bao gồm phí)
-                'fee': fee,  # Phí mua riêng biệt
-                'price': effective_unit_price,  # Đơn giá đã bao gồm chi phí vốn (MROUND 50)
-                'created_at': fields.Datetime.now(),
-                'contract_pdf_path': last_signed_pdf_path,
+                'amount': calculated_amount,
+                'fee': fee,
+                'price': effective_unit_price,
+                'contract_pdf_path': pdf_path,
             }
-            # Kỳ hạn/lãi suất từ frontend (nếu có) - chỉ add khi có dữ liệu hợp lệ
-            if term_months not in (None, '', False):
+            
+            # Add optional fields
+            if term_months:
                 try:
                     tx_vals['term_months'] = int(term_months)
                 except Exception:
                     pass
-            if interest_rate not in (None, '', False):
+            if interest_rate:
                 try:
                     tx_vals['interest_rate'] = float(interest_rate)
                 except Exception:
                     pass
 
-            print('[CREATE TX] term_months:', term_months, 'interest_rate:', interest_rate)
-            request.env['portfolio.transaction'].sudo().create(tx_vals)
+            tx = request.env['portfolio.transaction'].sudo().create(tx_vals)
 
-            print("Tạo thành công investment ID:", investment.id)
             return self._json_response({
                 "success": True,
-                "message": "Đã tạo investment thành công",
-                "id": investment.id
+                "message": "Investment order created successfully",
+                "tx_id": tx.id
             })
 
         except Exception as e:
-            print("LỖI:", str(e))
-            import traceback
-            traceback.print_exc()
             return self._json_response({"success": False, "message": str(e)})
 
     def _json_response(self, data):
@@ -152,18 +96,15 @@ class InvestmentController(http.Controller):
 
     @http.route('/data_investment', type='http', auth='user', cors='*')
     def get_user_investments(self):
+        """Get user investments"""
         try:
             user_id = request.env.user.id
-            print("🔍 Lấy investment cho user:", user_id)
-
-            # Lấy tất cả investment của user hiện tại
             investments = request.env['portfolio.investment'].sudo().search([
                 ('user_id', '=', user_id)
             ])
 
-            result = []
-            for inv in investments:
-                result.append({
+            result = [
+                {
                     "id": inv.id,
                     "fund_id": inv.fund_id.id,
                     "fund_name": inv.fund_id.name,
@@ -172,7 +113,9 @@ class InvestmentController(http.Controller):
                     "amount": inv.amount,
                     "current_nav": inv.fund_id.current_nav,
                     "investment_type": inv.fund_id.investment_type,
-                })
+                }
+                for inv in investments
+            ]
 
             return Response(
                 json.dumps(result),
@@ -197,10 +140,12 @@ class InvestmentController(http.Controller):
             investment_id = int(kwargs.get('investment_id'))
             quantity = float(kwargs.get('quantity'))
             estimated_value_from_js = float(kwargs.get('estimated_value'))  # vẫn log ra để debug
+            debug_mode = kwargs.get('debug', 'false').lower() in ('true', '1', 'yes')  # Debug mode flag
 
             print("✔️ investment_id:", investment_id)
             print("✔️ quantity:", quantity)
             print("✔️ estimated_value (from JS - ignored):", estimated_value_from_js)
+            print("✔️ debug_mode:", debug_mode)
 
             investment = request.env['portfolio.investment'].sudo().browse(investment_id)
 
@@ -213,6 +158,21 @@ class InvestmentController(http.Controller):
 
             user_id = request.env.user.id
             fund = investment.fund_id
+            
+            # DEBUG MODE: Bypass check số lượng sở hữu
+            if debug_mode:
+                import logging
+                _logger = logging.getLogger(__name__)
+                _logger.warning(f'[Fund Sell DEBUG MODE] User {user_id} - Bypassing quantity check. Requested: {quantity}, Available: {investment.units}')
+                print(f"🔧 DEBUG MODE ENABLED - Bypassing quantity check. Requested: {quantity}, Available: {investment.units}")
+            else:
+                # Kiểm tra số lượng sở hữu (chỉ khi không phải debug mode)
+                if quantity > investment.units:
+                    return http.Response(
+                        '{"success": false, "message": "Số lượng bán vượt quá số lượng sở hữu."}',
+                        content_type='application/json',
+                        status=400
+                    )
 
             # Tính lại estimated_value theo giá CCQ từ tồn kho đầu ngày
             # Lấy giá CCQ đúng từ giá tồn kho đầu ngày
@@ -234,13 +194,19 @@ class InvestmentController(http.Controller):
             print("📌 Chi phí vốn:", capital_cost)
 
             # Tính toán units/amount mới
-            investment = self.upsert_investment(user_id=user_id, fund_id=fund.id, units_change=quantity, transaction_type='sell')
+            investment = investment_utils.InvestmentHelper.upsert_investment(
+                request.env,
+                user_id=user_id,
+                fund_id=fund.id,
+                units_change=quantity,
+                transaction_type=constants.TRANSACTION_TYPE_SELL
+            )
 
             # Tạo transaction bán
             request.env['portfolio.transaction'].sudo().create({
                 'user_id': user_id,
                 'fund_id': fund.id,
-                'transaction_type': 'sell',
+                'transaction_type': constants.TRANSACTION_TYPE_SELL,
                 'units': quantity,
                 'amount': estimated_value_from_js,
                 'price': ccq_price_rounded,  # Giá CCQ đã được làm tròn (step=50)
@@ -264,99 +230,24 @@ class InvestmentController(http.Controller):
 
     def upsert_investment_with_amount(self, user_id, fund_id, units_change, amount_change, transaction_type):
         """Tạo hoặc cập nhật investment với giá trị amount thực tế từ form"""
-        Investment = request.env['portfolio.investment'].sudo()
-        
-        # MROUND 50 cho amount_change
-        amount_change = mround(amount_change, 50)
-        
-        investment = Investment.search([
-            ('user_id', '=', user_id),
-            ('fund_id', '=', fund_id)
-        ], limit=1)
+        return investment_utils.InvestmentHelper.upsert_investment(
+            request.env,
+            user_id=user_id,
+            fund_id=fund_id,
+            units_change=units_change,
+            amount_change=amount_change,
+            transaction_type=transaction_type
+        )
 
-        if not investment:
-            if transaction_type == 'purchase':
-                # Mua lần đầu → tạo mới với giá trị amount thực tế
-                return Investment.create({
-                    'user_id': user_id,
-                    'fund_id': fund_id,
-                    'units': units_change,
-                    'amount': amount_change  # Sử dụng giá trị amount thực tế từ form (đã MROUND 50)
-                })
-
-        # Nếu đã có, cập nhật
-        old_units = investment.units
-        old_amount = investment.amount
-        
-        new_units = old_units + units_change if transaction_type == 'purchase' else old_units - units_change
-        new_units = max(new_units, 0)
-        
-        # Cập nhật amount dựa trên tỷ lệ units
-        if old_units > 0:
-            unit_price = old_amount / old_units
-            new_amount = new_units * unit_price
-        else:
-            new_amount = amount_change if transaction_type == 'purchase' else 0
-
-        # MROUND 50 cho new_amount
-        new_amount = mround(new_amount, 50)
-
-        investment.write({
-            'units': new_units,
-            'amount': new_amount
-        })
-
-        return investment
-
-    def upsert_investment(self,user_id, fund_id, units_change, transaction_type):
-        Investment = request.env['portfolio.investment'].sudo()
-        Fund = request.env['portfolio.fund'].sudo().browse(fund_id)
-        # Dùng giá đầu ngày từ tồn kho thay vì current_nav
-        price_from_inventory = self._get_ccq_price_from_inventory(fund_id)
-        if price_from_inventory <= 0:
-            price_from_inventory = Fund.current_nav or 0.0
-        # MROUND(step=50)
-        current_nav_rounded = mround(price_from_inventory, 50)
-
-        investment = Investment.search([
-            ('user_id', '=', user_id),
-            ('fund_id', '=', fund_id)
-        ], limit=1)
-
-        if not investment:
-            if transaction_type == 'purchase':
-                # Mua lần đầu → tạo mới
-                return Investment.create({
-                    'user_id': user_id,
-                    'fund_id': fund_id,
-                    'units': units_change,
-                    'amount': units_change * current_nav_rounded
-                })
-
-        # Nếu đã có, cập nhật
-        old_units = investment.units
-        new_units = old_units + units_change if transaction_type == 'purchase' else old_units - units_change
-        new_units = max(new_units, 0)
-        new_amount = new_units * current_nav_rounded
-
-        investment.write({
-            'units': new_units,
-            'amount': new_amount
-        })
-
-        return investment
-
-    def calculate_fee(self, amount):
-        fee = 0
-        if amount < 10000000:
-            fee = amount * 0.003
-        elif amount < 20000000:
-            fee = amount * 0.002
-        else:
-            fee = amount * 0.001
-
-        # MROUND 50 cho phí
-        return mround(fee, 50)
+    def upsert_investment(self, user_id, fund_id, units_change, transaction_type):
+        """Tạo hoặc cập nhật investment"""
+        return investment_utils.InvestmentHelper.upsert_investment(
+            request.env,
+            user_id=user_id,
+            fund_id=fund_id,
+            units_change=units_change,
+            transaction_type=transaction_type
+        )
 
 
     @http.route('/match_transactions', type='http', auth='user', methods=['POST'], csrf=False)
@@ -367,8 +258,14 @@ class InvestmentController(http.Controller):
             Transaction = request.env['portfolio.transaction'].sudo()
 
             # Lấy các lệnh pending
-            pending_purchases = Transaction.search([('transaction_type', '=', 'purchase'), ('status', '=', 'pending')])
-            pending_sells = Transaction.search([('transaction_type', '=', 'sell'), ('status', '=', 'pending')])
+            pending_purchases = Transaction.search([
+                ('transaction_type', '=', constants.TRANSACTION_TYPE_PURCHASE),
+                ('status', '=', constants.STATUS_PENDING)
+            ])
+            pending_sells = Transaction.search([
+                ('transaction_type', '=', constants.TRANSACTION_TYPE_SELL),
+                ('status', '=', constants.STATUS_PENDING)
+            ])
 
             if not pending_purchases or not pending_sells:
                 return self._json_response({
@@ -404,27 +301,7 @@ class InvestmentController(http.Controller):
 
     def _get_ccq_price_from_inventory(self, fund_id):
         """Lấy giá CCQ từ giá tồn kho đầu ngày"""
-        try:
-            from datetime import datetime
-            today = datetime.now().date()
-            
-            # Tìm bản ghi tồn kho cho ngày hiện tại
-            Inventory = request.env['nav.daily.inventory'].sudo()
-            inv = Inventory.search([
-                ('fund_id', '=', fund_id), 
-                ('inventory_date', '=', today)
-            ], limit=1)
-            
-            if inv and inv.opening_avg_price:
-                print(f"Lấy giá CCQ từ tồn kho: {inv.opening_avg_price}")
-                return inv.opening_avg_price
-            else:
-                print(f"Không tìm thấy tồn kho cho fund {fund_id} ngày {today}")
-                return 0.0
-                
-        except Exception as e:
-            print(f"Lỗi lấy giá CCQ từ tồn kho: {e}")
-            return 0.0
+        return investment_utils.InvestmentHelper._get_ccq_price_from_inventory(request.env, fund_id)
 
     def _calculate_capital_cost(self, fund_id, amount):
         """Tính chi phí vốn từ nav.fund.config"""
@@ -448,9 +325,256 @@ class InvestmentController(http.Controller):
             print(f"Lỗi tính chi phí vốn: {e}")
             return 0.0
 
+    @http.route('/api/check_profitability', type='json', auth='user', methods=['POST'])
+    def check_profitability(self, **kwargs):
+        """API endpoint để kiểm tra lãi/lỗ của transaction/investment"""
+        try:
+            fund_id = kwargs.get('fund_id')
+            amount = float(kwargs.get('amount', 0))
+            units = float(kwargs.get('units', 0))
+            interest_rate = float(kwargs.get('interest_rate', 0))
+            term_months = int(kwargs.get('term_months', 0))
+            
+            if not fund_id or amount <= 0 or units <= 0 or interest_rate <= 0 or term_months <= 0:
+                return {
+                    'success': False,
+                    'message': 'Thiếu thông tin cần thiết'
+                }
+            
+            # Lấy fund để lấy current_nav
+            fund = request.env['portfolio.fund'].sudo().browse(int(fund_id))
+            if not fund.exists():
+                return {
+                    'success': False,
+                    'message': 'Fund không tồn tại'
+                }
+            
+            nav_value = float(fund.current_nav or 0.0)
+            if nav_value <= 0:
+                return {
+                    'success': False,
+                    'message': 'Không có NAV hiện tại'
+                }
+            
+            # Tính toán theo logic nav_management
+            days = max(1, int(term_months * 30))
+            sell_value = amount * (interest_rate / 100.0) / 365.0 * days + amount
+            price1 = round(sell_value / units) if units > 0 else 0
+            price2 = round(price1 / 50) * 50 if price1 > 0 else 0
+            r_new = ((price2 / nav_value - 1) * 365 / days * 100) if nav_value > 0 and days > 0 and price2 > 0 else 0
+            delta = r_new - interest_rate
+            
+            # Lấy cấu hình chặn trên/dưới
+            cap_config = request.env['nav.cap.config'].sudo().search([('active', '=', True)], limit=1)
+            cap_upper = float(cap_config.cap_upper or 2.0) if cap_config else 2.0
+            cap_lower = float(cap_config.cap_lower or 0.1) if cap_config else 0.1
+            
+            is_profitable = cap_lower <= delta <= cap_upper
+            
+            return {
+                'success': True,
+                'data': {
+                    'sell_value': sell_value,
+                    'price1': price1,
+                    'price2': price2,
+                    'interest_rate_new': r_new,
+                    'interest_delta': delta,
+                    'days_effective': days,
+                    'is_profitable': is_profitable,
+                    'cap_upper': cap_upper,
+                    'cap_lower': cap_lower
+                }
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'message': str(e)
+            }
+
     def _json_response(self, data, status=200):
         return Response(
             json.dumps(data, ensure_ascii=False),
             status=status,
             content_type='application/json'
         )
+
+    @http.route('/api/otp/config', type='json', auth='user', methods=['POST'], csrf=False)
+    def api_otp_config(self, **kwargs):
+        """Lấy thông tin cấu hình OTP của user hiện tại và kiểm tra write token còn hiệu lực không."""
+        import logging
+        _logger = logging.getLogger(__name__)
+        
+        try:
+            current_user = request.env.user
+            config = request.env['trading.config'].sudo().search([
+                ('user_id', '=', current_user.id),
+                ('active', '=', True)
+            ], limit=1)
+            
+            if not config:
+                return {
+                    'success': False,
+                    'otp_type': 'smart',  # Default
+                    'has_valid_write_token': False,
+                    'message': 'Chưa liên kết tài khoản giao dịch'
+                }
+            
+            otp_type = config.otp_type or 'smart'
+            
+            # Kiểm tra write token còn hiệu lực không
+            has_valid_token = False
+            token_expires_in = ''
+            if config.write_access_token:
+                try:
+                    from odoo.addons.stock_trading.models.utils import (
+                        is_token_expired,
+                        get_token_expires_in,
+                        TokenConstants
+                    )
+                    has_valid_token = not is_token_expired(
+                        config.write_access_token,
+                        buffer_seconds=TokenConstants.EXPIRATION_BUFFER_SECONDS
+                    )
+                    if has_valid_token:
+                        token_expires_in = get_token_expires_in(config.write_access_token)
+                except Exception as e:
+                    _logger.warning(f'[OTP Config] Error checking token validity: {e}')
+            
+            _logger.info(f'[OTP Config] User: {current_user.id}, OTP type: {otp_type}, Has valid token: {has_valid_token}')
+            
+            return {
+                'success': True,
+                'otp_type': otp_type,
+                'has_valid_write_token': has_valid_token,
+                'write_token_expires_in': token_expires_in
+            }
+        except Exception as e:
+            _logger.error(f'[OTP Config] Error: {str(e)}')
+            return {
+                'success': False,
+                'otp_type': 'smart',  # Default
+                'has_valid_write_token': False,
+                'message': str(e)
+            }
+
+    @http.route('/api/otp/verify', type='json', auth='user', methods=['POST'], csrf=False)
+    def api_otp_verify(self, **kwargs):
+        """Xác thực OTP, trả về success nếu code đúng (lưu write token như stock_trading)."""
+        import logging
+        import traceback
+        _logger = logging.getLogger(__name__)
+        
+        try:
+            # Với type='json', Odoo tự động parse JSON body vào kwargs
+            code = (kwargs.get('otp') or kwargs.get('code') or '').strip()
+            debug_mode = kwargs.get('debug', False)  # Debug mode flag
+            
+            if not code:
+                _logger.warning('[OTP Verify] Missing OTP code')
+                return {
+                    'success': False, 
+                    'message': 'Thiếu mã OTP. Vui lòng nhập mã OTP 6 chữ số.'
+                }
+
+            current_user = request.env.user
+            _logger.info(f'[OTP Verify] User: {current_user.id} ({current_user.login}), OTP: {code[:2]}**, Debug: {debug_mode}')
+            
+            # DEBUG MODE: Bypass validation nếu debug mode được bật
+            if debug_mode:
+                _logger.warning(f'[OTP Verify] DEBUG MODE ENABLED - Bypassing OTP validation for user {current_user.id}')
+                # Lấy config để lấy otp_type
+                config = request.env['trading.config'].sudo().search([
+                    ('user_id', '=', current_user.id),
+                    ('active', '=', True)
+                ], limit=1)
+                otp_type = config.otp_type or 'smart' if config else 'smart'
+                
+                return {
+                    'success': True, 
+                    'message': 'OTP đã được xác thực thành công (DEBUG MODE).',
+                    'write_token': 'DEBUG_TOKEN_' + str(current_user.id),  # Fake token cho debug
+                    'otp_type': otp_type,
+                    'debug': True
+                }
+            
+            config = request.env['trading.config'].sudo().search([
+                ('user_id', '=', current_user.id),
+                ('active', '=', True)
+            ], limit=1)
+            
+            if not config:
+                _logger.warning(f'[OTP Verify] No active trading config found for user {current_user.id}')
+                return {
+                    'success': False, 
+                    'message': 'Chưa liên kết tài khoản giao dịch. Vui lòng cấu hình tài khoản giao dịch trước.'
+                }
+
+            # Lấy thông tin loại OTP từ config
+            otp_type = config.otp_type or 'smart'  # Default là smart OTP
+            
+            from odoo.addons.stock_trading.models.trading_api_client import TradingAPIClient
+            from odoo.exceptions import UserError
+            
+            try:
+                client = TradingAPIClient(config)
+                token = client.verify_code(code)
+                
+                # Write token đã được lưu tự động trong verify_code()
+                # Token này có thể dùng cho nhiều giao dịch trong thời gian còn hiệu lực (thường 8 giờ)
+                _logger.info(f'[OTP Verify] Success for user {current_user.id}, write token đã được lưu')
+                return {
+                    'success': True, 
+                    'message': 'OTP đã được xác thực thành công.',
+                    'write_token': token,
+                    'otp_type': otp_type
+                }
+            except UserError as ue:
+                error_msg = str(ue)
+                _logger.error(f'[OTP Verify] UserError: {error_msg}')
+                
+                # Xử lý các lỗi đặc biệt
+                if 'Out of synchronization' in error_msg or 'synchronization' in error_msg.lower():
+                    return {
+                        'success': False,
+                        'message': 'Mã OTP đã hết hạn hoặc không còn hợp lệ. Vui lòng kiểm tra mã Smart OTP mới trên ứng dụng SSI Iboard Pro và thử lại.'
+                    }
+                elif 'Wrong OTP' in error_msg or 'wrong' in error_msg.lower():
+                    return {
+                        'success': False,
+                        'message': 'Mã OTP không chính xác. Vui lòng kiểm tra lại mã Smart OTP trên ứng dụng SSI Iboard Pro.'
+                    }
+                else:
+                    return {
+                        'success': False, 
+                        'message': error_msg
+                    }
+            except Exception as api_error:
+                error_msg = str(api_error)
+                _logger.error(f'[OTP Verify] API Error: {error_msg}')
+                _logger.error(traceback.format_exc())
+                
+                # Xử lý các lỗi đặc biệt
+                if 'Out of synchronization' in error_msg or 'synchronization' in error_msg.lower():
+                    return {
+                        'success': False,
+                        'message': 'Mã OTP đã hết hạn hoặc không còn hợp lệ. Vui lòng kiểm tra mã Smart OTP mới trên ứng dụng SSI Iboard Pro và thử lại.'
+                    }
+                elif 'Wrong OTP' in error_msg or 'wrong' in error_msg.lower():
+                    return {
+                        'success': False,
+                        'message': 'Mã OTP không chính xác. Vui lòng kiểm tra lại mã Smart OTP trên ứng dụng SSI Iboard Pro.'
+                    }
+                else:
+                    return {
+                        'success': False, 
+                        'message': f'Mã OTP không hợp lệ hoặc đã hết hạn: {error_msg}'
+                    }
+                
+        except Exception as e:
+            _logger.error(f'[OTP Verify] Unexpected error: {str(e)}')
+            _logger.error(traceback.format_exc())
+            return {
+                'success': False, 
+                'message': f'Lỗi hệ thống: {str(e)}'
+            }

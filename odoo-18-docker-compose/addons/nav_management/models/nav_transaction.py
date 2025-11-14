@@ -9,7 +9,7 @@ class NavTransaction(models.Model):
     _order = 'create_date desc'
 
     # Thông tin cơ bản
-    fund_id = fields.Many2one('portfolio.fund', string='Quỹ', required=True, ondelete='cascade')
+    fund_id = fields.Many2one('portfolio.fund', string='Quỹ', required=True)
     transaction_session = fields.Char(string='Phiên giao dịch', required=True)
     nav_value = fields.Float(string='Giá trị NAV', required=True, digits=(16, 2))
     create_date = fields.Datetime(string='Ngày tạo', default=fields.Datetime.now, readonly=True)
@@ -85,28 +85,27 @@ class NavTransaction(models.Model):
             elif status_filter == 'pending_remaining':
                 domain = [('status', '=', 'pending')] + [d for d in domain if not (isinstance(d, tuple) and d[0] == 'status')]
 
-        # Lọc theo khoảng ngày: ưu tiên transaction_date (date), fallback created_at/create_date (datetime)
+        # Lọc theo khoảng ngày: sử dụng created_at (datetime) hoặc create_date
         # Chuẩn hoá để case Today không bị miss bản ghi trong ngày (do so sánh datetime)
         if from_date and to_date and from_date == to_date:
             # Filter đúng 1 ngày: 00:00:00 -> 23:59:59
             date_only = from_date
             domain += [
-                # (transaction_date = date_only) OR (created_at in day range) OR (create_date in day range)
-                '|', '|',
-                '&', ('transaction_date', '=', date_only), ('transaction_date', '!=', False),
+                # (created_at in day range) OR (create_date in day range)
+                '|',
                 '&', ('created_at', '>=', f"{date_only} 00:00:00"), ('created_at', '<=', f"{date_only} 23:59:59"),
                 '&', ('create_date', '>=', f"{date_only} 00:00:00"), ('create_date', '<=', f"{date_only} 23:59:59")
             ]
         else:
             if from_date:
                 domain += [
-                    # (transaction_date >= from_date) OR (created_at >= from_date 00:00:00) OR (create_date >= from_date 00:00:00)
-                    '|', '|', ('transaction_date', '>=', from_date), ('created_at', '>=', f"{from_date} 00:00:00"), ('create_date', '>=', f"{from_date} 00:00:00")
+                    # (created_at >= from_date 00:00:00) OR (create_date >= from_date 00:00:00)
+                    '|', ('created_at', '>=', f"{from_date} 00:00:00"), ('create_date', '>=', f"{from_date} 00:00:00")
                 ]
             if to_date:
                 domain += [
-                    # (transaction_date <= to_date) OR (created_at <= to_date 23:59:59) OR (create_date <= to_date 23:59:59)
-                    '|', '|', ('transaction_date', '<=', to_date), ('created_at', '<=', f"{to_date} 23:59:59"), ('create_date', '<=', f"{to_date} 23:59:59")
+                    # (created_at <= to_date 23:59:59) OR (create_date <= to_date 23:59:59)
+                    '|', ('created_at', '<=', f"{to_date} 23:59:59"), ('create_date', '<=', f"{to_date} 23:59:59")
                 ]
 
         # Debug: In ra domain để kiểm tra
@@ -114,7 +113,7 @@ class NavTransaction(models.Model):
         print(f"[DEBUG] Filter params - fund_id: {fund_id}, from_date: {from_date}, to_date: {to_date}, status_filter: {status_filter}")
         
         # Query bằng sudo để tránh lỗi phân quyền khi đọc giao dịch của các user khác
-        portfolio_tx = self.env['portfolio.transaction'].sudo().search(domain, order='transaction_date desc, created_at desc')
+        portfolio_tx = self.env['portfolio.transaction'].sudo().search(domain, order='created_at desc')
         
         print(f"[DEBUG] Found {len(portfolio_tx)} transactions")
         
@@ -122,7 +121,7 @@ class NavTransaction(models.Model):
         if len(portfolio_tx) > 0:
             for i, tx in enumerate(portfolio_tx[:3]):  # Chỉ in 3 transaction đầu
                 print(f"[DEBUG] Transaction {i+1}: ID={tx.id}, Fund={tx.fund_id.name if tx.fund_id else 'None'}, "
-                      f"Date={tx.transaction_date}, Created={tx.created_at}, Status={tx.status}")
+                      f"Created={tx.created_at}, Status={tx.status}")
         else:
             print(f"[DEBUG] No transactions found for fund_id={fund_id}")
 
@@ -150,9 +149,7 @@ class NavTransaction(models.Model):
                     continue
             # Xác định thời điểm vào lệnh (ưu tiên created_at vì có cả giờ phút)
             entry_dt = getattr(tx, 'created_at', False) or tx.create_date
-            entry_dt_str = entry_dt.strftime('%Y-%m-%d %H:%M:%S') if entry_dt else (
-                tx.transaction_date.strftime('%Y-%m-%d') if tx.transaction_date else ''
-            )
+            entry_dt_str = entry_dt.strftime('%Y-%m-%d %H:%M:%S') if entry_dt else ''
 
             # Tạo mã/phiên giao dịch hiển thị: gồm loại lệnh + mã + thời điểm vào lệnh
             session_name = f"{(tx.transaction_type or '').upper()}_{tx.reference or tx.id}_{entry_dt_str.replace('-', '').replace(':', '').replace(' ', '')}"
@@ -160,14 +157,20 @@ class NavTransaction(models.Model):
             # Map trạng thái về frontend
             frontend_status = 'pending' if tx.status == 'pending' else 'approved' if tx.status == 'completed' else (tx.status or '')
 
-            # Giá NAV ưu tiên theo giao dịch, sau đó tới quỹ
-            nav_value = tx.current_nav if tx.current_nav else (tx.fund_id.current_nav if tx.fund_id else 0.0)
+            # Giá tham chiếu để tính LS quy đổi: ưu tiên giá lệnh của NĐT (tx.price), sau đó current_nav, cuối cùng cấu hình quỹ
+            if getattr(tx, 'price', False):
+                nav_value = tx.price
+            elif getattr(tx, 'current_nav', False):
+                nav_value = tx.current_nav
+            elif tx.fund_id and tx.fund_id.certificate_id:
+                # Lấy từ fund.certificate trong fund_management_control
+                nav_value = tx.fund_id.certificate_id.initial_certificate_price or 0.0
+            else:
+                nav_value = 0.0
 
-            # Ngày mua/bán hiển thị: ưu tiên created_at (ngày vào lệnh, có giờ), sau đó transaction_date, rồi create_date
+            # Ngày mua/bán hiển thị: ưu tiên created_at (ngày vào lệnh, có giờ), sau đó create_date
             if getattr(tx, 'created_at', False):
                 created_str = tx.created_at.strftime('%Y-%m-%d %H:%M:%S')
-            elif tx.transaction_date:
-                created_str = tx.transaction_date.isoformat()
             else:
                 created_str = tx.create_date.isoformat() if tx.create_date else ''
 
@@ -189,7 +192,7 @@ class NavTransaction(models.Model):
             days_between = None
             try:
                 from dateutil.relativedelta import relativedelta
-                base_dt = getattr(tx, 'created_at', False) or tx.transaction_date or tx.create_date
+                base_dt = getattr(tx, 'created_at', False) or tx.create_date
                 if base_dt and term_months_int:
                     maturity_dt = base_dt + relativedelta(months=term_months_int)
                     maturity_date_iso = maturity_dt.isoformat() if hasattr(maturity_dt, 'isoformat') else ''
@@ -228,7 +231,7 @@ class NavTransaction(models.Model):
                 # Giá mua/bán tham chiếu cho LS quy đổi
                 'nav_value': nav_value,
                 'create_date': created_str,
-                'transaction_date': tx.transaction_date.isoformat() if tx.transaction_date else '',
+                'transaction_date': tx.created_at.strftime('%Y-%m-%d') if getattr(tx, 'created_at', False) else '',
                 'created_at': tx.created_at.strftime('%Y-%m-%d %H:%M:%S') if getattr(tx, 'created_at', False) else '',
                 'description': tx.description or '',
                 'approved_by': tx.approved_by.name if tx.approved_by else '',

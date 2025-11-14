@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Default SSI API Configuration. Update consumer_id/consumer_secret in UI after install. -->
+    <record id="ssi_api_config_default" model="ssi.api.config">
+        <field name="name">Default Configuration</field>
+        <field name="consumer_id">58216e6ce67848ceb2bc4dbb12f7efb5</field>
+        <field name="consumer_secret">f937f123a82d4bd189addeef3b84638d</field>
+        <field name="api_url">https://fc-data.ssi.com.vn/</field>
+        <field name="is_active" eval="True"/>
+    </record>
+</odoo>
+
+

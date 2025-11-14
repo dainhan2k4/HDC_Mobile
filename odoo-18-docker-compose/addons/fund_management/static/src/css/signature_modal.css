@@ -1,0 +1,161 @@
+/* Signature Modal Styles */
+.signature-modal-content {
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 0.5rem 3rem rgba(0, 0, 0, 0.15);
+}
+
+.signature-modal-header {
+  background: linear-gradient(135deg, #ff7a18 0%, #ffb347 100%);
+  color: white;
+  border-bottom: none;
+}
+
+.signature-modal-body {
+  min-height: 600px;
+  max-height: 85vh;
+}
+
+.signature-type-card {
+  border-color: #dee2e6 !important;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.signature-type-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.signature-type-card:hover {
+  border-color: #ff7a18 !important;
+  transform: translateY(-3px);
+  box-shadow: 0 0.5rem 1.5rem rgba(255, 122, 24, 0.2) !important;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%) !important;
+}
+
+.signature-type-card:hover::before {
+  left: 100%;
+}
+
+.signature-type-card.active {
+  border-color: #ff7a18 !important;
+  border-width: 2px !important;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%) !important;
+  box-shadow: 0 0.5rem 1.5rem rgba(255, 122, 24, 0.3) !important;
+  transform: translateY(-2px);
+}
+
+.signature-type-card.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(135deg, #ff7a18 0%, #ffb347 100%);
+}
+
+.signature-type-card:active {
+  transform: translateY(0);
+  box-shadow: 0 0.25rem 0.75rem rgba(255, 122, 24, 0.25) !important;
+}
+
+/* Hover effect cho icon trong card */
+.signature-type-card:hover .bg-gradient {
+  transform: scale(1.1);
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.2);
+}
+
+.signature-type-card.active .bg-gradient {
+  transform: scale(1.05);
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.2);
+}
+
+.signature-type-card .bg-gradient {
+  transition: all 0.3s ease;
+}
+
+/* Hover effect cho text */
+.signature-type-card:hover h6 {
+  color: #ff7a18;
+}
+
+.signature-type-card.active h6 {
+  color: #ff7a18;
+  font-weight: 700;
+}
+
+.signature-type-card h6 {
+  transition: color 0.3s ease;
+}
+
+/* Hover effect cho chevron */
+.signature-type-card:hover .fa-chevron-right {
+  transform: translateX(3px);
+  color: #ff7a18;
+}
+
+.signature-type-card.active .fa-chevron-right {
+  color: #ff7a18;
+}
+
+.signature-type-card .fa-chevron-right {
+  transition: all 0.3s ease;
+}
+
+/* Ẩn phần ký tay khi chọn ký số */
+#digital-sign .signature-hand-section {
+  display: none !important;
+}
+
+#digital-sign #signature-pad {
+  display: none !important;
+}
+
+#digital-sign #clear-signature {
+  display: none !important;
+}
+
+#digital-sign #submit-signature-hand {
+  display: none !important;
+}
+
+/* Đảm bảo button ký số luôn hiển thị khi tab ký số active */
+#digital-sign.active #submit-signature-digital,
+#digital-sign.show #submit-signature-digital {
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Ẩn tab ký tay khi tab ký số active - nhưng không ảnh hưởng đến tab ký số */
+#digital-sign.active ~ #hand-sign,
+#digital-sign.show ~ #hand-sign {
+  display: none !important;
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+  .signature-modal-body .row {
+    flex-direction: column;
+  }
+
+  .col-lg-6.border-end {
+    border-right: none !important;
+    border-bottom: 2px solid #dee2e6 !important;
+    max-height: 350px;
+  }
+
+  .col-lg-6 {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+}
+

@@ -23,8 +23,8 @@ export class OverviewFundManagementWidget extends Component {
                                                 <t t-esc="fund.name"/>
                                             </h3>
                                         </div>
-                                        <span t-attf-class="small fw-medium #{fund.current_ytd &gt;= 0 ? 'profit-positive' : 'profit-negative'}">
-                                            <t t-esc="fund.current_ytd"/>%
+                                        <span class="small fw-medium">
+                                            <t t-esc="fund.open_price"/>
                                         </span>
                                     </div>
                                     
@@ -145,7 +145,7 @@ export class OverviewFundManagementWidget extends Component {
                                         <i class="bi bi-bar-chart me-2"></i>
                                         Thống kê chi tiết
                                     </h3>
-                                    <a class="text-decoration-none text-primary small" href="#">
+                                    <a class="text-decoration-none text-primary small" href="/asset-management">
                                         Xem tất cả <i class="bi bi-arrow-right ms-1"></i>
                                     </a>
                                 </div>
@@ -158,8 +158,8 @@ export class OverviewFundManagementWidget extends Component {
                                                         <div t-attf-class="rounded-circle" t-attf-style="width: 12px; height: 12px; background-color: #{fund.color}"></div>
                                                         <span class="small fw-medium"><t t-esc="fund.ticker"/></span>
                                                     </div>
-                                                    <span t-attf-class="small #{fund.current_ytd &gt;= 0 ? 'profit-positive' : 'profit-negative'}">
-                                                        <t t-esc="fund.current_ytd"/>%
+                                                    <span class="small">
+                                                        <t t-esc="fund.open_price"/>
                                                     </span>
                                                 </div>
                                                 <p class="fw-semibold mb-0 mt-1"><t t-esc="this.formatCurrency(fund.current_value)"/>đ</p>
@@ -182,7 +182,7 @@ export class OverviewFundManagementWidget extends Component {
                                     <i class="bi bi-clock-history me-2"></i>
                                     Giao dịch gần nhất
                                 </h2>
-                                <a class="text-decoration-none text-primary small" href="#">
+                                <a class="text-decoration-none text-primary small" href="/transaction_management/pending">
                                     Xem tất cả <i class="bi bi-arrow-right ms-1"></i>
                                 </a>
                             </div>
@@ -237,6 +237,10 @@ export class OverviewFundManagementWidget extends Component {
       chart_data: this.props.chart_data || '{}',
       chartError: false
     });
+
+    // Debug: Log dữ liệu nhận được
+    console.log('DEBUG: Widget received funds:', this.props.funds);
+    console.log('DEBUG: Widget received transactions:', this.props.transactions);
 
     onMounted(() => {
       this.initChart();

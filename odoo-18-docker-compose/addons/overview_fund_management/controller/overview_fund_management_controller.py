@@ -31,17 +31,34 @@ class OverviewFundManagementController(http.Controller):
     
     @http.route('/investment_dashboard', type='http', auth='user', website=True)
     def investment_dashboard_page(self, **kwargs):
+        # MROUND helper (step=50)
+        def mround(value, step=50):
+            try:
+                v = float(value or 0.0)
+                s = float(step or 1.0)
+                return int(round(v / s) * s)
+            except Exception:
+                return 0
         # Lấy dữ liệu quỹ đầu tư chỉ có investment của user hiện tại
-        user_investments = request.env['portfolio.investment'].search([
+        user_investments = request.env['portfolio.investment'].sudo().search([
             ('user_id', '=', request.env.user.id),
             ('status', '=', 'active')
         ])
         
-        # Lấy các fund mà user hiện tại đã đầu tư
-        user_funds = user_investments.mapped('fund_id').filtered(lambda f: f.status == 'active')
+        # Debug: Log số lượng investment
+        print(f"DEBUG: User {request.env.user.id} has {len(user_investments)} active investments")
         
-        # Lọc các fund có ít nhất 1 investment của user hiện tại
-        funds_with_investment = user_funds.filtered(lambda f: f.investment_count > 0)
+        # Lấy các fund mà user hiện tại đã đầu tư
+        user_funds = user_investments.mapped('fund_id').sudo().filtered(lambda f: f.status == 'active')
+        
+        # Debug: Log số lượng fund
+        print(f"DEBUG: User has {len(user_funds)} active funds")
+        
+        # Lọc các fund có ít nhất 1 investment của user hiện tại (kiểm tra trực tiếp)
+        funds_with_investment = user_funds.filtered(lambda f: len(f.sudo().investment_ids.filtered(lambda inv: inv.user_id.id == request.env.user.id and inv.status == 'active')) > 0)
+        
+        # Debug: Log số lượng fund với investment
+        print(f"DEBUG: User has {len(funds_with_investment)} funds with investments")
         fund_data = []
         
         # Gộp các fund có cùng ticker
@@ -49,7 +66,7 @@ class OverviewFundManagementController(http.Controller):
         for fund in funds_with_investment:
             ticker = fund.ticker
             # Lấy investment của user hiện tại cho fund này
-            user_investments = request.env['portfolio.investment'].search([
+            user_investments = request.env['portfolio.investment'].sudo().search([
                 ('user_id', '=', request.env.user.id),
                 ('fund_id', '=', fund.id),
                 ('status', '=', 'active')
@@ -59,7 +76,8 @@ class OverviewFundManagementController(http.Controller):
             if not user_investments:
                 continue
                 
-            user_total_investment = sum(user_investments.mapped('amount'))
+            # Tổng đầu tư không gồm phí: sum(units * average_price)
+            user_total_investment = sum([mround((inv.units or 0.0) * (inv.average_price or 0.0), 50) for inv in user_investments])
             user_total_units = sum(user_investments.mapped('units'))
             user_current_value = sum(user_investments.mapped('current_value'))
             
@@ -67,27 +85,39 @@ class OverviewFundManagementController(http.Controller):
             if user_total_units <= 0:
                 continue
             # Lấy giao dịch mua/bán gần nhất của fund này
-            last_transaction = request.env['portfolio.transaction'].search([
+            last_transaction = request.env['portfolio.transaction'].sudo().search([
                 ('fund_id', '=', fund.id),
                 ('user_id', '=', request.env.user.id),
                 ('status', 'in', ['pending', 'completed', 'cancelled']),
                 ('transaction_type', 'in', ['purchase', 'sale'])
             ], order='created_at desc', limit=1)
             last_update_str = last_transaction.created_at.strftime('%d/%m/%Y') if last_transaction and last_transaction.created_at else ""
+            
+            # Lấy màu từ fund.certificate trong fund_management_control
+            fund_sudo = fund.sudo()
+            fund_color = fund_sudo.color or "#2B4BFF"  # Màu mặc định
+            if hasattr(fund_sudo, 'certificate_id') and fund_sudo.certificate_id:
+                fund_color = fund_sudo.certificate_id.fund_color or fund_sudo.color or "#2B4BFF"
+                print(f"DEBUG: Fund {fund.ticker} color from certificate: {fund.certificate_id.fund_color}, final: {fund_color}")
+            else:
+                print(f"DEBUG: Fund {fund.ticker} no certificate, using fund.color: {fund.color}")
+            
             if ticker not in merged_funds:
                 merged_funds[ticker] = {
                     'name': fund.name,
                     'ticker': fund.ticker,
                     'total_units': user_total_units,
                     'total_investment': user_total_investment,
-                    'current_nav': fund.current_nav or 0,  # Giữ lại cho hiển thị, nhưng không dùng để tính toán
-                    'previous_nav': fund.previous_nav or 0,
+                    'current_nav': fund.current_nav or 0,
+                    'low_price': getattr(fund, 'low_price', 0.0) or 0.0,
+                    'high_price': getattr(fund, 'high_price', 0.0) or 0.0,
+                    'open_price': getattr(fund, 'open_price', 0.0) or 0.0,
                     'current_value': user_current_value,
                     'profit_loss_percentage': 0.0,  # sẽ tính lại phía dưới
                     'flex_sip_percentage': 0.0,     # sẽ tính lại phía dưới
-                    'color': fund.color,
+                    'color': fund_color,
                     'investment_type': fund.investment_type,
-                    'current_ytd': fund.current_ytd or 0,
+                    # current_ytd đã bỏ
                     'last_update': last_update_str,
                     'flex_units': 0.0,  # sẽ tính lại phía dưới
                     'sip_units': 0.0    # sẽ tính lại phía dưới
@@ -122,6 +152,8 @@ class OverviewFundManagementController(http.Controller):
                 # Lấy giá tồn kho đầu ngày hiện tại từ nav_management
                 current_nav_price = self._get_current_nav_price(fund['ticker'])
                 if current_nav_price > 0:
+                    # MROUND 50 cho current_nav_price
+                    current_nav_price = mround(current_nav_price, 50)
                     # Tính giá trị hiện tại dựa trên giá tồn kho đầu ngày
                     current_value = fund['total_units'] * current_nav_price
                     profit_loss = current_value - fund['total_investment']
@@ -142,7 +174,7 @@ class OverviewFundManagementController(http.Controller):
         fund_data = list(merged_funds.values())
 
         # Lấy dữ liệu giao dịch gần nhất với thời gian chính xác
-        transactions = request.env['portfolio.transaction'].search([
+        transactions = request.env['portfolio.transaction'].sudo().search([
             ('user_id', '=', request.env.user.id),
             ('status', 'in', ['pending', 'completed', 'cancelled'])
         ], order='created_at desc', limit=5)
@@ -162,20 +194,30 @@ class OverviewFundManagementController(http.Controller):
         for trans in transactions:
             local_dt = trans.created_at.astimezone(tz) if trans.created_at else None
             transaction_type_display = transaction_type_map.get(trans.transaction_type.lower(), trans.transaction_type.lower())
+            # Amount hiển thị: ưu tiên units * price; nếu không có thì amount - fee
+            unit_price = getattr(trans, 'price', 0.0) or 0.0
+            # MROUND 50 cho unit_price
+            unit_price = mround(unit_price, 50)
+            display_amount = (trans.units or 0.0) * unit_price
+            if not display_amount:
+                fee_val = getattr(trans, 'fee', 0.0) or 0.0
+                display_amount = max((trans.amount or 0.0) - fee_val, 0.0)
+            display_amount = mround(display_amount, 50)
+
             transaction_data.append({
                 'date': local_dt.strftime('%d/%m/%Y') if local_dt else '',
                 'time': local_dt.strftime('%H:%M:%S') if local_dt else '',
                 'description': f"Lệnh {transaction_type_display} {trans.fund_id.name} - {trans.fund_id.ticker}",
                 'status': status_map.get(trans.status, trans.status),
                 'status_raw': trans.status,
-                'amount': trans.units if trans.transaction_type == 'sale' else trans.amount,
+                'amount': display_amount,
                 'is_units': trans.transaction_type == 'sale',
                 'investment_type': trans.investment_type,
                 'currency_symbol': trans.currency_id.symbol if trans.currency_id else ''
             })
 
         # Lấy dữ liệu tổng quan tài sản từ model Investment
-        investments = request.env['portfolio.investment'].search([
+        investments = request.env['portfolio.investment'].sudo().search([
             ('user_id', '=', request.env.user.id),
             ('status', '=', 'active')
         ])

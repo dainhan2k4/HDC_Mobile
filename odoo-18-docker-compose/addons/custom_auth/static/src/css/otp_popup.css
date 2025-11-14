@@ -1,5 +1,7 @@
 /* OTP Popup Styles */
 #otp-popup {
+    background-color: rgba(0, 0, 0, 0.5);
+    -webkit-backdrop-filter: blur(5px);
     backdrop-filter: blur(5px);
     animation: fadeIn 0.3s ease-out;
 }

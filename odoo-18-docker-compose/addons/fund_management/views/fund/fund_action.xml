@@ -2,46 +2,40 @@
 <odoo>
     <data>
 
-        <record id="action_user" model="ir.actions.act_window">
-            <field name="name">Users</field>
-            <field name="res_model">auth.user</field>
-            <field name="view_mode">list,form</field>
-        </record>
-
-        <record id="action_account" model="ir.actions.act_window">
-            <field name="name">Accounts</field>
-            <field name="res_model">auth.account</field>
-            <field name="view_mode">list,form</field>
-        </record>
-
-        <record id="action_session" model="ir.actions.act_window">
-            <field name="name">Sessions</field>
-            <field name="res_model">auth.session</field>
-            <field name="view_mode">list,form</field>
-        </record>
-
-        <record id="action_verification_token" model="ir.actions.act_window">
-            <field name="name">Verification Tokens</field>
-            <field name="res_model">auth.verification_token</field>
-            <field name="view_mode">list,form</field>
-        </record>
-
         <record id="action_investment" model="ir.actions.act_window">
             <field name="name">Investments</field>
             <field name="res_model">portfolio.investment</field>
             <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_portfolio_investment_search"/>
         </record>
 
         <record id="action_fund" model="ir.actions.act_window">
             <field name="name">Funds</field>
             <field name="res_model">portfolio.fund</field>
             <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_portfolio_fund_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first fund!
+                </p>
+            </field>
+        </record>
+
+        <!-- Server Action: Sync all portfolio.fund from fund.certificate (master) -->
+        <record id="action_sync_all_funds_from_master" model="ir.actions.server">
+            <field name="name">Sync Funds from Master</field>
+            <field name="model_id" ref="model_portfolio_fund"/>
+            <field name="binding_model_id" ref="model_portfolio_fund"/>
+            <field name="state">code</field>
+            <field name="code">action = env['portfolio.fund'].sudo().sync_all_from_master()
+action = env.ref('fund_management.action_fund').read()[0]</field>
         </record>
 
         <record id="action_transactions" model="ir.actions.act_window">
             <field name="name">Transactions</field>
             <field name="res_model">portfolio.transaction</field>
             <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_portfolio_transaction_search"/>
         </record>
 
         <record id="action_account_balance" model="ir.actions.act_window">

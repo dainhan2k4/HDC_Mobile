@@ -10,8 +10,9 @@
                 <field name="ticker"/>
                 <field name="name"/>
                 <field name="current_nav" widget="monetary"/>
-                <field name="previous_nav" widget="monetary"/>
-                <field name="current_ytd" widget="monetary"/>
+                <field name="low_price" widget="monetary"/>
+                <field name="high_price" widget="monetary"/>
+                <field name="open_price" widget="monetary"/>
                 <field name="investment_count" sum="Total Investments" widget="number"/>
                 <field name="total_units" sum="Total Units" widget="float"/>
                 <field name="total_investment" sum="Total Investment" widget="monetary"/>
@@ -47,11 +48,11 @@
                         </group>
                         <group>
                             <field name="current_nav" widget="monetary"/>
-                            <field name="previous_nav" widget="monetary"/>
-                            <field name="current_ytd" widget="monetary"/>
-                            <field name="launch_price" widget="monetary"/>
+                            <field name="low_price" widget="monetary"/>
+                            <field name="high_price" widget="monetary"/>
+                            <field name="open_price" widget="monetary"/>
                             <field name="last_update" widget="datetime"/>
-                            <field name="color" widget="selection" options="{'style': 'color-palette'}"/>
+                            <field name="color" widget="color"/>
                         </group>
                     </group>
                     <notebook>

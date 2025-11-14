@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Daily OHLC Views -->
+    <record id="view_daily_ohlc_tree" model="ir.ui.view">
+        <field name="name">ssi.daily.ohlc.tree</field>
+        <field name="model">ssi.daily.ohlc</field>
+        <field name="arch" type="xml">
+            <list string="Daily OHLC Data" decoration-success="close_price &gt;= open_price" decoration-danger="close_price &lt; open_price"
+                  class="o_list_table_ungrouped">
+                <field name="symbol" decoration-bf="True"/>
+                <field name="date" widget="date"/>
+                <field name="open_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="high_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="low_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="close_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="volume" widget="integer"/>
+                <field name="last_update" widget="datetime"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_daily_ohlc_search" model="ir.ui.view">
+        <field name="name">ssi.daily.ohlc.search</field>
+        <field name="model">ssi.daily.ohlc</field>
+        <field name="arch" type="xml">
+            <search string="Daily OHLC">
+                <field name="symbol"/>
+                <group expand="1" string="Group By">
+                    <filter string="Symbol" name="group_symbol" context="{'group_by':'symbol'}"/>
+                    <filter string="Date" name="group_date" context="{'group_by':'date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_daily_ohlc_graph" model="ir.ui.view">
+        <field name="name">ssi.daily.ohlc.graph</field>
+        <field name="model">ssi.daily.ohlc</field>
+        <field name="arch" type="xml">
+            <graph string="Price Chart" type="line" stacked="True">
+                <field name="date" type="row"/>
+                <field name="close_price" type="measure"/>
+                <field name="volume" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_daily_ohlc_form" model="ir.ui.view">
+        <field name="name">ssi.daily.ohlc.form</field>
+        <field name="model">ssi.daily.ohlc</field>
+        <field name="arch" type="xml">
+            <form string="Daily OHLC">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="symbol" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Thông tin cơ bản">
+                            <field name="security_id" readonly="1"/>
+                            <field name="symbol" readonly="1"/>
+                            <field name="date" widget="date"/>
+                        </group>
+                        <group string="Giá OHLC">
+                            <field name="open_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="high_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="low_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="close_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="previous_close" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        </group>
+                        <group string="Khối lượng và Thay đổi">
+                            <field name="volume" widget="integer"/>
+                            <field name="value" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="change" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="change_percent"/>
+                            <field name="last_update" widget="datetime"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Intraday OHLC Data" name="intraday_ohlc">
+                            <div class="oe_button_box" name="button_box">
+                                <button name="action_fetch_intraday_ohlc" 
+                                        string="Lấy Intraday OHLC từ Securities" 
+                                        type="object" 
+                                        class="oe_highlight"
+                                        invisible="not date"/>
+                                <field name="intraday_ohlc_count" widget="statinfo" string="Intraday Records"/>
+                            </div>
+                            <field name="intraday_ohlc_ids" nolabel="1" 
+                                   context="{'default_security_id': security_id, 'default_date': date}"
+                                   options="{'no_create': True}">
+                                <list decoration-success="close_price &gt;= open_price" decoration-danger="close_price &lt; open_price">
+                                    <field name="date" widget="date"/>
+                                    <field name="time"/>
+                                    <field name="open_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="high_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="low_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="close_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="volume" widget="integer"/>
+                                    <field name="total_value" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="resolution"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_daily_ohlc" model="ir.actions.act_window">
+        <field name="name">Daily OHLC Data</field>
+        <field name="res_model">ssi.daily.ohlc</field>
+        <field name="view_mode">list,form,graph</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No OHLC data found
+            </p>
+            <p>
+                Use "Lấy Daily OHLC cho tất cả CCQ" action để lấy dữ liệu cho tất cả chứng chỉ quỹ
+            </p>
+        </field>
+    </record>
+
+    <!-- Server action để fetch Daily OHLC cho tất cả CCQ từ Daily OHLC view -->
+    <record id="action_fetch_daily_ohlc_all_funds_from_daily_ohlc" model="ir.actions.server">
+        <field name="name">Lấy Daily OHLC cho tất cả CCQ</field>
+        <field name="model_id" ref="model_ssi_securities"/>
+        <field name="binding_model_id" ref="model_ssi_daily_ohlc"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+# Lấy tất cả securities và gọi action fetch daily OHLC cho tất cả funds
+securities_model = env['ssi.securities']
+result = securities_model.action_fetch_daily_ohlc_all_funds(days_back=365)
+        </field>
+    </record>
+
+    <!-- Action to fetch Daily OHLC for all fund certificates -->
+    <record id="action_fetch_daily_ohlc_all_funds" model="ir.actions.server">
+        <field name="name">Fetch Daily OHLC - All Funds</field>
+        <field name="model_id" ref="model_ssi_securities"/>
+        <field name="binding_model_id" ref="model_ssi_securities"/>
+        <field name="state">code</field>
+        <field name="code">
+            result = model.action_fetch_daily_ohlc_all_funds(days_back=365)
+        </field>
+    </record>
+
+    <!-- Action to fetch Intraday OHLC from Securities -->
+    <record id="action_fetch_intraday_ohlc_from_securities" model="ir.actions.server">
+        <field name="name">Lấy Intraday OHLC từ Securities</field>
+        <field name="model_id" ref="model_ssi_daily_ohlc"/>
+        <field name="binding_model_id" ref="model_ssi_daily_ohlc"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+for rec in records:
+    rec.action_fetch_intraday_ohlc()
+        </field>
+    </record>
+</odoo>

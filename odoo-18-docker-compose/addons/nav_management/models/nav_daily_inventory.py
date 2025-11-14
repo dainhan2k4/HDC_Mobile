@@ -85,7 +85,8 @@ class NavDailyInventory(models.Model):
                 all_transactions = self.env['portfolio.transaction'].search([
                     ('fund_id', '=', record.fund_id.id),
                     ('status', '=', 'completed'),
-                    ('transaction_date', '=', record.inventory_date)
+                    ('created_at', '>=', f"{record.inventory_date} 00:00:00"),
+                    ('created_at', '<=', f"{record.inventory_date} 23:59:59")
                 ])
                 
                 # Lọc chỉ lấy giao dịch nhà tạo lập (dựa trên user_id có group base.group_user)
@@ -193,6 +194,10 @@ class NavDailyInventory(models.Model):
     def _compute_closing_ccq(self):
         for record in self:
             try:
+                # Tự động lấy dữ liệu đầu ngày nếu chưa có
+                if record.fund_id and record.inventory_date and (not record.opening_ccq or record.opening_ccq == 0.0):
+                    record._auto_load_opening_data()
+                
                 if record.fund_id and record.inventory_date:
                     # Tính toán CCQ cuối ngày dựa trên giao dịch
                     record.closing_ccq = record._calculate_daily_ccq()
@@ -206,6 +211,10 @@ class NavDailyInventory(models.Model):
     def _compute_closing_avg_price(self):
         for record in self:
             try:
+                # Tự động lấy dữ liệu đầu ngày nếu chưa có
+                if record.fund_id and record.inventory_date and (not record.opening_avg_price or record.opening_avg_price == 0.0):
+                    record._auto_load_opening_data()
+                
                 if record.fund_id and record.inventory_date and record.closing_ccq > 0:
                     # Tính giá trung bình cuối ngày dựa trên CCQ đã tính
                     record.closing_avg_price = record._calculate_weighted_average_price()
@@ -225,7 +234,8 @@ class NavDailyInventory(models.Model):
             all_transactions = self.env['portfolio.transaction'].search([
                 ('fund_id', '=', self.fund_id.id),
                 ('status', '=', 'completed'),
-                ('transaction_date', '=', self.inventory_date)
+                ('created_at', '>=', f"{self.inventory_date} 00:00:00"),
+                ('created_at', '<=', f"{self.inventory_date} 23:59:59")
             ], order='create_date')
             
             # Lọc chỉ lấy giao dịch nhà tạo lập (dựa trên user_id có group base.group_user)
@@ -283,7 +293,8 @@ class NavDailyInventory(models.Model):
             all_transactions = self.env['portfolio.transaction'].search([
                 ('fund_id', '=', self.fund_id.id),
                 ('status', '=', 'completed'),
-                ('transaction_date', '=', self.inventory_date)
+                ('created_at', '>=', f"{self.inventory_date} 00:00:00"),
+                ('created_at', '<=', f"{self.inventory_date} 23:59:59")
             ], order='create_date')
             
             # Lọc chỉ lấy giao dịch nhà tạo lập (dựa trên user_id có group base.group_user)
@@ -364,7 +375,8 @@ class NavDailyInventory(models.Model):
             all_transactions = self.env['portfolio.transaction'].search([
                 ('fund_id', '=', self.fund_id.id),
                 ('status', '=', 'completed'),
-                ('transaction_date', '=', self.inventory_date)
+                ('created_at', '>=', f"{self.inventory_date} 00:00:00"),
+                ('created_at', '<=', f"{self.inventory_date} 23:59:59")
             ], order='create_date')
             
             # Lọc chỉ lấy giao dịch nhà tạo lập (dựa trên user_id có group base.group_user)
@@ -452,24 +464,23 @@ class NavDailyInventory(models.Model):
                 continue
             
             try:
-                # Lấy thông tin cấu hình quỹ
-                fund_config = self.env['nav.fund.config'].search([
-                    ('fund_id', '=', record.fund_id.id),
-                    ('active', '=', True)
-                ], limit=1)
+                # Lấy thông tin từ fund.certificate trong fund_management_control
+                cert = record.fund_id.certificate_id
                 
-                if fund_config:
+                if cert:
+                    total_value = (cert.initial_certificate_quantity or 0.0) * (cert.initial_certificate_price or 0.0)
                     record.fund_config_info = f"""
-                    Cấu hình quỹ:
-                    - Giá NAV ban đầu: {fund_config.initial_nav_price:,.0f}
-                    - CCQ ban đầu: {fund_config.initial_ccq_quantity:,.0f}
-                    - Chi phí vốn: {fund_config.capital_cost_percent:,.2f}%
-                    - Tổng giá trị: {fund_config.initial_total_value:,.0f}
+                    Thông tin quỹ từ fund.certificate:
+                    - Giá CCQ ban đầu: {cert.initial_certificate_price:,.0f}
+                    - CCQ ban đầu: {cert.initial_certificate_quantity:,.0f}
+                    - Chi phí vốn: {cert.capital_cost:,.2f}%
+                    - Tổng giá trị: {total_value:,.0f}
+                    - Tên quỹ: {cert.full_name}
                     """
                 else:
-                    record.fund_config_info = "Chưa có cấu hình quỹ"
+                    record.fund_config_info = "Chưa có thông tin quỹ từ fund.certificate"
             except Exception as e:
-                _logger.error(f"Lỗi lấy thông tin cấu hình quỹ: {e}")
+                _logger.error(f"Lỗi lấy thông tin từ fund.certificate: {e}")
                 record.fund_config_info = f"Lỗi: {str(e)}"
     
     # Constraints
@@ -521,6 +532,88 @@ class NavDailyInventory(models.Model):
                 self.opening_avg_price = 0.0
 
     # Methods
+    def _auto_load_opening_data(self):
+        """Tự động lấy dữ liệu đầu ngày khi cần thiết - chỉ khi dữ liệu chưa có hoặc = 0"""
+        try:
+            if not self.fund_id or not self.inventory_date:
+                return
+            
+            # Chỉ lấy dữ liệu khi thực sự cần thiết
+            need_ccq = not self.opening_ccq or self.opening_ccq == 0.0
+            need_price = not self.opening_avg_price or self.opening_avg_price == 0.0
+            
+            if not need_ccq and not need_price:
+                _logger.info(f"Đã có dữ liệu đầu ngày: CCQ={self.opening_ccq}, Giá={self.opening_avg_price}")
+                return
+            
+            # Lấy dữ liệu từ ngày trước
+            previous_values = self._get_previous_closing_values()
+            if previous_values:
+                if need_ccq:
+                    self.opening_ccq = previous_values.get('closing_ccq', 0.0)
+                if need_price:
+                    self.opening_avg_price = previous_values.get('closing_avg_price', 0.0)
+                _logger.info(f"Auto-loaded từ ngày trước: CCQ={self.opening_ccq}, Giá={self.opening_avg_price}")
+            else:
+                # Lấy từ fund.certificate trong fund_management_control
+                cert = self.fund_id.certificate_id
+                if cert:
+                    if need_ccq:
+                        self.opening_ccq = cert.initial_certificate_quantity or 0.0
+                    if need_price:
+                        self.opening_avg_price = cert.initial_certificate_price or 0.0
+                    _logger.info(f"Auto-loaded từ fund.certificate: CCQ={self.opening_ccq}, Giá={self.opening_avg_price}")
+                else:
+                    if need_ccq:
+                        self.opening_ccq = 0.0
+                    if need_price:
+                        self.opening_avg_price = 0.0
+                    _logger.warning(f"Không tìm thấy fund.certificate cho {self.fund_id.name}")
+        except Exception as e:
+            _logger.error(f"Lỗi auto-load dữ liệu đầu ngày: {e}")
+            if not self.opening_ccq or self.opening_ccq == 0.0:
+                self.opening_ccq = 0.0
+            if not self.opening_avg_price or self.opening_avg_price == 0.0:
+                self.opening_avg_price = 0.0
+
+    @api.model
+    def sync_from_fund_certificate(self, fund_id, certificate_data):
+        """Đồng bộ dữ liệu từ fund.certificate sang tất cả bản ghi tồn kho của quỹ"""
+        try:
+            if not fund_id or not certificate_data:
+                return
+            
+            # Tìm tất cả bản ghi tồn kho của quỹ này
+            inventories = self.search([('fund_id', '=', fund_id)])
+            
+            if not inventories:
+                _logger.info(f"Không tìm thấy bản ghi tồn kho cho quỹ {fund_id}")
+                return
+            
+            updated_count = 0
+            for inventory in inventories:
+                try:
+                    # Cập nhật dữ liệu từ fund.certificate
+                    inventory.with_context(
+                        skip_fund_sync=True,
+                        skip_nav_config_sync=True,
+                        skip_certificate_sync=True
+                    ).write({
+                        'opening_ccq': certificate_data.get('initial_certificate_quantity', 0.0),
+                        'opening_avg_price': certificate_data.get('initial_certificate_price', 0.0),
+                    })
+                    updated_count += 1
+                    _logger.info(f"Đã cập nhật tồn kho {inventory.id} từ fund.certificate")
+                    
+                except Exception as e:
+                    _logger.error(f"Lỗi cập nhật tồn kho {inventory.id}: {e}")
+                    continue
+            
+            _logger.info(f"Hoàn thành đồng bộ: cập nhật {updated_count}/{len(inventories)} bản ghi tồn kho cho quỹ {fund_id}")
+            
+        except Exception as e:
+            _logger.error(f"Lỗi đồng bộ từ fund.certificate: {e}")
+
     def _onchange_load_previous_defaults(self):
         """Tự động lấy dữ liệu từ ngày trước hoặc cấu hình quỹ"""
         for record in self:
@@ -538,24 +631,22 @@ class NavDailyInventory(models.Model):
                     record.opening_avg_price = previous_values.get('closing_avg_price', 0.0)
                     _logger.info(f"Đã lấy dữ liệu từ ngày trước: CCQ={record.opening_ccq}, Giá={record.opening_avg_price}")
                 else:
-                    # Lấy từ cấu hình quỹ
+                    # Lấy từ fund.certificate trong fund_management_control
                     try:
-                        fund_config = self.env['nav.fund.config'].search([
-                            ('fund_id', '=', record.fund_id.id),
-                            ('active', '=', True)
-                        ], limit=1)
+                        # Tìm fund.certificate tương ứng
+                        cert = record.fund_id.certificate_id
                         
-                        if fund_config:
-                            record.opening_ccq = fund_config.initial_ccq_quantity or 0.0
-                            record.opening_avg_price = fund_config.initial_nav_price or 0.0
-                            _logger.info(f"Đã lấy dữ liệu từ cấu hình quỹ: CCQ={record.opening_ccq}, Giá={record.opening_avg_price}")
+                        if cert:
+                            record.opening_ccq = cert.initial_certificate_quantity or 0.0
+                            record.opening_avg_price = cert.initial_certificate_price or 0.0
+                            _logger.info(f"Đã lấy dữ liệu từ fund.certificate: CCQ={record.opening_ccq}, Giá={record.opening_avg_price}")
                         else:
                             # Mặc định
                             record.opening_ccq = 0.0
                             record.opening_avg_price = 0.0
-                            _logger.warning(f"Không tìm thấy cấu hình quỹ cho {record.fund_id.name}, sử dụng giá trị mặc định")
+                            _logger.warning(f"Không tìm thấy fund.certificate cho {record.fund_id.name}, sử dụng giá trị mặc định")
                     except Exception as e:
-                        _logger.warning(f"Lỗi lấy cấu hình quỹ: {e}")
+                        _logger.warning(f"Lỗi lấy dữ liệu từ fund.certificate: {e}")
                         record.opening_ccq = 0.0
                         record.opening_avg_price = 0.0
             except Exception as e:
@@ -962,9 +1053,79 @@ class NavDailyInventory(models.Model):
             return {'success': False, 'error': str(e), 'created': 0, 'total': 0}
     
     @api.model
+    def cron_auto_create_daily_inventory(self):
+        """Cron job để tự động tạo tồn kho hàng ngày - chạy mỗi giờ để kiểm tra"""
+        try:
+            today = fields.Date.today()
+            _logger.info(f"Bắt đầu cron auto create daily inventory cho ngày {today}")
+            
+            # Lấy tất cả quỹ active
+            funds = self.env['portfolio.fund'].search([('status', '=', 'active')])
+            created_count = 0
+            
+            for fund in funds:
+                try:
+                    # Kiểm tra xem đã có bản ghi cho ngày hôm nay chưa
+                    existing = self.search([
+                        ('fund_id', '=', fund.id),
+                        ('inventory_date', '=', today)
+                    ], limit=1)
+                    
+                    if not existing:
+                        # Tạo bản ghi mới cho ngày hôm nay
+                        inventory = self.create_daily_inventory_for_fund(fund.id, today)
+                        if inventory:
+                            created_count += 1
+                            _logger.info(f"Đã tạo tồn kho cho quỹ {fund.name} ngày {today}")
+                        else:
+                            _logger.warning(f"Không thể tạo tồn kho cho quỹ {fund.name}")
+                    else:
+                        _logger.info(f"Đã có tồn kho cho quỹ {fund.name} ngày {today}")
+                        
+                except Exception as e:
+                    _logger.error(f"Lỗi tạo tồn kho cho quỹ {fund.name}: {e}")
+                    continue
+            
+            _logger.info(f"Hoàn thành cron: tạo {created_count}/{len(funds)} tồn kho")
+            return {'success': True, 'created': created_count, 'total': len(funds)}
+            
+        except Exception as e:
+            _logger.error(f"Lỗi cron auto create daily inventory: {e}")
+            return {'success': False, 'error': str(e)}
+
+    @api.model
     def auto_create_daily_inventory_cron(self):
         """Cron job để tự động tạo tồn kho hàng ngày"""
         return self.auto_create_today_inventory()
+    
+    @api.model
+    def ensure_daily_inventory_exists(self, fund_id, inventory_date=None):
+        """Đảm bảo có bản ghi tồn kho cho quỹ và ngày cụ thể"""
+        try:
+            if not inventory_date:
+                inventory_date = fields.Date.today()
+            
+            # Kiểm tra xem đã có bản ghi chưa
+            existing = self.search([
+                ('fund_id', '=', fund_id),
+                ('inventory_date', '=', inventory_date)
+            ], limit=1)
+            
+            if existing:
+                return existing
+            
+            # Tạo bản ghi mới nếu chưa có
+            inventory = self.create_daily_inventory_for_fund(fund_id, inventory_date)
+            if inventory:
+                _logger.info(f"Đã tạo tồn kho cho quỹ {fund_id} ngày {inventory_date}")
+                return inventory
+            else:
+                _logger.warning(f"Không thể tạo tồn kho cho quỹ {fund_id} ngày {inventory_date}")
+                return None
+                
+        except Exception as e:
+            _logger.error(f"Lỗi ensure daily inventory: {e}")
+            return None
 
     @api.model
     def close_yesterday_inventories(self):

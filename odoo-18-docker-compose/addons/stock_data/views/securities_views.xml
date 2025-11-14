@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Search: Securities with market filters and group by -->
+    <record id="view_securities_search" model="ir.ui.view">
+        <field name="name">ssi.securities.search</field>
+        <field name="model">ssi.securities</field>
+        <field name="arch" type="xml">
+            <search string="Securities">
+                <field name="symbol"/>
+                <filter string="HOSE" name="market_hose" domain="[('market','=','HOSE')]"/>
+                <filter string="HNX" name="market_hnx" domain="[('market','=','HNX')]"/>
+                <filter string="UPCOM" name="market_upcom" domain="[('market','=','UPCOM')]"/>
+                <separator/>
+                <filter string="Has Daily OHLC" name="has_daily_ohlc" domain="[('daily_ohlc_ids','!=',False)]"/>
+                <filter string="Has Intraday OHLC" name="has_intraday_ohlc" domain="[('intraday_ohlc_ids','!=',False)]"/>
+                <separator/>
+                <group expand="1" string="Group By">
+                    <filter string="Market" name="group_market" context="{'group_by':'market'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <!-- Securities Views -->
+
+    <record id="view_securities_tree" model="ir.ui.view">
+        <field name="name">ssi.securities.tree</field>
+        <field name="model">ssi.securities</field>
+        <field name="arch" type="xml">
+            <list string="Securities" decoration-success="is_active == True" decoration-muted="is_active == False" 
+                  class="o_list_table_ungrouped">
+                <field name="symbol" decoration-bf="True"/>
+                <field name="stock_name_vn" string="Tên (VN)" optional="show"/>
+                <field name="market" decoration-info="True"/>
+                <field name="floor_code" optional="show"/>
+                <field name="security_type" optional="show"/>
+                <field name="reference_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="ceiling_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="floor_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="current_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="high_price" widget="monetary" options="{'currency_field': 'currency_id'}" optional="hide"/>
+                <field name="low_price" widget="monetary" options="{'currency_field': 'currency_id'}" optional="hide"/>
+                <field name="last_price" widget="monetary" options="{'currency_field': 'currency_id'}" optional="hide"/>
+                <field name="volume" widget="integer" optional="hide"/>
+                <field name="total_value" widget="monetary" options="{'currency_field': 'currency_id'}" optional="hide"/>
+                <field name="change" widget="monetary" options="{'currency_field': 'currency_id'}" optional="hide"/>
+                <field name="change_percent" optional="hide"/>
+                <field name="is_active" widget="boolean_toggle"/>
+                <field name="last_update" widget="datetime"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_securities_form" model="ir.ui.view">
+        <field name="name">ssi.securities.form</field>
+        <field name="model">ssi.securities</field>
+        <field name="arch" type="xml">
+            <form string="Security">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="symbol" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Thông tin cơ bản">
+                            <field name="symbol" decoration-bf="True"/>
+                            <field name="market" decoration-info="True"/>
+                            <field name="stock_name_vn"/>
+                            <field name="stock_name_en"/>
+                            <field name="floor_code"/>
+                            <field name="security_type"/>
+                        </group>
+                        <group string="Giá và khối lượng">
+                            <field name="reference_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="ceiling_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="floor_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="current_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="high_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="low_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="last_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="volume" widget="integer"/>
+                            <field name="total_value" widget="monetary" options="{'currency_field': 'currency_id'}" />
+                            <field name="change" widget="monetary" options="{'currency_field': 'currency_id'}" />
+                            <field name="change_percent" />
+                        </group>
+                        <group string="Trạng thái">
+                            <field name="is_active" widget="boolean_toggle"/>
+                            <field name="last_update" widget="datetime"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Daily OHLC Data" name="daily_ohlc">
+                            <field name="daily_ohlc_ids" nolabel="1">
+                                <list decoration-success="close_price &gt;= open_price" decoration-danger="close_price &lt; open_price">
+                                    <field name="date" widget="date"/>
+                                    <field name="open_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="high_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="low_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="close_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="volume" widget="integer"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Intraday OHLC Data" name="intraday_ohlc">
+                            <field name="intraday_ohlc_ids" nolabel="1">
+                                <list decoration-success="close_price &gt;= open_price" decoration-danger="close_price &lt; open_price">
+                                    <field name="date" widget="date"/>
+                                    <field name="time" widget="time"/>
+                                    <field name="close_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="volume" widget="integer"/>
+                                    <field name="resolution" widget="integer"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Securities Details" name="securities_details">
+                            <group>
+                                <group>
+                                    <field name="securities_details_fetch_date" widget="datetime" readonly="1"/>
+                                    <button name="action_fetch_securities_details" string="Fetch Securities Details" type="object" class="btn-primary"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="securities_details_raw" widget="text" readonly="1" nolabel="1"/>
+                            </group>
+                        </page>
+                        <page string="Backtest Data" name="backtest">
+                            <group>
+                                <group>
+                                    <field name="backtest_selected_date" widget="date" readonly="1"/>
+                                    <field name="backtest_fetch_date" widget="datetime" readonly="1"/>
+                                    <button name="action_fetch_backtest" string="Fetch Backtest (Today)" type="object" class="btn-primary"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="backtest_raw" widget="text" readonly="1" nolabel="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <header>
+                    <button name="action_fetch_latest_price" string="Fetch Latest Price" type="object" class="oe_highlight"/>
+                </header>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_securities" model="ir.actions.act_window">
+        <field name="name">Securities</field>
+        <field name="res_model">ssi.securities</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No securities found
+            </p>
+            <p>
+                Use "Fetch Market Data" to import securities from SSI API
+            </p>
+        </field>
+    </record>
+</odoo>
+
+
+

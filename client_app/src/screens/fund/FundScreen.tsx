@@ -11,7 +11,6 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Fund, Investment } from '../../types/fund';
 import { API_CONFIG } from '../../config/apiConfig';
-import { middlewareApiService } from '../../services/MiddlewareApiService';
 import { apiService } from '../../config/apiService';
 import { useAuth } from '../../context/AuthContext';
 import { FundListItem, FundDetails, TimeRangeSelector } from '../../components/fund';
@@ -58,15 +57,23 @@ const getLayoutConfig = () => {
   };
 };
 
-type TimeRange = '1M' | '3M' | '6M' | '1Y';
+type TimeRange = '1D' | '5D' | '1M' | '3M';
 
 export const FundScreen: React.FC = () => {
   const navigation = useNavigation();
   const { sessionId, user } = useAuth();
-  const [funds, setFunds] = useState<Fund[]>([]);
-  const [investments, setInvestments] = useState<Investment[]>([]);
-  const [selectedFund, setSelectedFund] = useState<Fund | null>(null);
-  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('1M');
+  
+  // Sync session ID from AuthContext to apiService
+  useEffect(() => {
+    if (sessionId) {
+      apiService.setSessionId(sessionId);
+      console.log('✅ [Fund] Synced session ID to apiService:', sessionId.substring(0, 10) + '...');
+    }
+  }, [sessionId]);
+  const [funds, setFunds] = useState([] as Fund[]);
+  const [investments, setInvestments] = useState([] as Investment[]);
+  const [selectedFund, setSelectedFund] = useState(null as Fund | null);
+  const [selectedTimeRange, setSelectedTimeRange] = useState('1D' as TimeRange);
   const [isLoading, setIsLoading] = useState(true);
   const [layoutConfig] = useState(getLayoutConfig());
 
@@ -108,37 +115,17 @@ export const FundScreen: React.FC = () => {
   const loadFunds = async () => {
     try {
       setIsLoading(true);
-      console.log('🔄 [Fund] Loading funds...');
+      console.log('🔄 [Fund] Loading funds from middleware...');
       
-      if (API_CONFIG.USE_MIDDLEWARE) {
         try {
-          const response = await middlewareApiService.getFunds();
-          if (response && Array.isArray(response)) {
-            setFunds(response);
-            console.log('✅ [Fund] Middleware funds loaded successfully:', response.length);
+        // Luôn dùng middleware endpoint
+        const response = await apiService.getFunds();
+        console.log('🔄 [Fund] Middleware response:', response);
             
-            // Load investments to merge with fund data
-            await loadInvestments();
-            
-            // Auto-select first fund if none selected
-            if (response.length > 0 && !selectedFund) {
-              setSelectedFund(response[0]);
-            }
-            return;
-          }
-        } catch (middlewareError) {
-          console.error('❌ [Fund] Middleware funds failed:', middlewareError);
-        }
-      }
-
-      try {
-        const response = await apiService.getFundData();
-        console.log('🔄 [Fund] Direct API response:', response);
-        
-        const fundData = response?.data as any;
-        if (Array.isArray(fundData)) {
+        if (response.success && response.data) {
+          const fundData = Array.isArray(response.data) ? response.data : [];
           setFunds(fundData);
-          console.log('✅ [Fund] Direct API funds loaded successfully:', fundData.length);
+          console.log('✅ [Fund] Middleware funds loaded successfully:', fundData.length);
           
           // Load investments to merge with fund data
           await loadInvestments();
@@ -149,8 +136,8 @@ export const FundScreen: React.FC = () => {
           }
           return;
         }
-      } catch (directError) {
-        console.error('❌ [Fund] Direct API failed:', directError);
+      } catch (error) {
+        console.error('❌ [Fund] Middleware API failed:', error);
       }
 
       
@@ -170,47 +157,22 @@ export const FundScreen: React.FC = () => {
 
   const loadInvestments = async () => {
     try {
-      console.log('🔄 [Fund] Loading user investments...');
+      console.log('🔄 [Fund] Loading user investments from middleware...');
       
-      if (API_CONFIG.USE_MIDDLEWARE) {
         try {
-          const response = await middlewareApiService.getLegacyPortfolioData();
-          if (response && response.investments) {
-            setInvestments(response.investments);
-            console.log('✅ [Fund] Middleware investments loaded successfully');
+        // Luôn dùng middleware endpoint
+        const response = await apiService.getInvestments();
+        if (response.success && response.data) {
+          const investments = Array.isArray(response.data) ? response.data : [];
+          setInvestments(investments);
+          console.log('✅ [Fund] Middleware investments loaded successfully:', investments.length);
             
             // Merge with current funds
-            setFunds(currentFunds => mergeFundsWithInvestments(currentFunds, response.investments));
+          setFunds(currentFunds => mergeFundsWithInvestments(currentFunds, investments));
             return;
           }
         } catch (middlewareError) {
           console.error('❌ [Fund] Middleware investments failed:', middlewareError);
-        }
-      }
-
-      try {
-        const response = await apiService.getInvestments();
-        const investmentData = response?.data as any;
-        if (Array.isArray(investmentData)) {
-          const mappedInvestments = investmentData.map((record: any) => ({
-            id: record.id,
-            fund_id: record.fund_id || record.id,
-            fund_name: record.fund_name || record.name || `Fund ${record.id}`,
-            fund_ticker: record.fund_ticker || record.ticker || `F${record.id}`,
-            units: record.units || 0,
-            amount: record.amount || 0,
-            current_nav: record.current_nav || 10000,
-            investment_type: record.investment_type || 'equity',
-          }));
-          setInvestments(mappedInvestments);
-          console.log('✅ [Fund] Direct API investments loaded successfully');
-          
-          // Merge with current funds
-          setFunds(currentFunds => mergeFundsWithInvestments(currentFunds, mappedInvestments));
-          return;
-        }
-      } catch (error) {
-        console.error('❌ [Fund] Direct API investments failed:', error);
       }
 
       console.log('⚠️ [Fund] No investment data available');
@@ -290,7 +252,9 @@ export const FundScreen: React.FC = () => {
           fundId: selectedFund.id,
           fundName: selectedFund.name,
           currentUnits: userInvestment.units,
-          currentNav: selectedFund.current_nav
+          currentNav: selectedFund.current_nav,
+          investmentId: userInvestment.id,
+          originalAmount: userInvestment.amount
         });
       } catch (error) {
         console.error('Navigation error:', error);

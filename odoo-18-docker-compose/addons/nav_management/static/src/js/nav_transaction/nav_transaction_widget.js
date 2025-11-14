@@ -249,8 +249,8 @@ export class NavTransactionWidget extends Component {
                         <span t-att-class="'badge-chip ' + this.getTypeBadgeClass(transaction)"><t t-esc="this.getTypeLabel(transaction)"/></span>
                       </td>
                       <!-- Bỏ cột Còn lại -->
-                      <td><t t-esc="this.formatDate(transaction.created_at || transaction.transaction_date || transaction.create_date)"/></td>
-                      <td><t t-esc="transaction.maturity_date ? this.formatDate(transaction.maturity_date) : '-'"/></td>
+                      <td><t t-esc="this.formatDateOnly(transaction.transaction_date || transaction.created_at || transaction.create_date)"/></td>
+                      <td><t t-esc="transaction.maturity_date ? this.formatDateOnly(transaction.maturity_date) : '-'"/></td>
                       <td class="text-center"><t t-esc="(transaction.days === 0 || transaction.days) ? transaction.days : '-'"/></td>
                       <td><t t-esc="transaction.term_months || '-'"/></td>
                       <td><t t-esc="transaction.units || 0"/></td>
@@ -711,50 +711,89 @@ export class NavTransactionWidget extends Component {
     try {
       return (items || []).map((raw) => {
         const tx = { ...raw };
+        
+        // Ưu tiên sử dụng data từ server (đã tính toán bằng compute_transaction_metrics_full)
+        // Nếu server đã trả về đầy đủ các field mới, sử dụng chúng
+        if (tx.sell_value1 !== undefined || tx.sell_value2 !== undefined || 
+            tx.sell_price1 !== undefined || tx.sell_price2 !== undefined ||
+            tx.purchase_value !== undefined || tx.price_with_fee !== undefined) {
+          // Server đã tính toán đầy đủ, chỉ cần format date
+          return {
+            ...tx,
+            // Format các date fields nếu có
+            sell_date_formatted: tx.sell_date ? this.formatDateOnly(tx.sell_date) : null,
+            maturity_date_formatted: tx.maturity_date ? this.formatDateOnly(tx.maturity_date) : null,
+            purchase_date_formatted: tx.purchase_date || tx.transaction_date ? this.formatDateOnly(tx.purchase_date || tx.transaction_date) : null,
+          };
+        }
+        
+        // Fallback: tính toán local nếu server chưa trả về đầy đủ
         const nav = Number(tx.nav_value || 0);
         const units = Number((tx.remaining_units != null ? tx.remaining_units : tx.units) || 0);
         const rate = Number(tx.interest_rate || 0);
         const orderValue = Number(tx.trade_price || tx.amount || (units * nav) || 0);
+        
         // days: ưu tiên server, sau đó tính theo kỳ hạn
         let days = Number(tx.days_effective != null ? tx.days_effective : (tx.days || 0));
         if (!days || days <= 0) {
           days = this.computeDays(tx);
         }
-        // Giá trị mua/bán
-        let sellValue = Number(tx.sell_value || 0);
-        if (!sellValue && orderValue > 0 && rate >= 0 && days > 0) {
-          sellValue = orderValue * (rate / 100) / 365 * days + orderValue;
+        
+        // Giá trị bán 1 (U) = Giá trị mua * Lãi suất / 365 * Số ngày + Giá trị mua
+        let sellValue1 = Number(tx.sell_value1 || tx.sell_value || 0);
+        if (!sellValue1 && orderValue > 0 && rate >= 0 && days > 0) {
+          sellValue1 = orderValue * (rate / 100) / 365 * days + orderValue;
         }
-        // Giá 1
-        let price1 = Number(tx.price1 || 0);
-        if (!price1 && sellValue && units > 0) {
-          price1 = Math.round(sellValue / units);
+        
+        // Giá bán 1 (S) = ROUND(Giá trị bán 1 / Units, 0)
+        let sellPrice1 = Number(tx.sell_price1 || tx.price1 || 0);
+        if (!sellPrice1 && sellValue1 && units > 0) {
+          sellPrice1 = Math.round(sellValue1 / units);
         }
-        // Giá 2
+        
+        // Giá bán 2 (T) = MROUND(Giá bán 1, 50)
         let step = Number(tx.round_step || 50);
         if (!step || step <= 0) step = 50;
-        let price2 = Number(tx.price2 || 0);
-        if (!price2 && price1) {
-          price2 = Math.round(price1 / step) * step;
+        let sellPrice2 = Number(tx.sell_price2 || tx.price2 || 0);
+        if (!sellPrice2 && sellPrice1) {
+          sellPrice2 = Math.round(sellPrice1 / step) * step;
         }
-        // LS quy đổi
-        let rNew = (tx.interest_rate_new != null) ? Number(tx.interest_rate_new) : null;
-        if ((rNew === null || Number.isNaN(rNew)) && nav > 0 && days > 0 && price2) {
-          rNew = ((price2 / nav) - 1) * 365 / days * 100;
+        
+        // Giá trị bán 2 (V) = Units * Giá bán 2
+        let sellValue2 = Number(tx.sell_value2 || 0);
+        if (!sellValue2 && units > 0 && sellPrice2 > 0) {
+          sellValue2 = units * sellPrice2;
         }
-        // Chênh lệch
+        
+        // Lãi suất quy đổi (O) = (Giá bán 2 / Giá mua - 1) * 365 / Số ngày * 100
+        const pricePerUnit = Number(tx.price_per_unit || tx.price || nav || 0);
+        let convertedRate = (tx.converted_rate != null) ? Number(tx.converted_rate) : null;
+        if ((convertedRate === null || Number.isNaN(convertedRate)) && pricePerUnit > 0 && days > 0 && sellPrice2) {
+          convertedRate = ((sellPrice2 / pricePerUnit) - 1) * 365 / days * 100;
+        }
+        
+        // Chênh lệch lãi suất (Q) = Lãi suất quy đổi - Lãi suất
         let delta = (tx.interest_delta != null) ? Number(tx.interest_delta) : null;
-        if ((delta === null || Number.isNaN(delta)) && rNew != null && !Number.isNaN(rate)) {
-          delta = rNew - rate;
+        if ((delta === null || Number.isNaN(delta)) && convertedRate != null && !Number.isNaN(rate)) {
+          delta = convertedRate - rate;
         }
 
         return {
           ...tx,
-          sell_value: sellValue,
-          price1,
-          price2,
-          interest_rate_new: rNew,
+          sell_value: sellValue1,
+          sell_value1: sellValue1,
+          sell_value2: sellValue2,
+          price1: sellPrice1,
+          sell_price1: sellPrice1,
+          sell_price2: sellPrice2,
+          price2: sellPrice2,
+          interest_rate_new: convertedRate,
+          converted_rate: convertedRate,
           interest_delta: delta,
+          // Format date fields
+          sell_date_formatted: tx.sell_date ? this.formatDateOnly(tx.sell_date) : null,
+          maturity_date_formatted: tx.maturity_date ? this.formatDateOnly(tx.maturity_date) : null,
+          purchase_date_formatted: tx.purchase_date || tx.transaction_date ? this.formatDateOnly(tx.purchase_date || tx.transaction_date) : null,
         };
       });
     } catch (_) {
@@ -791,10 +830,17 @@ export class NavTransactionWidget extends Component {
 
   async handleMmAction(tx) {
     try {
-      // Gọi API hiện có để NTL xử lý một giao dịch pending
-      const data = await this.rpc('/api/transaction-list/market-maker/handle-one', {
-        transaction_id: tx?.id,
-      });
+      // Kiểm tra điều kiện CÓ LÃI trên server trước khi tạo lệnh NTL
+      const fundId = this.state.selectedFundId;
+      const { fromDate, toDate } = this.getDateFilter();
+      const profitableIds = await this.getProfitableTxIds(fundId, fromDate, toDate);
+      if (!profitableIds.has(Number(tx?.id))) {
+        this.showPopup({ title: 'Thông tin', message: 'Lệnh không thỏa điều kiện lãi theo cấu hình hiện hành.', type: 'warning' });
+        return;
+      }
+
+      // Gọi API NTL xử lý một giao dịch pending
+      const data = await this.rpc('/api/transaction-list/market-maker/handle-one', { transaction_id: tx?.id });
       const ok = data && data.success;
       this.showPopup({
         title: ok ? 'Gửi lệnh Buy/Sell thành công' : 'Gửi lệnh Buy/Sell thất bại',
@@ -869,6 +915,7 @@ export class NavTransactionWidget extends Component {
     this.state.currentTab = tab;
     if (tab === 'mm') {
       // Luôn load matched orders khi chuyển sang tab MM để đảm bảo có dữ liệu mới nhất
+      console.log('Switching to MM tab, loading matched orders...');
       this.loadMatchedOrders();
     } else if (tab === 'nav') {
       // Khi quay lại tab NAV, chờ DOM render canvas rồi vẽ lại biểu đồ từ dữ liệu đã có
@@ -1088,6 +1135,20 @@ export class NavTransactionWidget extends Component {
     });
   }
 
+  formatDateOnly(dateString) {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '-';
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (_) {
+      return '-';
+    }
+  }
+
   // ===== Selection helpers for bulk MM =====
   isSelected(id) {
     try {
@@ -1184,8 +1245,18 @@ export class NavTransactionWidget extends Component {
       }
       
       const { buys, sells } = validation.data;
-      const remaining_buys = buys.map(tx => tx.id);
-      const remaining_sells = sells.map(tx => tx.id);
+
+      // Lọc lại theo tập ID có lãi từ server để đảm bảo đồng nhất backend
+      const fundId = this.state.selectedFundId;
+      const { fromDate, toDate } = this.getDateFilter();
+      const profitableIds = await this.getProfitableTxIds(fundId, fromDate, toDate);
+      const remaining_buys = buys.map(tx => tx.id).filter(id => profitableIds.has(Number(id)));
+      const remaining_sells = sells.map(tx => tx.id).filter(id => profitableIds.has(Number(id)));
+
+      if (remaining_buys.length === 0 && remaining_sells.length === 0) {
+        this.showPopup({ title: 'Thông tin', message: 'Không có giao dịch nào thỏa điều kiện lãi để xử lý.', type: 'info' });
+        return;
+      }
 
       console.log(`MM Processing: ${remaining_buys.length} buys, ${remaining_sells.length} sells`);
 
@@ -1271,6 +1342,58 @@ export class NavTransactionWidget extends Component {
     }
   }
 
+  // Helper: gọi API nav_management để lấy danh sách transaction IDs có lãi (server-side)
+  async getProfitableTxIds(fundId, fromDate = null, toDate = null) {
+    try {
+      if (!fundId) return new Set();
+      const payload = { jsonrpc: '2.0', params: { fund_id: Number(fundId) } };
+      if (fromDate) payload.params.from_date = fromDate;
+      if (toDate) payload.params.to_date = toDate;
+      const resp = await fetch('/nav_management/api/calculate_nav_transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const raw = await resp.json();
+      // Unwrap JSON-RPC if needed
+      const data = (raw && raw.jsonrpc && raw.result) ? raw.result : raw;
+      try {
+        // Debug chi tiết công thức trên console để đối chiếu
+        if (data && data.success && Array.isArray(data.transactions)) {
+          console.groupCollapsed('[NAV PROFIT DEBUG] Kết quả tính lãi (server)');
+          console.log('Tổng giao dịch:', data.data?.total || data.transactions.length);
+          console.log('Số giao dịch có lãi:', data.data?.profitable || data.transactions.length);
+          (data.transactions || []).slice(0, 20).forEach((tx, idx) => {
+            const units = Number(tx.remaining_units ?? tx.units ?? 0);
+            const navValue = Number(tx.nav_value ?? 0);
+            const tradePrice = Number(tx.trade_price ?? tx.amount ?? (units * navValue));
+            const rate = Number(tx.interest_rate ?? 0);
+            const price1 = Number(tx.price1 ?? 0);
+            const price2 = Number(tx.price2 ?? 0);
+            const rNew = Number(tx.interest_rate_new ?? 0);
+            const delta = Number(tx.interest_delta ?? 0);
+            const days = Number(tx.days_effective ?? tx.days ?? 0);
+            console.log(`#${idx + 1} id=${tx.id} type=${tx.transaction_type} units=${units}`);
+            console.log('  nav_value=', navValue, 'trade_price=', tradePrice, 'interest_rate(%)=', rate, 'days=', days);
+            console.log('  price1=', price1, 'price2(MROUND 50)=', price2);
+            console.log('  interest_rate_new(%)=', rNew, 'interest_delta(%)=', delta);
+          });
+          console.groupEnd();
+        } else {
+          console.warn('[NAV PROFIT DEBUG] Không có dữ liệu transactions từ server. Payload:', data);
+        }
+      } catch (e) {
+        console.warn('[NAV PROFIT DEBUG] Lỗi in debug:', e);
+      }
+      if (data && data.success && Array.isArray(data.transactions)) {
+        return new Set(data.transactions.map(it => Number(it.id)).filter(Boolean));
+      }
+      return new Set();
+    } catch (_) {
+      return new Set();
+    }
+  }
+
   formatCurrency(value) {
     if (!value) return '0₫';
     return new Intl.NumberFormat('vi-VN', {
@@ -1297,17 +1420,121 @@ export class NavTransactionWidget extends Component {
     this.state.showIframe = !this.state.showIframe;
   }
 
+  async loadFunds() {
+    try {
+      const response = await fetch('/nav_management/api/funds', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {},
+          id: Math.floor(Math.random() * 1000000)
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const result = data.result;
+      
+      if (result && result.funds) {
+        this.state.funds = result.funds;
+        console.log('Funds loaded:', result.funds.length, 'funds');
+        return result.funds;
+      } else {
+        throw new Error('Không thể tải danh sách quỹ');
+      }
+    } catch (error) {
+      console.error('Error loading funds:', error);
+      throw error;
+    }
+  }
+
   async loadMatchedOrders() {
     try {
       this.state.mmLoading = true;
       this.state.mmError = null;
       
+      // Load funds trước nếu chưa có
+      if (!this.state.funds || this.state.funds.length === 0) {
+        try {
+          console.log('Loading funds...');
+          await this.loadFunds();
+        } catch (error) {
+          console.warn('Không thể load funds, tiếp tục với dữ liệu có sẵn:', error);
+        }
+      } else {
+        console.log('Funds already loaded:', this.state.funds.length, 'funds');
+      }
+      
       // Gọi API để lấy danh sách cặp lệnh đã khớp (chỉ nhà tạo lập)
-      const response = await this.rpc('/api/transaction-list/get-matched-pairs', {
-        source_type: 'market_maker'
-      });
-      if (response && response.success) {
-        let allOrders = response.data || [];
+      // Thử HTTP endpoint trước
+      let response;
+      try {
+        console.log('Trying HTTP endpoint for matched pairs...');
+        response = await fetch('/api/transaction-list/matched-pairs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify({
+            source_type: 'market_maker',
+            limit: 500
+          })
+        });
+      } catch (error) {
+        console.warn('HTTP endpoint failed, trying JSON-RPC:', error);
+        // Fallback to JSON-RPC
+        console.log('Trying JSON-RPC endpoint for matched pairs...');
+        response = await fetch('/api/transaction-list/get-matched-pairs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {
+              source_type: 'market_maker',
+              limit: 500
+            },
+            id: Math.floor(Math.random() * 1000000)
+          })
+        });
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      console.log('Matched orders API response:', data);
+      console.log('Response status:', response.status, 'OK:', response.ok);
+      
+      // Handle both HTTP and JSON-RPC responses
+      let result;
+      if (data.result) {
+        // JSON-RPC response
+        result = data.result;
+      } else if (data.success !== undefined) {
+        // HTTP response
+        result = data;
+      } else {
+        throw new Error('Invalid response format');
+      }
+      
+      if (result && result.success) {
+        let allOrders = result.matched_pairs || result.data || [];
+        console.log('All orders loaded:', allOrders.length, 'orders');
         // Sử dụng method tạo filter chính xác
         this.state.matchedOrders = this.createAccurateFilter(allOrders);
 
@@ -1332,8 +1559,19 @@ export class NavTransactionWidget extends Component {
 
         // Tạo filter động dựa trên dữ liệu thực tế
         this.createDynamicFilter(allOrders);
+        
+        console.log('Matched orders loaded successfully:', {
+          total: allOrders.length,
+          displayed: this.state.displayedMatchedOrders.length,
+          funds: this.state.fundOptions.length
+        });
+        
+        // Nếu không có dữ liệu, hiển thị thông báo
+        if (allOrders.length === 0) {
+          this.state.mmError = 'Không có lệnh mua bán của nhà tạo lập trong ngày';
+        }
       } else {
-        this.state.mmError = response?.message || 'Không thể tải dữ liệu';
+        this.state.mmError = result?.message || 'Không thể tải dữ liệu';
       }
     } catch (error) {
       console.error('Error loading matched orders:', error);
@@ -2342,14 +2580,16 @@ export class NavTransactionWidget extends Component {
       'No',
       'Phiên giao dịch',
       'Giá trị NAV',
-      'Ngày tạo'
+      'Ngày giao dịch',
+      'Ngày đáo hạn'
     ];
 
     const csvData = dataToExport.map((transaction, index) => [
       index + 1,
       this.getDisplayValue(transaction.transaction_session),
       transaction.nav_value,
-      this.formatDate(transaction.create_date)
+      this.formatDateOnly(transaction.transaction_date || transaction.created_at || transaction.create_date),
+      transaction.maturity_date ? this.formatDateOnly(transaction.maturity_date) : '-',
     ]);
 
     const csvContent = this.convertToCSV([headers, ...csvData]);

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import * as React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator } from 'react-native';
@@ -24,7 +24,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 // Root Navigator
 export const AppNavigator = () => {
   const { sessionId, isLoading } = useAuth();
-  const navigationRef = useRef(null);
+  const navigationRef = React.useRef(null);
 
   if (isLoading) {
     return (

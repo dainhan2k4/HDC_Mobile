@@ -50,8 +50,8 @@
 
         <!-- Wallet Balance Card -->
         <div class="wallet-balance">
-          <h2>Wallet Balance (MYR)</h2>
-          <div class="amount">846.4</div>
+          <h2>Wallet Balance</h2>
+          <div class="amount" t-esc="balance or 0"/>
         </div>
 
         <!-- Add Money Button -->
@@ -68,21 +68,13 @@
             </tr>
           </thead>
           <tbody>
+            <t t-foreach="balance_history" t-as="history">
             <tr>
-              <td>18 May 2025 19:44:42</td>
-              <td>140</td>
-              <td>Investment</td>
+                <td><t t-esc="history.created_at"/></td>
+                <td><t t-esc="history.change"/></td>
+                <td><t t-esc="history.change_type"/></td>
             </tr>
-            <tr>
-              <td>18 May 2025 19:44:20</td>
-              <td>13.6</td>
-              <td>Investment</td>
-            </tr>
-            <tr>
-              <td>17 May 2025 17:27:10</td>
-              <td>1000</td>
-              <td>Deposit</td>
-            </tr>
+            </t>
           </tbody>
         </table>
       </div>

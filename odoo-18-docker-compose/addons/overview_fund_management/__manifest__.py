@@ -12,7 +12,8 @@
         'base',
         'web',
         'mail',
-        'portal'
+        'portal',
+        'fund_management',
     ],
     'data': [
         # Security - Phân quyền truy cập models
@@ -48,6 +49,9 @@
             # Components - Header và navigation
             'overview_fund_management/static/src/js/components/header.js',           # Header component
             'overview_fund_management/static/src/js/components/entrypoint.js',       # Header entrypoint
+            'overview_fund_management/static/src/css/header.css',                    # Header CSS styles
+            # Maturity notification bus service
+            'transaction_list/static/src/js/maturity_notification_bus.js',
         ],
     },
     'installable': True,

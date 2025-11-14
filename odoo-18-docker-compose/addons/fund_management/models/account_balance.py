@@ -1,10 +1,11 @@
 from odoo import api, fields, models
 
+
 class AccountBalance(models.Model):
     _name = "portfolio.account_balance"
     _description = "Account Balance"
 
-    user_id = fields.Many2one("auth.user", string="User", required=True)
+    user_id = fields.Many2one("res.users", string="User", required=True)
     balance = fields.Float(string="Balance", required=True)
 
     # _sql_constraints = [

@@ -192,7 +192,6 @@
                 </main>
 
                 <!-- Chatbot AI Widget -->
-                <t t-call="fund_management_control.chatbot_ai_template"/>
             </div>
 
             <script>

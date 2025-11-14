@@ -10,11 +10,19 @@ class BankWidget extends Component {
         <!-- Search and Filter Section -->
         <div class="card shadow-sm mb-4">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <button t-on-click="createNew" class="btn btn-success fw-bold shadow-sm d-flex align-items-center gap-2">
-                        <i class="fas fa-plus"></i>
-                        Tạo mới
-                    </button>
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <div>
+                        <button t-on-click="createNew" class="btn btn-success fw-bold shadow-sm d-flex align-items-center gap-2">
+                            <i class="fas fa-plus"></i>
+                            Tạo mới
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button t-on-click="syncVietQR" t-att-disabled="state.syncing" class="btn btn-outline-primary fw-bold">
+                            <t t-if="state.syncing">Đang đồng bộ...</t>
+                            <t t-else="">Đồng bộ VietQR</t>
+                        </button>
+                    </div>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="input-group" style="max-width: 450px;">
@@ -44,7 +52,7 @@ class BankWidget extends Component {
                         <th class="px-3 py-2 text-uppercase small text-muted">Tên viết tắt</th>
                         <th class="px-3 py-2 text-uppercase small text-muted">Mã giao dịch</th>
                         <th class="px-3 py-2 text-uppercase small text-muted">Swift Code</th>
-                        <th class="px-3 py-2 text-uppercase small text-muted">Website</th>
+                        <th class="px-3 py-2 text-uppercase small text-muted">Logo</th>
                         <th class="px-3 py-2 text-uppercase small text-muted">Trạng thái</th>
                         <th class="px-3 py-2 text-center text-uppercase small text-muted">Thao tác</th>
                     </tr>
@@ -76,7 +84,12 @@ class BankWidget extends Component {
                             <td class="px-3 py-2" t-esc="bank.short_name"/>
                             <td class="px-3 py-2" t-esc="bank.code"/>
                             <td class="px-3 py-2" t-esc="bank.swift_code"/>
-                            <td class="px-3 py-2" t-esc="bank.website"/>
+                            <td class="px-3 py-2">
+                                <t t-if="bank.website">
+                                    <img t-att-src="bank.website" t-att-alt="bank.short_name || bank.name" style="height: 28px; object-fit: contain;"/>
+                                </t>
+                                <t t-else="">—</t>
+                            </td>
                             <td class="px-3 py-2">
                                 <span t-if="bank.active" class="badge rounded-pill bg-success-subtle text-success-emphasis p-2">
                                     Kích hoạt
@@ -120,7 +133,7 @@ class BankWidget extends Component {
     </div>
     `;
     setup() {
-        this.state = useState({ banks: [], searchTerm: "", loading: true, currentPage: 1, totalRecords: 0, limit: 10 });
+        this.state = useState({ banks: [], searchTerm: "", loading: true, currentPage: 1, totalRecords: 0, limit: 10, syncing: false });
         onMounted(() => this.loadData());
     }
     get totalPages() { return Math.ceil(this.state.totalRecords / this.state.limit); }
@@ -140,6 +153,34 @@ class BankWidget extends Component {
     performSearch() { this.state.currentPage = 1; this.loadData(); }
     handleEdit(id) { window.location.href = `/bank/edit/${id}`; }
     createNew() { window.location.href = '/bank/new'; }
+    async syncVietQR() {
+        this.state.syncing = true;
+        try {
+            const res = await fetch('/bank/sync/vietqr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                const message = err.error || `HTTP ${res.status}`;
+                window.alert(message);
+                return;
+            }
+            const result = await res.json();
+            if (!result.success) {
+                window.alert(result.error || 'Đồng bộ thất bại.');
+                return;
+            }
+            window.alert(`Đã đồng bộ VietQR. Thêm mới: ${result.created || 0}, cập nhật: ${result.updated || 0}.`);
+            this.state.currentPage = 1;
+            await this.loadData();
+        } catch (error) {
+            console.error('Sync VietQR error:', error);
+            window.alert('Có lỗi xảy ra khi đồng bộ VietQR. Vui lòng thử lại.');
+        } finally {
+            this.state.syncing = false;
+        }
+    }
 }
 window.BankWidget = BankWidget;
 export default BankWidget; 

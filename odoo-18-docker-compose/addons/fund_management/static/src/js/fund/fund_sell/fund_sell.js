@@ -3,7 +3,35 @@ document.addEventListener('DOMContentLoaded', async () => {
   initFundSellConfirmPage();
   initFinalSellSubmit();
   initBackButton();
+  initFundSellDebugToggle(); // Thêm init debug toggle
 });
+
+// Khởi tạo debug toggle cho fund_sell
+function initFundSellDebugToggle() {
+  const debugToggle = document.getElementById('fund-sell-debug-toggle');
+  const debugWarning = document.getElementById('fund-sell-debug-warning');
+  
+  if (!debugToggle) return;
+  
+  // Load từ localStorage
+  const savedDebugMode = localStorage.getItem('fund_sell_debug_mode') === 'true';
+  debugToggle.checked = savedDebugMode;
+  if (debugWarning) {
+    debugWarning.style.display = savedDebugMode ? 'block' : 'none';
+  }
+  
+  // Lắng nghe thay đổi
+  debugToggle.addEventListener('change', (e) => {
+    const isEnabled = e.target.checked;
+    localStorage.setItem('fund_sell_debug_mode', isEnabled.toString());
+    
+    if (debugWarning) {
+      debugWarning.style.display = isEnabled ? 'block' : 'none';
+    }
+    
+    console.log('[Fund Sell Debug] Debug mode:', isEnabled ? 'ENABLED' : 'DISABLED');
+  });
+}
 
 // ================================
 // 🚀 Trang chọn quỹ để bán
@@ -59,6 +87,17 @@ async function initFundSellPage() {
 
 function setupSellQuantityLimit(fundData, fundSelect, amountInput) {
   amountInput.addEventListener('input', () => {
+    // Kiểm tra debug mode
+    const debugToggle = document.getElementById('fund-sell-debug-toggle');
+    const debugMode = debugToggle && debugToggle.checked;
+    
+    // Nếu debug mode bật, skip giới hạn số lượng
+    if (debugMode) {
+      const quantity = parseFloat(amountInput.value || '0');
+      console.log('🔧 DEBUG MODE - Số lượng muốn bán (không giới hạn):', quantity);
+      return;
+    }
+    
     const selected = fundData.find(f => f.id == fundSelect.value);
     if (!selected) return;
 
@@ -110,11 +149,29 @@ function handleFundSellConfirm(fundData, fundSelect, amountInput, confirmButtonI
   confirmBtn.addEventListener('click', () => {
     const selected = fundData.find(f => f.id == fundSelect.value);
     const quantity = parseFloat(amountInput.value || '0');
+    
+    // Kiểm tra debug mode
+    const debugToggle = document.getElementById('fund-sell-debug-toggle');
+    const debugMode = debugToggle && debugToggle.checked;
 
-    if (!selected || !quantity || quantity <= 0 || quantity > selected.units) {
+    if (!selected || !quantity || quantity <= 0) {
       alert('⚠️ Vui lòng chọn quỹ và nhập số lượng hợp lệ.');
       return;
     }
+    
+    // Bypass check số lượng sở hữu nếu debug mode bật
+    if (!debugMode && quantity > selected.units) {
+      alert('⚠️ Vui lòng chọn quỹ và nhập số lượng hợp lệ.');
+      return;
+    }
+    
+    if (debugMode && quantity > selected.units) {
+      console.warn('🔧 DEBUG MODE ENABLED - Bypassing quantity check. Requested:', quantity, 'Available:', selected.units);
+    }
+
+    // Tính toán navRounded trong scope này
+    const navRounded = Math.round(selected.current_nav / 50) * 50;
+    const estimated_value = quantity * navRounded;
 
     const dataToConfirm = {
       fund_id: selected.fund_id,
@@ -122,10 +179,11 @@ function handleFundSellConfirm(fundData, fundSelect, amountInput, confirmButtonI
       fund_ticker: selected.fund_ticker,
       quantity: quantity,
       current_nav: selected.current_nav, // Giữ lại cho hiển thị, nhưng không dùng để tính toán
-      estimated_value: quantity * navRounded,
+      estimated_value: estimated_value,
       investment_id: selected.id,
       original_amount: selected.amount,
-      original_units: selected.units
+      original_units: selected.units,
+      debug_mode: debugMode // Lưu debug mode để dùng ở các bước sau
     };
 
     sessionStorage.setItem('fund_sell_data', JSON.stringify(dataToConfirm));
@@ -184,6 +242,7 @@ function initFinalSellSubmit() {
       formData.append('investment_id', sellData.investment_id);
       formData.append('quantity', sellData.quantity);
       formData.append('estimated_value', sellData.estimated_value);
+      formData.append('debug', sellData.debug_mode || false); // Gửi debug flag lên backend
 
       const res = await fetch('/submit_fund_sell', {
         method: 'POST',

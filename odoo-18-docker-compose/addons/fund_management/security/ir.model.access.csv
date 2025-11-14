@@ -1,7 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_user,auth.user,model_auth_user,,1,1,1,1
-access_auth_account,auth.account,model_auth_account,,1,1,1,1
-access_auth_session,auth.session,model_auth_session,,1,1,1,1
+access_fund_signed_contract,fund.signed.contract,model_fund_signed_contract,,1,1,1,1
 access_portfolio_investment,portfolio.investment,model_portfolio_investment,,1,1,1,1
 access_portfolio_fund,portfolio.fund,model_portfolio_fund,,1,1,1,1
 access_portfolio_transaction,portfolio.transaction,model_portfolio_transaction,,1,1,1,1

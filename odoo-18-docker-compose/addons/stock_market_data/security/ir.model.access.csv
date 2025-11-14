@@ -1,8 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_nifty_integration,access.nifty.integration,model_nifty_integration,base.group_user,1,1,1,1
-access_nifty_stockindices,access.nifty.stockindices,model_nifty_stockindices,base.group_user,1,1,1,1
-access_all_indices,access.all.indices,model_all_indices,base.group_user,1,0,0,0
-access_nifty_totalmarket,access.nifty.totalmarket,model_nifty_totalmarket,base.group_user,1,0,0,0
-access_watchlist_data,access.watchlist.data,model_watchlist_data,base.group_user,1,1,1,1
-access_schedule_fetch_all,access.schedule.fetch.all,model_schedule_fetch_all,base.group_user,1,1,1,1
-access_nifty_alldata,access.nifty.alldata,model_nifty_alldata,base.group_user,1,0,0,0

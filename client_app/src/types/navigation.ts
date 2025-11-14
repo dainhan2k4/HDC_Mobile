@@ -7,7 +7,14 @@ export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
   FundBuy: { fundId: number; fundName: string; currentNav?: number };
-  FundSell: { fundId: number; fundName: string; currentUnits: number; currentNav?: number };
+  FundSell: {
+    fundId: number;
+    fundName: string;
+    currentUnits: number;
+    currentNav?: number;
+    investmentId: number;
+    originalAmount?: number;
+  };
   EditProfile: undefined;
   Kyc: {
     userData: any;
@@ -42,5 +49,8 @@ export type FundStackParamList = {
   FundList: undefined;
   FundDetail: { fundId: number };
   FundBuy: { fundId: number };
-  FundSell: { fundId: number };
+  FundSell: {
+    fundId: number;
+    investmentId: number;
+  };
 }; 

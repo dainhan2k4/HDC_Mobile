@@ -11,4 +11,4 @@ flask-cors==4.0.0
 Pillow==10.0.0
 PyMuPDF==1.23.8
 requests==2.31.0
-pandas 
+pandas>=2.0.0 

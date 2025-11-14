@@ -59,41 +59,22 @@ class MatchedOrders(models.Model):
     # In/Out times per side
     buy_in_time = fields.Datetime(string='Buy In Time', compute='_compute_in_out_times', store=True)
     sell_in_time = fields.Datetime(string='Sell In Time', compute='_compute_in_out_times', store=True)
-    buy_out_time = fields.Datetime(related='buy_order_id.create_date', string='Buy Out Time', store=True)
-    sell_out_time = fields.Datetime(related='sell_order_id.create_date', string='Sell Out Time', store=True)
+    # Use stable field available in base transaction model to avoid dependency issues
+    buy_out_time = fields.Datetime(related='buy_order_id.date_end', string='Buy Out Time', store=True)
+    sell_out_time = fields.Datetime(related='sell_order_id.date_end', string='Sell Out Time', store=True)
 
     # Additional quantitative fields for UI reporting
     buy_units = fields.Float(related='buy_order_id.units', string='Buy Units', store=True)
     sell_units = fields.Float(related='sell_order_id.units', string='Sell Units', store=True)
     buy_price = fields.Float(related='buy_order_id.current_nav', string='Buy Price', store=True)
     sell_price = fields.Float(related='sell_order_id.current_nav', string='Sell Price', store=True)
+    buy_remaining_units = fields.Float(related='buy_order_id.remaining_units', string='Buy Remaining Units', store=True)
+    sell_remaining_units = fields.Float(related='sell_order_id.remaining_units', string='Sell Remaining Units', store=True)
+    
+    # Field để đánh dấu đã gửi lên sàn
+    sent_to_exchange = fields.Boolean(string="Đã gửi lên sàn", default=False, tracking=True, help="Cặp lệnh đã được gửi lên sàn thông qua trading.order")
+    sent_to_exchange_at = fields.Datetime(string="Thời gian gửi lên sàn", help="Thời điểm cặp lệnh được gửi lên sàn")
 
-    buy_remaining_units = fields.Float(
-        string='Buy Remaining Units',
-        compute='_compute_remaining_units',
-        store=True
-    )
-
-    sell_remaining_units = fields.Float(
-        string='Sell Remaining Units',
-        compute='_compute_remaining_units',
-        store=True
-    )
-
-    @api.depends('buy_order_id.units', 'sell_order_id.units')
-    def _compute_remaining_units(self):
-        for record in self:
-            # Compute buy remaining units
-            buy_total = record.buy_order_id.units if record.buy_order_id else 0
-            buy_matched = getattr(record.buy_order_id, 'matched_units', 0) if record.buy_order_id else 0
-            record.buy_remaining_units = max(0, buy_total - buy_matched)
-
-            # Compute sell remaining units
-            sell_total = record.sell_order_id.units if record.sell_order_id else 0
-            sell_matched = getattr(record.sell_order_id, 'matched_units', 0) if record.sell_order_id else 0
-            record.sell_remaining_units = max(0, sell_total - sell_matched)
-
-            
     @api.depends('buy_order_id.user_id', 'sell_order_id.user_id', 'buy_source', 'sell_source')
     def _compute_user_types(self):
         for record in self:
@@ -151,29 +132,8 @@ class MatchedOrders(models.Model):
             record.sell_in_time = sell_created_at or record.sell_order_id.create_date or False
             
     def update_transaction_statuses(self):
-        """Update the related transaction statuses after matching"""
-        for record in self:
-            # Update buy order
-            if record.buy_order_id:
-                buy_order = record.buy_order_id
-                buy_matched = buy_order.matched_units + record.matched_quantity
-                buy_remaining = buy_order.units - buy_matched
-                buy_order.write({
-                    'matched_units': buy_matched,
-                    'remaining_units': buy_remaining,
-                    'is_matched': buy_remaining <= 0
-                })
-
-            # Update sell order
-            if record.sell_order_id:
-                sell_order = record.sell_order_id
-                sell_matched = sell_order.matched_units + record.matched_quantity
-                sell_remaining = sell_order.units - sell_matched
-                sell_order.write({
-                    'matched_units': sell_matched,
-                    'remaining_units': sell_remaining,
-                    'is_matched': sell_remaining <= 0
-                })
+        """Deprecated: Transaction status updates are now handled by OrderMatchingEngine"""
+        pass
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -206,6 +166,8 @@ class MatchedOrders(models.Model):
             # This is now handled in the action_match_orders method
             # to avoid double updates and conflicts
 
+            # Trigger recompute stats cho engines
+            self._trigger_engine_stats_recompute()
             return records
 
         except Exception as e:
@@ -214,177 +176,50 @@ class MatchedOrders(models.Model):
             traceback.print_exc()
             raise
 
-    def check_and_continue_matching(self):
-        """Kiểm tra và tiếp tục khớp các lệnh còn lại sau khi tạo matched order"""
-        try:
-            # Lấy tất cả lệnh pending còn remaining_units > 0
-            pending_buys = self.env['portfolio.transaction'].search([
-                ('transaction_type', '=', 'purchase'),
-                ('status', '=', 'pending'),
-                ('remaining_units', '>', 0)
-            ])
-            
-            pending_sells = self.env['portfolio.transaction'].search([
-                ('transaction_type', '=', 'sell'),
-                ('status', '=', 'pending'),
-                ('remaining_units', '>', 0)
-            ])
-            
-            print(f"[DEBUG] Found {len(pending_buys)} pending buys and {len(pending_sells)} pending sells")
-            
-            if not pending_buys or not pending_sells:
-                return {'success': True, 'message': 'No pending orders to match'}
-            
-            # Gọi engine khớp lệnh để tiếp tục khớp
-            from ..controller.fund_calc_integration_controller import OrderMatchingEngine
-            engine = OrderMatchingEngine(self.env)
-            
-            # Khớp lệnh với các lệnh còn lại
-            result = engine.match_orders(pending_buys, pending_sells, use_time_priority=False)
-            
-            if result.get('matched_pairs'):
-                print(f"[DEBUG] Found {len(result['matched_pairs'])} additional matches")
-                
-                # Tạo các matched orders mới
-                for pair in result['matched_pairs']:
-                    self.create({
-                        'buy_order_id': pair['buy_id'],
-                        'sell_order_id': pair['sell_id'],
-                        'matched_quantity': pair['matched_ccq'],
-                        'matched_price': pair['matched_price'],
-                        'status': 'confirmed'
-                    })
-                
-                return {
-                    'success': True, 
-                    'message': f'Created {len(result["matched_pairs"])} additional matches',
-                    'matched_pairs': result['matched_pairs']
-                }
-            else:
-                return {'success': True, 'message': 'No additional matches found'}
-                
-        except Exception as e:
-            print(f"[ERROR] Error in check_and_continue_matching: {str(e)}")
-            return {'success': False, 'message': str(e)}
+    def write(self, vals):
+        result = super(MatchedOrders, self).write(vals)
+        # Trigger recompute stats cho engines
+        self._trigger_engine_stats_recompute()
+        return result
 
-    def fix_remaining_units_calculation(self):
-        """Sửa lại tính toán remaining_units cho tất cả lệnh pending"""
-        try:
-            # Lấy tất cả lệnh pending
-            pending_orders = self.env['portfolio.transaction'].search([
-                ('status', '=', 'pending')
-            ])
-            
-            fixed_count = 0
-            for order in pending_orders:
-                # Tính lại remaining_units dựa trên units và matched_units
-                total_units = order.units or 0
-                matched_units = order.matched_units or 0
-                calculated_remaining = max(0, total_units - matched_units)
-                
-                # Kiểm tra tính hợp lệ
-                if matched_units > total_units:
-                    print(f"[ERROR] Order {order.id}: matched_units ({matched_units}) > total_units ({total_units})")
-                    # Sửa lỗi: đặt matched_units = total_units
-                    matched_units = total_units
-                    calculated_remaining = 0
-                
-                # Nếu khác với giá trị hiện tại, cập nhật
-                if order.remaining_units != calculated_remaining:
-                    order.sudo().write({
-                        'matched_units': matched_units,
-                        'remaining_units': calculated_remaining,
-                        'is_matched': calculated_remaining <= 0
-                    })
-                    fixed_count += 1
-                    print(f"[DEBUG] Fixed order {order.id}: matched={matched_units}, remaining={calculated_remaining}")
-            
-            return {
-                'success': True,
-                'message': f'Fixed {fixed_count} orders',
-                'fixed_count': fixed_count
-            }
-            
-        except Exception as e:
-            return {'success': False, 'message': str(e)}
+    def unlink(self):
+        result = super(MatchedOrders, self).unlink()
+        # Trigger recompute stats cho engines
+        self._trigger_engine_stats_recompute()
+        return result
 
-    def validate_order_data_integrity(self):
-        """Kiểm tra tính hợp lệ của dữ liệu lệnh"""
+    @api.model
+    def _trigger_engine_stats_recompute(self):
+        """Trigger recompute stats cho engines khi có thay đổi matched orders"""
         try:
-            # Lấy tất cả lệnh pending
-            pending_orders = self.env['portfolio.transaction'].search([
-                ('status', '=', 'pending')
-            ])
-            
-            errors = []
-            for order in pending_orders:
-                total_units = order.units or 0
-                matched_units = order.matched_units or 0
-                remaining_units = order.remaining_units or 0
-                
-                # Kiểm tra các điều kiện
-                if matched_units > total_units:
-                    errors.append(f"Order {order.id}: matched_units ({matched_units}) > total_units ({total_units})")
-                
-                if remaining_units != (total_units - matched_units):
-                    errors.append(f"Order {order.id}: remaining_units ({remaining_units}) != total_units - matched_units ({total_units - matched_units})")
-                
-                if matched_units + remaining_units != total_units:
-                    errors.append(f"Order {order.id}: matched_units + remaining_units ({matched_units + remaining_units}) != total_units ({total_units})")
-            
-            return {
-                'success': True,
-                'errors': errors,
-                'error_count': len(errors),
-                'total_orders': len(pending_orders)
-            }
-            
-        except Exception as e:
-            return {'success': False, 'message': str(e)}
+            engine_model = self.env['transaction.partial.matching.engine']
+            if hasattr(engine_model, '_trigger_recompute_stats'):
+                engine_model._trigger_recompute_stats()
+        except Exception:
+            # Ignore errors để không ảnh hưởng đến chức năng chính
+            pass
 
     def get_remaining_orders_summary(self):
-        """Lấy tổng kết các lệnh còn lại"""
+        """Lấy tổng kết các lệnh còn lại - simplified version"""
         try:
             pending_buys = self.env['portfolio.transaction'].search([
-                ('transaction_type', '=', 'purchase'),
-                ('status', '=', 'pending'),
-                ('remaining_units', '>', 0)
+                ('transaction_type', 'in', ['buy', 'purchase']),
+                ('status', '=', 'completed'),
+                ('ccq_remaining_to_match', '>', 0)
             ])
             
             pending_sells = self.env['portfolio.transaction'].search([
                 ('transaction_type', '=', 'sell'),
-                ('status', '=', 'pending'),
-                ('remaining_units', '>', 0)
+                ('status', '=', 'completed'),
+                ('ccq_remaining_to_match', '>', 0)
             ])
-            
-            buy_summary = []
-            for buy in pending_buys:
-                buy_summary.append({
-                    'id': buy.id,
-                    'fund_name': buy.fund_id.name if buy.fund_id else '',
-                    'remaining_units': buy.remaining_units,
-                    'total_units': buy.units,
-                    'matched_units': buy.matched_units,
-                    'price': buy.current_nav
-                })
-            
-            sell_summary = []
-            for sell in pending_sells:
-                sell_summary.append({
-                    'id': sell.id,
-                    'fund_name': sell.fund_id.name if sell.fund_id else '',
-                    'remaining_units': sell.remaining_units,
-                    'total_units': sell.units,
-                    'matched_units': sell.matched_units,
-                    'price': sell.current_nav
-                })
             
             return {
                 'success': True,
-                'buy_orders': buy_summary,
-                'sell_orders': sell_summary,
-                'total_buy_remaining': sum(b['remaining_units'] for b in buy_summary),
-                'total_sell_remaining': sum(s['remaining_units'] for s in sell_summary)
+                'buy_orders_count': len(pending_buys),
+                'sell_orders_count': len(pending_sells),
+                'total_buy_remaining': sum(b.ccq_remaining_to_match for b in pending_buys),
+                'total_sell_remaining': sum(s.ccq_remaining_to_match for s in pending_sells)
             }
             
         except Exception as e:

@@ -12,7 +12,9 @@
         'base',
         'web',
         'mail',
-        'portal'
+        'portal',
+        'fund_management',
+        'overview_fund_management'
     ],
     'data': [
         # Website Templates - Trang web frontend

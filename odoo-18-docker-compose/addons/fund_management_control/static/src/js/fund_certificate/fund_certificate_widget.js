@@ -1,6 +1,6 @@
 console.log("Loading Improved FundCertificateWidget component...");
 
-const { Component, xml, useState, onMounted, useRef } = window.owl;
+const { Component, xml, useState, onMounted, useRef, onWillUnmount } = window.owl;
 
 class FundCertificateWidget extends Component {
     static template = xml`
@@ -16,10 +16,12 @@ class FundCertificateWidget extends Component {
                     </ol>
                 </nav>
             </div>
-            <button t-on-click="createNewFund" class="btn btn-primary px-4 py-2 fw-semibold shadow-sm d-flex align-items-center gap-2">
-                <i class="fas fa-plus"></i>
-                <span>Tạo mới</span>
-            </button>
+            <div class="d-flex gap-2">
+                <button t-on-click="createNewFund" class="btn btn-primary px-4 py-2 fw-semibold shadow-sm d-flex align-items-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    <span>Tạo mới</span>
+                </button>
+            </div>
         </div>
 
         <!-- Filter and Search Section -->
@@ -94,9 +96,9 @@ class FundCertificateWidget extends Component {
                                     <input class="form-check-input" type="checkbox" t-on-change="toggleSelectAll"/>
                                 </th>
                                 <th class="px-4 py-3 text-uppercase small fw-semibold text-muted">Tên Chứng chỉ quỹ</th>
-                                <th class="px-4 py-3 text-uppercase small fw-semibold text-muted">Mã quỹ</th>
+                                <th class="px-4 py-3 text-uppercase small fw-semibold text-muted">Mã chứng khoán</th>
                                 <th class="px-4 py-3 text-uppercase small fw-semibold text-muted">Màu quỹ</th>
-                                <th class="px-4 py-3 text-uppercase small fw-semibold text-muted">Giá trị NAV</th>
+                                <th class="px-4 py-3 text-uppercase small fw-semibold text-muted">Giá hiện tại</th>
                                 <th class="px-4 py-3 text-uppercase small fw-semibold text-muted">Loại quỹ</th>
                                 <th class="px-4 py-3 text-uppercase small fw-semibold text-muted">Trạng thái</th>
                                 <th class="px-4 py-3 text-uppercase small fw-semibold text-muted">Giờ đóng ngân hàng</th>
@@ -140,18 +142,18 @@ class FundCertificateWidget extends Component {
                                                 </t>
                                             </div>
                                             <div>
-                                                <div class="fw-semibold text-dark" t-esc="cert.full_name"/>
-                                                <div class="small text-muted" t-esc="cert.english_name"/>
+                                                <div class="fw-semibold text-dark" t-esc="cert.short_name_vn or cert.symbol"/>
+                                                <div class="small text-muted" t-esc="cert.short_name_en or cert.symbol"/>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-4 py-3"><span class="badge bg-light text-dark fw-normal" t-esc="cert.short_name"/></td>
+                                    <td class="px-4 py-3"><span class="badge bg-light text-dark fw-normal" t-esc="cert.symbol"/></td>
                                     
                                     <td class="px-4 py-3">
                                         <div style="width: 50px; height: 6px; border-radius: 3px;" t-attf-style="background-color: #{cert.fund_color};"></div>
                                     </td>
                                     
-                                    <td class="px-4 py-3"><span class="fw-semibold text-success" t-esc="formatCurrency(cert.current_nav)"/> <small class="text-muted">VND</small></td> <!-- Giữ lại cho hiển thị, nhưng không dùng để tính toán -->
+                                    <td class="px-4 py-3"><span class="fw-semibold text-success" t-esc="formatCurrency(cert.current_price or cert.reference_price or 0)"/> <small class="text-muted">VND</small></td>
                                     <td class="px-4 py-3"><span class="text-muted" t-esc="cert.product_type"/></td>
                                     <td class="px-4 py-3">
                                         <span t-if="cert.product_status === 'Đang hoạt động'" class="badge rounded-pill bg-success-subtle text-success px-3 py-2"><i class="fas fa-check-circle me-1"></i>Đã duyệt</span>
@@ -171,7 +173,7 @@ class FundCertificateWidget extends Component {
                                             <button t-on-click="() => this.handleEdit(cert.id)" class="btn btn-sm btn-light border">
                                                 <i class="fas fa-edit me-1"></i>Sửa
                                             </button>
-                                            <button t-on-click="() => this.confirmDelete(cert.id, cert.full_name)" class="btn btn-sm btn-outline-danger">
+                                            <button t-on-click="() => this.confirmDelete(cert.id, cert.short_name_vn or cert.symbol)" class="btn btn-sm btn-outline-danger">
                                                 <i class="fas fa-trash me-1"></i>Xóa
                                             </button>
                                         </div>
@@ -209,22 +211,22 @@ class FundCertificateWidget extends Component {
                                     <div class="flex-grow-1">
                                         <div class="d-flex justify-content-between align-items-start mb-2">
                                             <div>
-                                                <h6 class="fw-bold mb-0" t-esc="cert.full_name"/>
-                                                <small class="text-muted" t-esc="cert.short_name"/>
+                                                <h6 class="fw-bold mb-0" t-esc="cert.short_name_vn or cert.symbol"/>
+                                                <small class="text-muted" t-esc="cert.symbol"/>
                                             </div>
                                             <span t-if="cert.product_status === 'Đang hoạt động'" class="badge bg-success-subtle text-success">Đã duyệt</span>
                                             <span t-else="" class="badge bg-danger-subtle text-danger">Ngừng HĐ</span>
                                         </div>
                                         <div class="d-flex justify-content-between align-items-end">
                                             <div>
-                                                <div class="small text-muted">NAV</div>
-                                                <div class="fw-bold text-success" t-esc="formatCurrency(cert.current_nav)"/> <!-- Giữ lại cho hiển thị, nhưng không dùng để tính toán -->
+                                                <div class="small text-muted">Giá hiện tại</div>
+                                                <div class="fw-bold text-success" t-esc="formatCurrency(cert.current_price or cert.reference_price or 0)"/>
                                             </div>
                                             <div class="d-flex gap-2">
                                                 <button t-on-click="() => this.handleEdit(cert.id)" class="btn btn-sm btn-light border px-3 py-2">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                <button t-on-click="() => this.confirmDelete(cert.id, cert.full_name)" class="btn btn-sm btn-outline-danger px-3 py-2">
+                                                <button t-on-click="() => this.confirmDelete(cert.id, cert.short_name_vn or cert.symbol)" class="btn btn-sm btn-outline-danger px-3 py-2">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </div>
@@ -346,6 +348,10 @@ class FundCertificateWidget extends Component {
         onMounted(() => {
             this.loadFundData();
         });
+
+        onWillUnmount(() => {
+            // nothing
+        });
     }
 
     get totalPages() {
@@ -393,7 +399,6 @@ class FundCertificateWidget extends Component {
             console.error("Error fetching fund certificates:", error);
             this.state.certificates = [];
             this.state.totalRecords = 0;
-            // You should show an error message to the user here
         } finally {
             this.state.loading = false;
         }
@@ -442,28 +447,20 @@ class FundCertificateWidget extends Component {
         }
         
         const selectedIds = Array.from(this.state.selectedIds);
-        // In a real app, you would show a custom modal instead of confirm()
         if (confirm(`Bạn có chắc muốn ${action} ${selectedCount} mục đã chọn?`)) {
             console.log(`Performing action '${action}' on IDs:`, selectedIds);
-            // TODO: Call backend API to perform the bulk action
-            // After success, reload data:
-            // this.loadFundData();
         }
     }
 
     confirmDelete(certId, certName) {
         this.state.deleteTarget.id = certId;
         this.state.deleteTarget.name = certName;
-        
-        // Show Bootstrap modal
         const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
         modal.show();
     }
 
     async handleDelete() {
         if (!this.state.deleteTarget.id) return;
-
-        // Lấy modal instance trước khi gọi async
         const modalElement = document.getElementById('deleteConfirmModal');
         const modal = bootstrap.Modal.getInstance(modalElement);
 
@@ -479,21 +476,16 @@ class FundCertificateWidget extends Component {
                 })
             });
 
-            // Luôn ẩn modal sau khi có phản hồi
             if (modal) {
                 modal.hide();
             }
 
-            // Cố gắng phân tích nội dung JSON từ phản hồi
             const result = await response.json().catch(() => null);
-
-            // Kiểm tra nếu request thành công (status 2xx) và nội dung trả về báo thành công
             if (response.ok && result && result.success) {
                 this.state.toastMessage = result.message || `Đã xóa thành công "${this.state.deleteTarget.name}"`;
                 this.showToast();
                 await this.loadFundData();
             } else {
-                // Xử lý các trường hợp lỗi
                 const errorMessage = result ? result.error : `Lỗi từ máy chủ (HTTP ${response.status})`;
                 console.error('Delete failed:', errorMessage);
                 alert(`Lỗi khi xóa: ${errorMessage || 'Không thể kết nối hoặc phản hồi không hợp lệ.'}`);
@@ -501,13 +493,11 @@ class FundCertificateWidget extends Component {
 
         } catch (error) {
             console.error('Error during delete operation:', error);
-            // Đảm bảo modal được đóng nếu có lỗi mạng xảy ra
             if (modal && modal._isShown) {
                 modal.hide();
             }
             alert(`Có lỗi ngoại lệ xảy ra khi xóa: ${error.message}`);
         } finally {
-            // Luôn reset mục tiêu xóa
             this.state.deleteTarget.id = null;
             this.state.deleteTarget.name = '';
         }
