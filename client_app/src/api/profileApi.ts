@@ -1,4 +1,5 @@
 import { apiService } from '../config/apiService';
+import { API_ENDPOINTS } from '../config/apiConfig';
 import { ApiResponse } from '../types/api';
 
 // Profile API functions theo api_current.md
@@ -41,7 +42,7 @@ export interface AddressInfo {
 
 // Personal Profile methods
 
-// Get personal profile using /data_personal_profile
+// Get personal profile - dùng middleware endpoint
 export const getPersonalProfile = async (): Promise<PersonalProfile[]> => {
   try {
     const response = await apiService.getProfile();
@@ -124,7 +125,7 @@ export const updatePersonalProfile = async (data: {
     console.log('📤 [ProfileAPI] Sending personal profile data:', mappedData);
     console.log('🔍 [ProfileAPI] id_type in mappedData:', mappedData.id_type);
     console.log('🔍 [ProfileAPI] All keys in mappedData:', Object.keys(mappedData));
-    const response = await apiService.post('/profile/save_personal_profile', mappedData);
+    const response = await apiService.updateProfile(mappedData);
     return response;
   } catch (error) {
     console.error('Error updating personal profile:', error);
@@ -145,7 +146,7 @@ export const getBankInfo = async (): Promise<BankInfo[]> => {
   }
 };
 
-// Update bank information using /save_bank_info
+// Update bank information - dùng middleware endpoint
 export const updateBankInfo = async (data: {
   account_holder: string;
   account_number: string;
@@ -174,7 +175,7 @@ export const getAddressInfo = async (): Promise<AddressInfo[]> => {
   }
 };
 
-// Update address information using /save_address_info
+// Update address information - dùng middleware endpoint
 export const updateAddressInfo = async (data: {
   street: string;
   ward: string;
@@ -184,13 +185,13 @@ export const updateAddressInfo = async (data: {
   postal_code: string;
 }): Promise<ApiResponse> => {
   try {
-    const response = await apiService.post('/profile/save_address_info', {
+    const response = await apiService.updateAddress({
       street: data.street,
-      ward: data.ward,
-      district: data.district,
       city: data.city,
+      state: data.district, // Map district to state
+      zip_code: data.postal_code,
       country: data.country,
-      postal_code: data.postal_code
+      address_type: 'residential' // Default
     });
     return response;
   } catch (error) {
@@ -200,16 +201,41 @@ export const updateAddressInfo = async (data: {
 };
 
 // Upload ID image using /upload_id_image
-export const uploadIdImage = async (idFront: File, idBack: File): Promise<ApiResponse> => {
+export const uploadIdImage = async (idFront: File | string, idBack: File | string): Promise<ApiResponse> => {
   try {
     const formData = new FormData();
-    formData.append('id_front', idFront);
-    formData.append('id_back', idBack);
+    if (typeof idFront === 'string') {
+      // If it's a base64 string, convert to blob
+      const response = await fetch(idFront);
+      const blob = await response.blob();
+      formData.append('id_front', blob, 'id_front.jpg');
+    } else {
+      formData.append('id_front', idFront);
+    }
     
-    const response = await apiService.post('/upload_id_image', formData);
+    if (typeof idBack === 'string') {
+      const response = await fetch(idBack);
+      const blob = await response.blob();
+      formData.append('id_back', blob, 'id_back.jpg');
+    } else {
+      formData.append('id_back', idBack);
+    }
+    
+    const response = await apiService.uploadIdImage(formData);
     return response;
   } catch (error) {
     console.error('Error uploading ID images:', error);
+    throw error;
+  }
+};
+
+// Get verification data using /data_verification
+export const getVerificationData = async (): Promise<any> => {
+  try {
+    const response = await apiService.getVerificationData();
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching verification data:', error);
     throw error;
   }
 };
@@ -221,15 +247,27 @@ export const saveAllProfileData = async (data: {
   address_info: Partial<AddressInfo>;
 }): Promise<ApiResponse> => {
   try {
-    const response = await apiService.verifyAccount({
-      id_number: data.personal_info.id_number || '',
-      id_type: data.personal_info.id_type || '',
-      id_issue_date: data.personal_info.id_issue_date || '',
-      id_issue_place: data.personal_info.id_issue_place || ''
+    const response = await apiService.post(API_ENDPOINTS.PROFILE.SAVE_ALL, {
+      personal_info: data.personal_info,
+      bank_info: data.bank_info,
+      address_info: data.address_info,
     });
     return response;
   } catch (error) {
     console.error('Error saving all profile data:', error);
     throw error;
   }
+};
+
+// Profile API object for easier importing
+export const profileApi = {
+  getPersonalProfile,
+  updatePersonalProfile,
+  getBankInfo,
+  updateBankInfo,
+  getAddressInfo,
+  updateAddressInfo,
+  uploadIdImage,
+  getVerificationData,
+  saveAllProfileData,
 }; 

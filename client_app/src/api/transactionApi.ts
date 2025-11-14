@@ -68,11 +68,11 @@ export const getTransactionOrders = async (params?: {
   }
 };
 
-// Get pending transactions using middleware endpoint
+// Get pending transactions - dùng middleware endpoint
 export const getPendingTransactions = async (forceRefresh = false): Promise<Transaction[]> => {
   try {
     console.log(`🔗 [TransactionApi] Getting pending transactions${forceRefresh ? ' (force refresh)' : ''}...`);
-    const response = await apiService.get('/transaction/pending', undefined, forceRefresh);
+    const response = await apiService.getPendingTransactions();
     return (response.data as Transaction[]) || [];
   } catch (error) {
     console.error('❌ [TransactionApi] Error fetching pending transactions:', error);
@@ -80,12 +80,12 @@ export const getPendingTransactions = async (forceRefresh = false): Promise<Tran
   }
 };
 
-// Get periodic transactions - placeholder for now  
+// Get periodic transactions using /transaction_management/periodic
 export const getPeriodicTransactions = async (): Promise<Transaction[]> => {
   try {
-    console.log('🔗 [TransactionApi] Getting periodic transactions (placeholder)...');
-    // TODO: Implement when periodic endpoint is available
-    return [];
+    console.log('🔗 [TransactionApi] Getting periodic transactions...');
+    const response = await apiService.getPeriodicTransactions();
+    return (response.data as Transaction[]) || [];
   } catch (error) {
     console.error('❌ [TransactionApi] Error fetching periodic transactions:', error);
     throw error;
@@ -121,7 +121,7 @@ export const getBalanceHistory = async (params?: {
   }
 };
 
-// Get transaction history using middleware endpoint
+// Get transaction history - dùng middleware endpoint
 export const getTransactionHistory = async (forceRefresh = false, params?: {
   page?: number;
   limit?: number;
@@ -130,9 +130,13 @@ export const getTransactionHistory = async (forceRefresh = false, params?: {
 }): Promise<Transaction[]> => {
   try {
     console.log(`🔗 [TransactionApi] Getting transaction history${forceRefresh ? ' (force refresh)' : ''}...`);
-    const queryParams = params ? new URLSearchParams(params as any).toString() : '';
+    const queryParams = params ? new URLSearchParams({
+      ...params,
+      startDate: params.startDate || '',
+      endDate: params.endDate || ''
+    } as any).toString() : '';
     const url = `/transaction/history${queryParams ? `?${queryParams}` : ''}`;
-    const response = await apiService.get(url, undefined, forceRefresh);
+    const response = await apiService.get(url);
     return (response.data as Transaction[]) || [];
   } catch (error) {
     console.error('❌ [TransactionApi] Error fetching transaction history:', error);
@@ -175,6 +179,17 @@ export const getStatusInfo = async (): Promise<any> => {
   }
 };
 
+// Get portfolio widget using /portfolio_widget
+export const getPortfolioWidget = async () => {
+  try {
+    const response = await apiService.getPortfolioWidget();
+    return response;
+  } catch (error) {
+    console.error('Error fetching portfolio widget:', error);
+    throw error;
+  }
+};
+
 // Asset Management methods
 
 // Get asset management using /asset-management
@@ -200,4 +215,5 @@ export const transactionApi = {
   getCurrencies,
   getStatusInfo,
   getAssetManagement,
+  getPortfolioWidget,
 }; 

@@ -17,7 +17,7 @@ NODE_ENV=development
 
 # Odoo Backend Configuration
 ODOO_BASE_URL=https://ff08e2fb94f3.ngrok-free.app
-ODOO_DATABASE=p2p
+ODOO_DATABASE=anfan
 ODOO_USERNAME=admin
 ODOO_PASSWORD=admin
 

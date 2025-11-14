@@ -1,50 +1,120 @@
-# Welcome to your Expo app 👋
+# Fund P2P Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Ứng dụng mobile React Native (Expo) để kết nối với Odoo 18 backend.
 
-## Get started
+## Cấu hình
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. Cài đặt dependencies
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Cấu hình API Backend
 
-## Learn more
+App tự động detect môi trường và sử dụng IP phù hợp:
 
-To learn more about developing your project with Expo, look at the following resources:
+- **Android Emulator**: Tự động dùng `10.0.2.2` để truy cập máy host
+- **iOS Simulator**: Tự động dùng `localhost`
+- **Physical Device**: Cần cấu hình IP của máy chạy Odoo
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+#### Cách cấu hình IP cho Physical Device:
 
-## Join the community
+**Option 1: Sử dụng Environment Variables (Khuyến nghị)**
 
-Join our community of developers creating universal apps.
+Tạo file `.env` trong thư mục `client_app`:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```env
+EXPO_PUBLIC_API_IP=192.168.1.4
+EXPO_PUBLIC_USE_MIDDLEWARE=true
+EXPO_PUBLIC_ENV=development
+```
+
+**Option 2: Cấu hình trong app.json**
+
+Sửa file `app.json`, phần `extra.apiIp`:
+
+```json
+{
+  "expo": {
+    "extra": {
+      "apiIp": "192.168.1.4"
+    }
+  }
+}
+```
+
+**Lấy IP của máy tính:**
+
+- Windows: `ipconfig | findstr IPv4`
+- Mac/Linux: `ifconfig | grep "inet "`
+
+### 3. Đảm bảo Odoo Backend đang chạy
+
+Odoo backend cần chạy trên:
+- **Port 11018** (local development) - mapped từ container port 8069
+- **Port 3001** (API Middleware) - nếu sử dụng middleware
+
+Kiểm tra Odoo đang chạy:
+```bash
+cd ../odoo-18-docker-compose
+docker-compose up -d
+```
+
+### 4. Chạy ứng dụng
+
+```bash
+npx expo start
+```
+
+Sau đó chọn:
+- `a` - Mở trên Android emulator/device
+- `i` - Mở trên iOS simulator/device
+- `w` - Mở trên web browser
+
+## Cấu trúc kết nối
+
+```
+Mobile App (client_app)
+    ↓
+API Middleware (port 3001) [Nếu USE_MIDDLEWARE=true]
+    ↓
+Odoo 18 Backend (port 11018/8069)
+    ↓
+PostgreSQL Database
+```
+
+## Troubleshooting
+
+### Không kết nối được từ physical device
+
+1. Đảm bảo mobile và máy tính cùng mạng WiFi
+2. Kiểm tra firewall không chặn port 11018, 3001
+3. Cập nhật IP trong `.env` hoặc `app.json`
+4. Restart Expo: `npx expo start --clear`
+
+### Android Emulator không kết nối được
+
+- App tự động dùng `10.0.2.2` cho Android emulator
+- Nếu vẫn lỗi, kiểm tra Odoo có chạy trên máy host không
+
+### iOS Simulator không kết nối được
+
+- App tự động dùng `localhost` cho iOS simulator
+- Đảm bảo Odoo chạy trên localhost
+
+## Development
+
+- **File cấu hình API**: `src/config/apiConfig.ts`
+- **API Service**: `src/config/apiService.ts`
+- **Endpoints**: Được định nghĩa trong `src/config/apiConfig.ts`
+
+## Production
+
+Để deploy production, cập nhật:
+
+```env
+EXPO_PUBLIC_ENV=production
+EXPO_PUBLIC_API_URL=https://your-production-api.com
+EXPO_PUBLIC_USE_MIDDLEWARE=true
+```

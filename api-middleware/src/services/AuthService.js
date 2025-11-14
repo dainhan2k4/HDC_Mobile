@@ -42,6 +42,9 @@ class AuthService extends BaseOdooService {
    */
   async authenticate() {
     try {
+      console.log(`🔐 [AuthService] Authenticating with Odoo...`);
+      console.log(`🔐 [AuthService] Database: ${this.database}, Username: ${this.username}`);
+      
       const response = await this.client.post('/web/session/authenticate', {
         jsonrpc: '2.0',
         method: 'call',
@@ -59,20 +62,27 @@ class AuthService extends BaseOdooService {
       if (data.result && data.result.session_id) {
         const sessionId = data.result.session_id;
         this.setSessionId(sessionId);
-        return { success: true, sessionId };
+        console.log(`✅ [AuthService] Authentication successful, session ID: ${sessionId.substring(0, 10)}...`);
+        return { success: true, sessionId, uid: data.result.uid };
       }
 
       // Try to get session from cookies
       if (setCookie) {
         const sessionId = this.extractSessionFromCookies(setCookie);
-          if (sessionId) {
-            this.setSessionId(sessionId);
+        if (sessionId) {
+          this.setSessionId(sessionId);
+          console.log(`✅ [AuthService] Authentication successful (from cookie), session ID: ${sessionId.substring(0, 10)}...`);
           return { success: true, sessionId };
         }
       }
 
-      return { success: false, error: 'Authentication failed' };
+      console.error(`❌ [AuthService] Authentication failed - no session ID found`);
+      return { success: false, error: 'Authentication failed - no session ID' };
     } catch (error) {
+      console.error(`❌ [AuthService] Authentication error: ${error.message}`);
+      if (error.code === 'ECONNRESET' || error.code === 'ECONNREFUSED') {
+        console.error(`❌ [AuthService] Cannot connect to Odoo at ${this.baseUrl}. Is Odoo running?`);
+      }
       return { success: false, error: error.message };
     }
   }
@@ -83,7 +93,8 @@ class AuthService extends BaseOdooService {
   async getValidSession() {
     const sessionId = this.getSessionId();
     
-    if (!sessionId) {
+    if (!sessionId || sessionId === 'undefined') {
+      console.log('🔐 [AuthService] No session found, authenticating...');
       return await this.authenticate();
     }
 
@@ -99,12 +110,15 @@ class AuthService extends BaseOdooService {
 
       const sessionInfo = response.data.result;
       if (sessionInfo && sessionInfo.uid && sessionInfo.uid !== false) {
-        return { success: true, sessionId, sessionInfo };
+        console.log(`✅ [AuthService] Session valid for user ${sessionInfo.uid}`);
+        return { success: true, sessionId, sessionInfo, uid: sessionInfo.uid };
       }
 
       // Session invalid, re-authenticate
+      console.log('⚠️ [AuthService] Session invalid, re-authenticating...');
       return await this.authenticate();
     } catch (error) {
+      console.log(`⚠️ [AuthService] Session test failed: ${error.message}, re-authenticating...`);
       return await this.authenticate();
     }
   }

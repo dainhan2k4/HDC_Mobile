@@ -1,3 +1,5 @@
+# HDC_Mobile
+
 ## Hệ thống Quản lý Danh mục Đầu tư (Odoo + Middleware + Mobile)
 
 ### Tổng quan

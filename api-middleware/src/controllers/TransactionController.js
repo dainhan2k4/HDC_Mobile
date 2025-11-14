@@ -307,6 +307,176 @@ class TransactionController {
       });
     }
   }
+
+  // ===== Transaction List via Odoo Controllers =====
+
+  async getTransactionListData(req, res) {
+    console.log('📋 [TransactionController] Proxy transaction-list data...');
+    try {
+      const data = await this.odooService.transactionService.getTransactionListData(req.body || {});
+      res.json({ success: true, data, count: Array.isArray(data) ? data.length : undefined });
+    } catch (error) {
+      console.error('❌ [TransactionController] transaction-list data error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to get transaction list data' });
+    }
+  }
+
+  async getTransactionListStats(req, res) {
+    console.log('📊 [TransactionController] Proxy transaction-list stats...');
+    try {
+      const data = await this.odooService.transactionService.getTransactionListStats(req.body || {});
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] transaction-list stats error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to get transaction list stats' });
+    }
+  }
+
+  async getTransactionDetailsFromController(req, res) {
+    console.log('🔍 [TransactionController] Proxy get-transaction-details...');
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({ success: false, error: 'Transaction ID is required' });
+      }
+      const data = await this.odooService.transactionService.getTransactionDetailsFromController(parseInt(id));
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] transaction-details error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to get transaction details' });
+    }
+  }
+
+  // ===== Order Book =====
+  async getOrderBook(req, res) {
+    console.log('📒 [TransactionController] Proxy order-book...');
+    try {
+      const data = await this.odooService.transactionService.getOrderBook(req.body || {});
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] order-book error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to get order book' });
+    }
+  }
+
+  async getOrderBookFunds(req, res) {
+    console.log('💰 [TransactionController] Proxy order-book funds...');
+    try {
+      const data = await this.odooService.transactionService.getOrderBookFunds(req.body || {});
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] order-book funds error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to get order book funds' });
+    }
+  }
+
+  async getCompletedOrders(req, res) {
+    console.log('✅ [TransactionController] Proxy completed orders...');
+    try {
+      const data = await this.odooService.transactionService.getCompletedOrders(req.body || {});
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] completed orders error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to get completed orders' });
+    }
+  }
+
+  async getNegotiatedOrders(req, res) {
+    console.log('🤝 [TransactionController] Proxy negotiated orders...');
+    try {
+      const data = await this.odooService.transactionService.getNegotiatedOrders(req.body || {});
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] negotiated orders error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to get negotiated orders' });
+    }
+  }
+
+  // ===== Partial Matching =====
+  async pmCreateEngine(req, res) {
+    try {
+      const data = await this.odooService.transactionService.pmCreateEngine(req.body || {});
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] pmCreateEngine error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to create engine' });
+    }
+  }
+
+  async pmAddOrder(req, res) {
+    try {
+      const data = await this.odooService.transactionService.pmAddOrder(req.body || {});
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] pmAddOrder error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to add order' });
+    }
+  }
+
+  async pmProcessAll(req, res) {
+    try {
+      const data = await this.odooService.transactionService.pmProcessAll(req.body || {});
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] pmProcessAll error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to process all' });
+    }
+  }
+
+  async pmQueueStatus(req, res) {
+    try {
+      const data = await this.odooService.transactionService.pmQueueStatus(req.body || {});
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] pmQueueStatus error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to get queue status' });
+    }
+  }
+
+  async pmClearQueue(req, res) {
+    try {
+      const data = await this.odooService.transactionService.pmClearQueue(req.body || {});
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] pmClearQueue error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to clear queue' });
+    }
+  }
+
+  async pmListEngines(_req, res) {
+    try {
+      const data = await this.odooService.transactionService.pmListEngines();
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] pmListEngines error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to list engines' });
+    }
+  }
+
+  async pmCleanup(req, res) {
+    try {
+      const data = await this.odooService.transactionService.pmCleanup(req.body || {});
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] pmCleanup error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to cleanup' });
+    }
+  }
+
+  // ===== Contract Download =====
+  async downloadContract(req, res) {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({ success: false, error: 'Transaction ID is required' });
+      }
+      const data = await this.odooService.transactionService.downloadContract(parseInt(id));
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('❌ [TransactionController] downloadContract error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to download contract' });
+    }
+  }
 }
 
 module.exports = TransactionController; 

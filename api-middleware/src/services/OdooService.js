@@ -128,6 +128,34 @@ class OdooService {
     return this.fundService.getFundCategories();
   }
 
+  /**
+   * Get fund comparison data
+   */
+  async getFundComparison(fundIds) {
+    return this.fundService.getFundComparison(fundIds);
+  }
+
+  /**
+   * Get fund chart data for a specific fund
+   */
+  async getFundChartData(fundId, timeRange = '1M') {
+    return this.fundService.getFundChartData(fundId, timeRange);
+  }
+
+  /**
+   * Get fund OHLC data for candlestick chart
+   */
+  async getFundOHLC(ticker, timeRange = '1D') {
+    return this.fundService.getFundOHLC(ticker, timeRange);
+  }
+
+  /**
+   * Get term rates (kỳ hạn và lãi suất)
+   */
+  async getTermRates() {
+    return this.fundService.getTermRates();
+  }
+
   // ====================
   // Investment Methods
   // ====================
@@ -137,6 +165,17 @@ class OdooService {
    */
   async getInvestments() {
     return this.investmentService.getInvestments();
+  }
+
+  async submitFundSell(params) {
+    return this.investmentService.submitFundSell(params);
+  }
+
+  /**
+   * Get portfolio dashboard từ controller
+   */
+  async getInvestmentDashboard() {
+    return this.investmentService.getInvestmentDashboard();
   }
 
   /**
@@ -257,6 +296,19 @@ class OdooService {
    */
   async getTransactions(filters) {
     return this.transactionService.getTransactions(filters);
+  }
+
+  /**
+   * Get transactions từ controller endpoints
+   */
+  async getOrdersFromController() {
+    return this.transactionService.getOrdersFromController();
+  }
+  async getPendingFromController() {
+    return this.transactionService.getPendingFromController();
+  }
+  async getPeriodicFromController() {
+    return this.transactionService.getPeriodicFromController();
   }
 
   /**

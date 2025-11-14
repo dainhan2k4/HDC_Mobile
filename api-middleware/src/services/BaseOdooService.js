@@ -79,19 +79,30 @@ class BaseOdooService {
     try {
       // Ensure valid session for authenticated calls
       if (requireAuth && this.authService) {
-        await this.authService.getValidSession();
+        const sessionResult = await this.authService.getValidSession();
+        if (!sessionResult || !sessionResult.success) {
+          throw new Error('Authentication failed. Cannot proceed with authenticated request.');
+        }
       }
 
+      // Get session ID after authentication
+      const sessionId = this.getSessionId();
+      
       // Merge custom headers với default headers
       const requestHeaders = {
         'ngrok-skip-browser-warning': 'true',
-        'Cookie': `session_id=${this.getSessionId()}`,
         ...headers // Custom headers từ options
       };
+
+      // Only add Cookie header if we have a valid session ID
+      if (sessionId && sessionId !== 'undefined') {
+        requestHeaders['Cookie'] = `session_id=${sessionId}`;
+      }
 
       console.log(`🔗 [BaseOdooService] ${method} ${endpoint}`);
       console.log(`📦 [BaseOdooService] Headers:`, requestHeaders);
       console.log(`📦 [BaseOdooService] Data:`, data);
+      console.log(`🔐 [BaseOdooService] Session ID:`, sessionId ? `${sessionId.substring(0, 10)}...` : 'none');
 
       const response = await this.client.request({
         headers: requestHeaders,
@@ -105,6 +116,10 @@ class BaseOdooService {
       return response.data;
     } catch (error) {
       console.error(`❌ [BaseOdooService] API call failed: ${endpoint}`, error.message);
+      if (error.code === 'ECONNRESET' || error.code === 'ECONNREFUSED') {
+        console.error(`❌ [BaseOdooService] Connection error - Odoo may be restarting or not available`);
+        console.error(`❌ [BaseOdooService] Check if Odoo is running at ${this.baseUrl}`);
+      }
       if (error.response) {
         console.error(`❌ [BaseOdooService] Response status:`, error.response.status);
         console.error(`❌ [BaseOdooService] Response data:`, error.response.data);

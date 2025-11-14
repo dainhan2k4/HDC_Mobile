@@ -1,5 +1,6 @@
 const BaseOdooService = require('./BaseOdooService');
 const AuthService = require('./AuthService');
+const { JSDOM } = require('jsdom');
 
 class InvestmentService extends BaseOdooService {
   constructor(authService = null) {
@@ -47,6 +48,221 @@ class InvestmentService extends BaseOdooService {
       console.error('❌ [InvestmentService] Error details:', error);
       return [];
     }
+  }
+
+  async submitFundSell({ investmentId, quantity, estimatedValue, debug = false }) {
+    try {
+      console.log('🔗 [InvestmentService] Submitting fund sell:', {
+        investmentId,
+        quantity,
+        estimatedValue,
+        debug
+      });
+
+      if (!investmentId) {
+        throw new Error('Missing investmentId');
+      }
+      if (!quantity || Number.isNaN(Number(quantity))) {
+        throw new Error('Invalid quantity');
+      }
+
+      await this.authService.getValidSession();
+
+      const formData = new URLSearchParams();
+      formData.append('investment_id', investmentId.toString());
+      formData.append('quantity', quantity.toString());
+      if (typeof estimatedValue === 'number' && !Number.isNaN(estimatedValue)) {
+        formData.append('estimated_value', estimatedValue.toString());
+      }
+      if (debug) {
+        formData.append('debug', 'true');
+      }
+
+      const response = await this.apiCall('/submit_fund_sell', {
+        method: 'POST',
+        requireAuth: true,
+        data: formData.toString(),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
+
+      let result = response;
+      if (typeof response === 'string') {
+        try {
+          result = JSON.parse(response);
+        } catch (parseError) {
+          console.warn('⚠️ [InvestmentService] Failed to parse sell response JSON:', parseError.message);
+        }
+      }
+
+      if (!result || result.success === false) {
+        throw new Error(result?.message || 'Failed to submit fund sell');
+      }
+
+      this.deleteCachedData('investments_data');
+      this.deleteCachedData('portfolio_data');
+      this.deleteCachedData('overview_data');
+
+      console.log('✅ [InvestmentService] Fund sell submitted successfully');
+      return result;
+    } catch (error) {
+      console.error('❌ [InvestmentService] submitFundSell error:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get portfolio dashboard từ Odoo controller /investment_dashboard
+   * Parse HTML để extract window.allDashboardData
+   */
+  async getInvestmentDashboard() {
+    try {
+      console.log('🔗 [InvestmentService] Calling /investment_dashboard endpoint...');
+      const html = await this.apiCall('/investment_dashboard', { requireAuth: true });
+      
+      // Parse HTML để extract window.allDashboardData
+      const dom = new JSDOM(html);
+      const scripts = dom.window.document.querySelectorAll('script');
+      
+      let dashboardData = null;
+      
+      for (const script of scripts) {
+        if (script.textContent.includes('window.allDashboardData')) {
+          // Tìm pattern: window.allDashboardData = {...};
+          // Sử dụng non-greedy match với multiline support
+          const match = script.textContent.match(/window\.allDashboardData\s*=\s*(\{[\s\S]*?\});?\s*$/m);
+          if (match && match[1]) {
+            try {
+              dashboardData = JSON.parse(match[1]);
+              console.log('✅ [InvestmentService] Extracted dashboard data from HTML');
+              break;
+            } catch (parseError) {
+              // Thử cách khác: tìm từ vị trí window.allDashboardData đến cuối script
+              try {
+                const startIndex = script.textContent.indexOf('window.allDashboardData');
+                if (startIndex !== -1) {
+                  const assignmentStart = script.textContent.indexOf('=', startIndex);
+                  if (assignmentStart !== -1) {
+                    // Tìm JSON object từ vị trí =, bỏ qua whitespace
+                    let jsonStart = assignmentStart + 1;
+                    while (jsonStart < script.textContent.length && /\s/.test(script.textContent[jsonStart])) {
+                      jsonStart++;
+                    }
+                    
+                    // Tìm closing brace tương ứng
+                    let braceCount = 0;
+                    let jsonEnd = jsonStart;
+                    let inString = false;
+                    let escapeNext = false;
+                    
+                    for (let i = jsonStart; i < script.textContent.length; i++) {
+                      const char = script.textContent[i];
+                      
+                      if (escapeNext) {
+                        escapeNext = false;
+                        continue;
+                      }
+                      
+                      if (char === '\\') {
+                        escapeNext = true;
+                        continue;
+                      }
+                      
+                      if (char === '"' && !escapeNext) {
+                        inString = !inString;
+                        continue;
+                      }
+                      
+                      if (!inString) {
+                        if (char === '{') braceCount++;
+                        if (char === '}') {
+                          braceCount--;
+                          if (braceCount === 0) {
+                            jsonEnd = i + 1;
+                            break;
+                          }
+                        }
+                      }
+                    }
+                    
+                    if (braceCount === 0 && jsonEnd > jsonStart) {
+                      const jsonStr = script.textContent.substring(jsonStart, jsonEnd);
+                      dashboardData = JSON.parse(jsonStr);
+                      console.log('✅ [InvestmentService] Extracted dashboard data using brace matching');
+                      break;
+                    }
+                  }
+                }
+              } catch (fallbackError) {
+                console.error('❌ [InvestmentService] Failed to parse dashboard data (fallback):', fallbackError.message);
+              }
+            }
+          }
+        }
+      }
+      
+      if (!dashboardData) {
+        console.warn('⚠️ [InvestmentService] window.allDashboardData not found in HTML, returning empty data');
+        return {
+          funds: [],
+          transactions: [],
+          total_investment: 0,
+          total_current_value: 0,
+          total_profit_loss: 0,
+          total_profit_loss_percentage: 0,
+          chart_data: '{}',
+          comparisons: []
+        };
+      }
+      
+      // Transform data để khớp với format mong đợi
+      const transformed = {
+        totalInvestment: dashboardData.total_investment || 0,
+        totalCurrentValue: dashboardData.total_current_value || 0,
+        totalProfitLoss: dashboardData.total_profit_loss || 0,
+        totalProfitLossPercentage: dashboardData.total_profit_loss_percentage || 0,
+        total_investment: dashboardData.total_investment || 0,
+        total_current_value: dashboardData.total_current_value || 0,
+        total_profit_loss: dashboardData.total_profit_loss || 0,
+        total_profit_loss_percentage: dashboardData.total_profit_loss_percentage || 0,
+        funds: dashboardData.funds || [],
+        transactions: dashboardData.transactions || [],
+        allocation: this.calculateAllocationFromFunds(dashboardData.funds || []),
+        chart_data: dashboardData.chart_data || '{}',
+        comparisons: dashboardData.comparisons || [],
+        lastUpdated: new Date().toISOString()
+      };
+      
+      console.log('✅ [InvestmentService] /investment_dashboard OK - transformed data');
+      return transformed;
+    } catch (error) {
+      console.error('❌ [InvestmentService] Failed to get /investment_dashboard:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate allocation từ funds data
+   */
+  calculateAllocationFromFunds(funds) {
+    if (!Array.isArray(funds) || funds.length === 0) {
+      return [];
+    }
+    
+    const totalValue = funds.reduce((sum, fund) => sum + (fund.current_value || 0), 0);
+    
+    if (totalValue === 0) {
+      return [];
+    }
+    
+    return funds.map(fund => ({
+      fund_ticker: fund.ticker || '',
+      fund_name: fund.name || '',
+      investment_type: fund.investment_type || 'equity',
+      value: fund.current_value || 0,
+      percentage: totalValue > 0 ? ((fund.current_value || 0) / totalValue) * 100 : 0
+    }));
   }
 
   /**

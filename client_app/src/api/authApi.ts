@@ -59,7 +59,7 @@ export const signup = async (userData: SignupData): Promise<OtpResponse> => {
 // Request OTP for email using /web/signup/otp
 export const requestOtp = async (email: string): Promise<OtpResponse> => {
   try {
-    const response = await apiService.post('/web/signup/otp', { email });
+    const response = await apiService.requestSignupOtp(email);
     return response as OtpResponse;
   } catch (error) {
     console.error('Error requesting OTP:', error);
@@ -70,7 +70,7 @@ export const requestOtp = async (email: string): Promise<OtpResponse> => {
 // Verify OTP using /web/signup/verify-otp
 export const verifyOtp = async (email: string, otp: string): Promise<OtpResponse> => {
   try {
-    const response = await apiService.post('/web/signup/verify-otp', { email, otp });
+    const response = await apiService.verifyOtp(email, otp);
     return response as OtpResponse;
   } catch (error) {
     console.error('Error verifying OTP:', error);

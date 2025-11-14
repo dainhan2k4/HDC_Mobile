@@ -32,7 +32,9 @@ class FundService extends BaseOdooService {
       return funds;
     } catch (error) {
       console.error('❌ [FundService] Failed to get funds:', error.message);
-      throw error;
+      // Return empty array instead of throwing to prevent cascade failures
+      console.log('⚠️ [FundService] Returning empty funds array as fallback');
+      return [];
     }
   }
 
@@ -352,6 +354,230 @@ class FundService extends BaseOdooService {
     } catch (error) {
       console.error('❌ [FundService] Failed to search funds:', error.message);
       return [];
+    }
+  }
+
+  /**
+   * Get term rates (kỳ hạn và lãi suất) from Odoo
+   * Gọi endpoint /api/fund/calc của Odoo
+   */
+  async getTermRates() {
+    try {
+      console.log('📊 [FundService] Getting term rates from /api/fund/calc...');
+      
+      await this.authService.getValidSession();
+      
+      const response = await this.apiCall('/api/fund/calc', {
+        requireAuth: true
+      });
+      
+      console.log('📊 [FundService] Term rates response:', typeof response, Array.isArray(response));
+      
+      // Parse JSON response if needed
+      let data;
+      if (typeof response === 'string') {
+        try {
+          data = JSON.parse(response);
+        } catch (parseError) {
+          console.error('❌ [FundService] Failed to parse term rates JSON:', parseError.message);
+          throw parseError;
+        }
+      } else {
+        data = response;
+      }
+      
+      // Ensure data is an array
+      const termRates = Array.isArray(data) ? data : [];
+      
+      console.log(`✅ [FundService] Got ${termRates.length} term rates`);
+      return termRates;
+    } catch (error) {
+      console.error('❌ [FundService] Failed to get term rates:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get fund OHLC (Open, High, Low, Close) data for candlestick chart
+   * Gọi endpoint /fund_ohlc của Odoo
+   */
+  async getFundOHLC(ticker, timeRange = '1D') {
+    try {
+      console.log(`📊 [FundService] Getting OHLC data for ticker ${ticker}, range: ${timeRange}`);
+      
+      // Map timeRange từ client format sang Odoo format
+      const rangeMap = {
+        '1D': '1D',
+        '5D': '5D',
+        '1M': '1M',
+        '3M': '3M',
+        '6M': '6M',
+        '1Y': '1Y'
+      };
+      const odooRange = rangeMap[timeRange] || '1D';
+      
+      const response = await this.apiCall(`/fund_ohlc?ticker=${encodeURIComponent(ticker)}&range=${odooRange}`, {
+        requireAuth: false
+      });
+      
+      console.log(`📊 [FundService] Raw response type: ${typeof response}, is string: ${typeof response === 'string'}`);
+      
+      // Parse JSON response
+      let data;
+      if (typeof response === 'string') {
+        try {
+          data = JSON.parse(response);
+        } catch (parseError) {
+          console.error('❌ [FundService] Failed to parse JSON response:', parseError.message);
+          console.error('❌ [FundService] Response string:', response.substring(0, 200));
+          throw parseError;
+        }
+      } else {
+        data = response;
+      }
+      
+      console.log(`📊 [FundService] Parsed data:`, {
+        hasStatus: !!data.status,
+        status: data.status,
+        hasData: !!data.data,
+        isArray: Array.isArray(data.data),
+        dataLength: data.data ? data.data.length : 0,
+        firstItem: data.data && data.data.length > 0 ? data.data[0] : null
+      });
+      
+      if (data && data.status === 'Success' && Array.isArray(data.data)) {
+        // Transform Odoo format to client format
+        const candles = data.data.map(item => {
+          // item.t có thể là timestamp (number) hoặc date string (YYYY-MM-DD)
+          let timeLabel = '';
+          if (typeof item.t === 'number') {
+            // Unix timestamp - convert to time string
+            const date = new Date(item.t * 1000);
+            timeLabel = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+          } else {
+            // Date string
+            timeLabel = item.t;
+          }
+          
+          return {
+            time: timeLabel,
+            open: parseFloat(item.o) || 0,
+            high: parseFloat(item.h) || 0,
+            low: parseFloat(item.l) || 0,
+            close: parseFloat(item.c) || 0,
+            volume: parseFloat(item.v) || 0,
+            timestamp: typeof item.t === 'number' ? item.t : item.t
+          };
+        });
+        
+        return {
+          candles,
+          labels: candles.map(c => c.time),
+          timeRange: timeRange
+        };
+      }
+      
+      console.warn(`⚠️ [FundService] No OHLC data found for ticker ${ticker}`);
+      return {
+        candles: [],
+        labels: [],
+        timeRange: timeRange
+      };
+    } catch (error) {
+      console.error(`❌ [FundService] Failed to get OHLC data for ticker ${ticker}:`, error.message);
+      return {
+        candles: [],
+        labels: [],
+        timeRange: timeRange
+      };
+    }
+  }
+
+  /**
+   * Get fund chart data (NAV history) for a specific fund
+   * Parse từ /fund_widget hoặc sử dụng chart_data từ dashboard
+   */
+  async getFundChartData(fundId, timeRange = '1M') {
+    try {
+      console.log(`📈 [FundService] Getting chart data for fund ${fundId}, range: ${timeRange}`);
+      
+      // Thử lấy từ dashboard data trước
+      try {
+        const investmentService = require('./InvestmentService');
+        const invService = new investmentService(this.authService);
+        const dashboard = await invService.getInvestmentDashboard();
+        
+        // Parse chart_data nếu có
+        if (dashboard.chart_data && dashboard.chart_data !== '{}') {
+          let chartData;
+          try {
+            chartData = typeof dashboard.chart_data === 'string' 
+              ? JSON.parse(dashboard.chart_data) 
+              : dashboard.chart_data;
+            
+            // Tìm data cho fund cụ thể
+            if (chartData && chartData[fundId]) {
+              const fundChartData = chartData[fundId];
+              // Map timeRange
+              const rangeMap = {
+                '1M': '1m',
+                '3M': '3m',
+                '6M': '6m',
+                '1Y': '1y'
+              };
+              const odooRange = rangeMap[timeRange] || '1m';
+              
+              if (fundChartData[odooRange]) {
+                const data = fundChartData[odooRange];
+                return {
+                  labels: data.labels || [],
+                  values: data.values || [],
+                  timeRange: timeRange
+                };
+              }
+            }
+          } catch (parseError) {
+            console.warn('⚠️ [FundService] Failed to parse chart_data:', parseError.message);
+          }
+        }
+      } catch (dashboardError) {
+        console.warn('⚠️ [FundService] Failed to get dashboard data:', dashboardError.message);
+      }
+      
+      // Fallback: Gọi /fund_widget và parse HTML
+      try {
+        const html = await this.apiCall('/fund_widget', { requireAuth: false });
+        const { JSDOM } = require('jsdom');
+        const dom = new JSDOM(html);
+        const scripts = dom.window.document.querySelectorAll('script');
+        
+        for (const script of scripts) {
+          // Tìm window.fundChartData hoặc tương tự
+          if (script.textContent.includes('fundChartData') || script.textContent.includes(`fund_${fundId}`)) {
+            // Parse chart data từ script
+            // Implementation tùy vào format của Odoo
+            console.log('📊 [FundService] Found chart data in HTML');
+            // TODO: Parse specific format từ Odoo
+          }
+        }
+      } catch (htmlError) {
+        console.warn('⚠️ [FundService] Failed to parse /fund_widget:', htmlError.message);
+      }
+      
+      // Final fallback: return empty data
+      console.warn(`⚠️ [FundService] No chart data found for fund ${fundId}, returning empty`);
+      return {
+        labels: [],
+        values: [],
+        timeRange: timeRange
+      };
+    } catch (error) {
+      console.error(`❌ [FundService] Failed to get chart data for fund ${fundId}:`, error.message);
+      return {
+        labels: [],
+        values: [],
+        timeRange: timeRange
+      };
     }
   }
 }

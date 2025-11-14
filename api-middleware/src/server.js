@@ -67,19 +67,23 @@ app.use(helmet({
 // Compression middleware
 app.use(compression());
 
-// CORS configuration for mobile app
-app.use(cors({
+// CORS configuration for mobile app (web + native)
+const corsOptions = {
   origin: [
-    'http://localhost:3000', 
-    'http://localhost:19006',
+    'http://localhost:3000',
+    'http://localhost:8081', // Expo Web
+    'http://localhost:19006', // Expo Dev Client
+    'http://10.10.3.47:8081',
+    'http://10.10.3.47:19006',
     'http://192.168.50.104:19006', // Mobile app on network
-    'exp://192.168.50.104:8081', // Expo development server
-    '*' // Allow all origins for development (tighten in production)
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'ngrok-skip-browser-warning'],
+  optionsSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Request parsing middleware
 app.use(express.json({ limit: '10mb' }));

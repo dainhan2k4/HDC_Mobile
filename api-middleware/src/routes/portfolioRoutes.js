@@ -20,6 +20,31 @@ router.get('/funds', async (req, res) => {
   await portfolioController.getFunds(req, res);
 });
 
+// Submit fund sell
+router.post('/funds/sell', async (req, res) => {
+  await portfolioController.submitFundSell(req, res);
+});
+
+// Get fund chart data
+router.get('/funds/:id/chart', async (req, res) => {
+  await portfolioController.getFundChart(req, res);
+});
+
+// Get fund OHLC (candlestick) data
+router.get('/funds/:id/ohlc', async (req, res) => {
+  await portfolioController.getFundOHLC(req, res);
+});
+
+// Get term rates (kỳ hạn và lãi suất)
+router.get('/term-rates', async (req, res) => {
+  await portfolioController.getTermRates(req, res);
+});
+
+// Compare funds by ids
+router.get('/funds/compare', async (req, res) => {
+  await portfolioController.getFundComparison(req, res);
+});
+
 // Get performance metrics
 router.get('/performance', async (req, res) => {
   await portfolioController.getPerformance(req, res);

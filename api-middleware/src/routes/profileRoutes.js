@@ -45,6 +45,32 @@ router.post('/update_address_info', async (req, res) => {
     await profileController.saveAddressInfo(req, res);
 });
 
+// New profile endpoints mapping to Odoo 18
+router.get('/get_status_info', async (req, res) => {
+    await profileController.getStatusInfo(req, res);
+});
+
+router.get('/data_verification', async (req, res) => {
+    await profileController.getVerificationData(req, res);
+});
+
+router.post('/save_bank_info', async (req, res) => {
+    await profileController.saveBankInfo(req, res);
+});
+
+router.post('/save_all_profile_data', async (req, res) => {
+    await profileController.saveAllProfileData(req, res);
+});
+
+// SSI Account Management
+router.post('/link_ssi_account', async (req, res) => {
+    await profileController.linkSSIAccount(req, res);
+});
+
+router.post('/get_account_balance', async (req, res) => {
+    await profileController.getAccountBalance(req, res);
+});
+
 // Debug endpoint để list tất cả routes
 router.get('/debug-routes', (req, res) => {
     const routes = [];

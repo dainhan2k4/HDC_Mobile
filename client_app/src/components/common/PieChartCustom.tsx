@@ -1,7 +1,7 @@
-import formatVND from '../../hooks/formatCurrency';
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import PieChart from 'react-native-pie-chart';
+import formatVND from '../../hooks/formatCurrency';
 import { AppColors } from '../../styles/GlobalTheme';
 
 // Fixed colors for pie chart slices using theme colors
@@ -88,11 +88,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     margin: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    ...(Platform.OS === 'web'
+      ? {
+          // Use CSS boxShadow on web to avoid shadow* deprecation warnings
+          boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+        }
+      : {
+          shadowColor: '#000',
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 3,
+        }),
   },
   title: {
     fontSize: 18,

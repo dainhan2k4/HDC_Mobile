@@ -1,6 +1,7 @@
 import { apiService } from '../config/apiService';
 import { Investment } from '../types/portfolio';
 import { Fund } from '../types/fund';
+import { ApiResponse } from '../types/api';
 
 // Type aliases for better clarity
 export type InvestmentData = Investment;
@@ -17,10 +18,11 @@ export const getFunds = async (): Promise<FundData[]> => {
   }
 };
 
-// Get fund data using new endpoint /data_fund
+// Get fund data - map đến getFunds() từ middleware
 export const getFundData = async (): Promise<FundData[]> => {
   try {
-    const response = await apiService.getFundData();
+    // Dùng middleware endpoint /portfolio/funds
+    const response = await apiService.get('/portfolio/funds');
     return (response.data as FundData[]) || [];
   } catch (error) {
     console.error('Error fetching fund data:', error);
@@ -64,10 +66,11 @@ export const getInvestmentByFund = async (fundId: number): Promise<InvestmentDat
   }
 };
 
-// Get user's fund data using ApiService methods
+// Get user's fund data - map đến getFunds() từ middleware
 export const getUserFundData = async (): Promise<FundData[]> => {
   try {
-    const response = await apiService.getUserFundData();
+    // Dùng middleware endpoint /portfolio/funds
+    const response = await apiService.get('/portfolio/funds');
     return (response.data as FundData[]) || [];
   } catch (error) {
     console.error('Error fetching user fund data:', error);
@@ -75,14 +78,19 @@ export const getUserFundData = async (): Promise<FundData[]> => {
   }
 };
 
-// Create new investment using /create_investment endpoint
+// Create new investment - map đến buyFund từ middleware
 export const createInvestment = async (data: {
   fund_id: number;
   amount: number;
   units: number;
 }) => {
   try {
-    const response = await apiService.createInvestment(data);
+    // Transform fund_id thành fundId và gọi buyFund
+    const response = await apiService.buyFund({
+      fundId: data.fund_id,
+      amount: data.amount,
+      units: data.units
+    });
     return response;
   } catch (error) {
     console.error('Error creating investment:', error);
@@ -95,10 +103,15 @@ export const buyFund = async (data: {
   fund_id: number;
   amount: number;
   units: number;
-  transaction_type: 'purchase';
+  transaction_type?: 'purchase';
 }) => {
   try {
-    const response = await apiService.buyFund(data);
+    // Transform fund_id thành fundId (camelCase) cho apiService
+    const response = await apiService.buyFund({
+      fundId: data.fund_id,
+      amount: data.amount,
+      units: data.units
+    });
     return response;
   } catch (error) {
     console.error('Error buying fund:', error);
@@ -106,14 +119,20 @@ export const buyFund = async (data: {
   }
 };
 
-// Sell fund using /submit_fund_sell endpoint
+// Sell fund using ApiService methods
 export const sellFund = async (data: {
-  fund_id: number;
-  units: number;
-  transaction_type: 'sale';
-}) => {
+  investment_id: number;
+  quantity: number;
+  estimated_value?: number;
+  debug?: boolean;
+}): Promise<ApiResponse> => {
   try {
-    const response = await apiService.sellFund(data);
+    const response = await apiService.sellFund({
+      investmentId: data.investment_id,
+      quantity: data.quantity,
+      estimatedValue: data.estimated_value,
+      debug: data.debug,
+    });
     return response;
   } catch (error) {
     console.error('Error selling fund:', error);
@@ -132,11 +151,95 @@ export const getPortfolioOverview = async () => {
   }
 };
 
+// Fund widget page - TODO: implement in apiService if needed
+export const getFundWidget = async () => {
+  try {
+    // TODO: Add endpoint to apiService if needed
+    // const response = await apiService.get('/fund_widget');
+    throw new Error('getFundWidget not yet implemented in middleware');
+  } catch (error) {
+    console.error('Error fetching fund widget:', error);
+    throw error;
+  }
+};
+
+// Fund compare page - TODO: implement in apiService if needed
+export const getFundCompare = async () => {
+  try {
+    // TODO: Add endpoint to apiService if needed
+    // const response = await apiService.get('/fund_compare');
+    throw new Error('getFundCompare not yet implemented in middleware');
+  } catch (error) {
+    console.error('Error fetching fund compare:', error);
+    throw error;
+  }
+};
+
+// Fund buy page - TODO: implement in apiService if needed
+export const getFundBuyPage = async () => {
+  try {
+    // TODO: Add endpoint to apiService if needed
+    // const response = await apiService.get('/fund_buy');
+    throw new Error('getFundBuyPage not yet implemented in middleware');
+  } catch (error) {
+    console.error('Error fetching fund buy page:', error);
+    throw error;
+  }
+};
+
+// Fund buy confirm page - TODO: implement in apiService if needed
+export const getFundBuyConfirm = async () => {
+  try {
+    // TODO: Add endpoint to apiService if needed
+    // const response = await apiService.get('/fund_buy_confirm');
+    throw new Error('getFundBuyConfirm not yet implemented in middleware');
+  } catch (error) {
+    console.error('Error fetching fund buy confirm:', error);
+    throw error;
+  }
+};
+
+// Fund buy result page - TODO: implement in apiService if needed
+export const getFundBuyResult = async () => {
+  try {
+    // TODO: Add endpoint to apiService if needed
+    // const response = await apiService.get('/fund_buy_result');
+    throw new Error('getFundBuyResult not yet implemented in middleware');
+  } catch (error) {
+    console.error('Error fetching fund buy result:', error);
+    throw error;
+  }
+};
+
+// Fund sell page - TODO: implement in apiService if needed
+export const getFundSellPage = async () => {
+  try {
+    // TODO: Add endpoint to apiService if needed
+    // const response = await apiService.get('/fund_sell');
+    throw new Error('getFundSellPage not yet implemented in middleware');
+  } catch (error) {
+    console.error('Error fetching fund sell page:', error);
+    throw error;
+  }
+};
+
+// Fund sell confirm page - TODO: implement in apiService if needed
+export const getFundSellConfirm = async () => {
+  try {
+    // TODO: Add endpoint to apiService if needed
+    // const response = await apiService.get('/fund_sell_confirm');
+    throw new Error('getFundSellConfirm not yet implemented in middleware');
+  } catch (error) {
+    console.error('Error fetching fund sell confirm:', error);
+    throw error;
+  }
+};
+
 export const fundApi = {
-  // Get all funds
+  // Get all funds - dùng middleware endpoint
   getFunds: async (): Promise<Fund[]> => {
     const response = await apiService.get('/portfolio/funds');
-    return response.data as Fund[];
+    return (response.data as Fund[]) || [];
   },
 
   // Get fund details by ID
@@ -161,10 +264,10 @@ export const fundApi = {
     }
   },
 
-  // Buy fund transaction
+  // Buy fund transaction - dùng middleware endpoint
   buyFund: async (fundId: number, amount: number, units: number) => {
     try {
-      const response = await apiService.post('/transaction/buy', {
+      const response = await apiService.buyFund({
         fundId,
         amount, 
         units
@@ -176,26 +279,33 @@ export const fundApi = {
       return response.data;
     } catch (error: any) {
       console.error('Buy fund error:', error);
-      throw new Error(error.response?.data?.message || 'Failed to buy fund');
+      throw new Error(error.response?.data?.message || error.message || 'Failed to buy fund');
     }
   },
 
-  // Sell fund transaction
-  sellFund: async (fundId: number, units: number) => {
-    try {
-      const response = await apiService.post('/transaction/sell', {
-        fundId,
-        units
-      });
-      
-      // Clear cache after successful transaction
-      await fundApi.clearCache();
-      
-      return response.data;
-    } catch (error: any) {
-      console.error('Sell fund error:', error);
-      throw new Error(error.response?.data?.message || 'Failed to sell fund');
-    }
-  }
+  // Sell fund transaction - dùng middleware endpoint
+  sellFund: async (options: {
+    investment_id: number;
+    quantity: number;
+    estimated_value?: number;
+    debug?: boolean;
+  }): Promise<ApiResponse> => {
+    return sellFund(options);
+  },
+
+  // Fund widget page
+  getFundWidget,
+  
+  // Fund compare page
+  getFundCompare,
+  
+  // Fund buy pages
+  getFundBuyPage,
+  getFundBuyConfirm,
+  getFundBuyResult,
+  
+  // Fund sell pages
+  getFundSellPage,
+  getFundSellConfirm,
 };
 

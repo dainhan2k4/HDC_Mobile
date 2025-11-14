@@ -392,6 +392,93 @@ class ProfileService extends BaseOdooService {
       throw error;
     }
   }
+
+  /**
+   * Link SSI account - Gọi endpoint /my-account/link_account của Odoo
+   */
+  async linkSSIAccount({ consumer_id, consumer_secret, account, private_key }) {
+    try {
+      console.log('🔗 [ProfileService] Linking SSI account...');
+      
+      await this.authService.getValidSession();
+      
+      const formData = {
+        consumer_id: consumer_id.trim(),
+        consumer_secret: consumer_secret.trim(),
+        account: account.trim().toUpperCase(),
+        private_key: private_key.trim()
+      };
+      
+      const response = await this.apiCall('/my-account/link_account', {
+        method: 'POST',
+        requireAuth: true,
+        data: JSON.stringify(formData),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('📊 [ProfileService] Raw link account response:', typeof response, response);
+      
+      // Parse response if string
+      let parsedResponse = response;
+      if (typeof response === 'string') {
+        try {
+          parsedResponse = JSON.parse(response);
+          console.log('✅ [ProfileService] Parsed response:', parsedResponse);
+        } catch (parseError) {
+          console.warn('⚠️ [ProfileService] Failed to parse response as JSON:', parseError.message);
+          return { status: 'success', message: response };
+        }
+      }
+      
+      console.log('✅ [ProfileService] SSI account linked successfully:', parsedResponse);
+      return parsedResponse;
+    } catch (error) {
+      console.error('❌ [ProfileService] Failed to link SSI account:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get account balance - Gọi endpoint /my-account/get_balance của Odoo
+   */
+  async getAccountBalance() {
+    try {
+      console.log('💰 [ProfileService] Getting account balance...');
+      
+      await this.authService.getValidSession();
+      
+      const response = await this.apiCall('/my-account/get_balance', {
+        method: 'POST',
+        requireAuth: true,
+        data: JSON.stringify({}),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('📊 [ProfileService] Raw balance response:', typeof response, response);
+      
+      // Parse response if string
+      let parsedResponse = response;
+      if (typeof response === 'string') {
+        try {
+          parsedResponse = JSON.parse(response);
+          console.log('✅ [ProfileService] Parsed balance response:', parsedResponse);
+        } catch (parseError) {
+          console.warn('⚠️ [ProfileService] Failed to parse balance response as JSON:', parseError.message);
+          return { status: 'error', message: response };
+        }
+      }
+      
+      console.log('✅ [ProfileService] Account balance retrieved:', parsedResponse);
+      return parsedResponse;
+    } catch (error) {
+      console.error('❌ [ProfileService] Failed to get account balance:', error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = ProfileService; 

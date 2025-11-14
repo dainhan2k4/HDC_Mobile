@@ -11,9 +11,9 @@ const config = {
   // Odoo Backend Configuration
   odoo: {
     baseUrl: 'http://localhost:11018', // Force localhost, ignore env vars
-    database: 'p2p', 
+    database: 'anfan', 
     username: 'pnttmtr15@gmail.com', // Use admin username instead of email
-    password: '123',  // Try admin/admin first
+    password: '123',  // Password for anfan database
     timeout: 30000 // Increase timeout for auth issues
   },
 

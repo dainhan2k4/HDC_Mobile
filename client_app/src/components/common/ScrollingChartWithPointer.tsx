@@ -1,17 +1,28 @@
-import React from 'react';
-import {View, Text} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {View, Text, ActivityIndicator} from 'react-native';
 import {LineChart, ruleTypes} from 'react-native-gifted-charts';
+import { apiService } from '../../config/apiService';
 
 type TimeRange = '1M' | '3M' | '6M' | '1Y';
 
 interface ScrollingChartWithPointerProps {
   timeRange?: TimeRange;
+  fundId?: number;
+}
+
+interface ChartData {
+  labels: string[];
+  values: number[];
 }
 
 const ScrollingChartWithPointer: React.FC<ScrollingChartWithPointerProps> = ({ 
-  timeRange = '1M' 
+  timeRange = '1M',
+  fundId
 }) => {
-  // Data tương tự như trong Odoo fund_widget.js
+  const [chartData, setChartData] = useState(null as ChartData | null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fallback mock data nếu không có fundId hoặc API fail
   const getNavDataByRange = (range: TimeRange) => {
     const navDataByRange = {
       '1M': {
@@ -34,10 +45,56 @@ const ScrollingChartWithPointer: React.FC<ScrollingChartWithPointerProps> = ({
     return navDataByRange[range];
   };
 
-  const chartData = getNavDataByRange(timeRange);
+  useEffect(() => {
+    const loadChartData = async () => {
+      if (!fundId) {
+        // Không có fundId, dùng mock data
+        setChartData(getNavDataByRange(timeRange));
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const response = await apiService.getFundChart(fundId, timeRange);
+        if (response.success && response.data) {
+          const data = response.data as any;
+          if (data && data.labels && data.values && Array.isArray(data.labels) && Array.isArray(data.values) && data.labels.length > 0) {
+            setChartData({
+              labels: data.labels as string[],
+              values: data.values as number[]
+            });
+          } else {
+            // Fallback to mock data
+            setChartData(getNavDataByRange(timeRange));
+          }
+        } else {
+          // Fallback to mock data
+          setChartData(getNavDataByRange(timeRange));
+        }
+      } catch (error) {
+        console.error('❌ [Chart] Failed to load chart data:', error);
+        // Fallback to mock data
+        setChartData(getNavDataByRange(timeRange));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadChartData();
+  }, [fundId, timeRange]);
+
+  if (isLoading || !chartData) {
+    return (
+      <View style={{ paddingVertical: 15, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', minHeight: 250 }}>
+        <ActivityIndicator size="large" color="#2B4BFF" />
+        <Text style={{ marginTop: 10, color: '#6C757D' }}>Đang tải biểu đồ...</Text>
+      </View>
+    );
+  }
   
   // Convert to LineChart format
-  const ptData = chartData.labels.map((label, index) => ({
+  const ptData = chartData.labels.map((label: string, index: number) => ({
     value: chartData.values[index] / 1000, // Convert to thousands for better display
     date: label,
     label: index % 3 === 0 ? label : undefined, // Show every third label
@@ -80,7 +137,7 @@ const ScrollingChartWithPointer: React.FC<ScrollingChartWithPointerProps> = ({
         noOfSections={5}
         stepHeight={40}
         height={250}
-        maxValue={Math.max(...ptData.map(d => d.value)) + 5}
+        maxValue={Math.max(...ptData.map((d: any) => d.value)) + 5}
         yAxisColor="transparent"
         yAxisThickness={0}
         rulesType={ruleTypes.SOLID}

@@ -8,6 +8,264 @@ class TransactionService extends BaseOdooService {
   }
 
   /**
+   * Transaction List - Data (Odoo controller, type='json')
+   */
+  async getTransactionListData(payload = {}) {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/data (POST, auth)...');
+      const data = await this.apiCall('/api/transaction-list/data', {
+        method: 'POST',
+        data: payload,
+        requireAuth: true
+      });
+      return data;
+    } catch (error) {
+      console.error('❌ [TransactionService] Failed to get transaction list data:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Transaction List - Stats (Odoo controller, type='json')
+   */
+  async getTransactionListStats(payload = {}) {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/stats (POST, auth)...');
+      const data = await this.apiCall('/api/transaction-list/stats', {
+        method: 'POST',
+        data: payload,
+        requireAuth: true
+      });
+      return data;
+    } catch (error) {
+      console.error('❌ [TransactionService] Failed to get transaction list stats:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Transaction List - Get details (HTTP GET)
+   */
+  async getTransactionDetailsFromController(transactionId) {
+    try {
+      console.log(`🔗 [TransactionService] Calling /api/transaction-list/get-transaction-details/${transactionId} (GET, auth)...`);
+      const data = await this.apiCall(`/api/transaction-list/get-transaction-details/${transactionId}`, {
+        method: 'GET',
+        requireAuth: true
+      });
+      return data;
+    } catch (error) {
+      console.error('❌ [TransactionService] Failed to get transaction details from controller:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Order Book - get order book (public POST)
+   */
+  async getOrderBook(payload = {}) {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/order-book (POST, public)...');
+      const data = await this.apiCall('/api/transaction-list/order-book', {
+        method: 'POST',
+        data: payload,
+        requireAuth: false
+      });
+      return data;
+    } catch (error) {
+      console.error('❌ [TransactionService] Failed to get order book:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Order Book - get funds (public POST)
+   */
+  async getOrderBookFunds(payload = {}) {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/funds (POST, public)...');
+      const data = await this.apiCall('/api/transaction-list/funds', {
+        method: 'POST',
+        data: payload,
+        requireAuth: false
+      });
+      return data;
+    } catch (error) {
+      console.error('❌ [TransactionService] Failed to get order book funds:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Order Book - completed transactions (user POST)
+   */
+  async getCompletedOrders(payload = {}) {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/completed (POST, auth)...');
+      const data = await this.apiCall('/api/transaction-list/completed', {
+        method: 'POST',
+        data: payload,
+        requireAuth: true
+      });
+      return data;
+    } catch (error) {
+      console.error('❌ [TransactionService] Failed to get completed orders:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Order Book - negotiated (user POST)
+   */
+  async getNegotiatedOrders(payload = {}) {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/negotiated (POST, auth)...');
+      const data = await this.apiCall('/api/transaction-list/negotiated', {
+        method: 'POST',
+        data: payload,
+        requireAuth: true
+      });
+      return data;
+    } catch (error) {
+      console.error('❌ [TransactionService] Failed to get negotiated orders:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Partial Matching - create engine
+   */
+  async pmCreateEngine(payload = {}) {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/partial-matching/create-engine (POST, auth)...');
+      return await this.apiCall('/api/transaction-list/partial-matching/create-engine', {
+        method: 'POST',
+        data: payload,
+        requireAuth: true
+      });
+    } catch (error) {
+      console.error('❌ [TransactionService] pmCreateEngine failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Partial Matching - add order
+   */
+  async pmAddOrder(payload = {}) {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/partial-matching/add-order (POST, auth)...');
+      return await this.apiCall('/api/transaction-list/partial-matching/add-order', {
+        method: 'POST',
+        data: payload,
+        requireAuth: true
+      });
+    } catch (error) {
+      console.error('❌ [TransactionService] pmAddOrder failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Partial Matching - process all
+   */
+  async pmProcessAll(payload = {}) {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/partial-matching/process-all (POST, auth)...');
+      return await this.apiCall('/api/transaction-list/partial-matching/process-all', {
+        method: 'POST',
+        data: payload,
+        requireAuth: true
+      });
+    } catch (error) {
+      console.error('❌ [TransactionService] pmProcessAll failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Partial Matching - queue status
+   */
+  async pmQueueStatus(payload = {}) {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/partial-matching/queue-status (POST, auth)...');
+      return await this.apiCall('/api/transaction-list/partial-matching/queue-status', {
+        method: 'POST',
+        data: payload,
+        requireAuth: true
+      });
+    } catch (error) {
+      console.error('❌ [TransactionService] pmQueueStatus failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Partial Matching - clear queue
+   */
+  async pmClearQueue(payload = {}) {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/partial-matching/clear-queue (POST, auth)...');
+      return await this.apiCall('/api/transaction-list/partial-matching/clear-queue', {
+        method: 'POST',
+        data: payload,
+        requireAuth: true
+      });
+    } catch (error) {
+      console.error('❌ [TransactionService] pmClearQueue failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Partial Matching - list engines (GET)
+   */
+  async pmListEngines() {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/partial-matching/engines (GET, auth)...');
+      return await this.apiCall('/api/transaction-list/partial-matching/engines', {
+        method: 'GET',
+        requireAuth: true
+      });
+    } catch (error) {
+      console.error('❌ [TransactionService] pmListEngines failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Partial Matching - cleanup
+   */
+  async pmCleanup(payload = {}) {
+    try {
+      console.log('🔗 [TransactionService] Calling /api/transaction-list/partial-matching/cleanup (POST, auth)...');
+      return await this.apiCall('/api/transaction-list/partial-matching/cleanup', {
+        method: 'POST',
+        data: payload,
+        requireAuth: true
+      });
+    } catch (error) {
+      console.error('❌ [TransactionService] pmCleanup failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Contract download (HTTP GET)
+   */
+  async downloadContract(transactionId) {
+    try {
+      console.log(`🔗 [TransactionService] Calling /api/transaction-list/contract/${transactionId} (GET, auth)...`);
+      return await this.apiCall(`/api/transaction-list/contract/${transactionId}`, {
+        method: 'GET',
+        requireAuth: true
+      });
+    } catch (error) {
+      console.error('❌ [TransactionService] downloadContract failed:', error.message);
+      throw error;
+    }
+  }
+  /**
    * Get transactions with filters
    */
   async getTransactions(filters = {}) {
@@ -29,18 +287,23 @@ class TransactionService extends BaseOdooService {
         domain.push(['user_id', '=', filters.userId]);
       }
       
-      if (filters.startDate) {
-        domain.push(['transaction_date', '>=', filters.startDate]);
+      const startDate = typeof filters.startDate === 'string' ? filters.startDate.trim() : filters.startDate;
+      if (startDate) {
+        domain.push(['transaction_date', '>=', startDate]);
       }
       
-      if (filters.endDate) {
-        domain.push(['transaction_date', '<=', filters.endDate]);
+      const endDate = typeof filters.endDate === 'string' ? filters.endDate.trim() : filters.endDate;
+      if (endDate) {
+        domain.push(['transaction_date', '<=', endDate]);
       }
+
+      const parsedLimit = Number(filters.limit);
+      const parsedPage = Number(filters.page);
 
       const options = {
         order: 'create_date desc',
-        limit: filters.limit || 100, 
-        page: filters.page || 1
+        limit: Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 100,
+        page: Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1
       };
 
       const fields = [
@@ -64,6 +327,51 @@ class TransactionService extends BaseOdooService {
     } catch (error) {
       console.error('❌ [TransactionService] Failed to get transactions:', error.message);
       throw error;
+    }
+  }
+
+  /**
+   * Get orders từ Odoo controller /transaction_management/order
+   */
+  async getOrdersFromController() {
+    try {
+      console.log('🔗 [TransactionService] Calling /transaction_management/order endpoint...');
+      const data = await this.apiCall('/transaction_management/order', { requireAuth: true });
+      console.log(`✅ [TransactionService] /transaction_management/order OK: ${Array.isArray(data) ? data.length : 0} items`);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('❌ [TransactionService] Failed to get /transaction_management/order:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get pending từ Odoo controller /transaction_management/pending
+   */
+  async getPendingFromController() {
+    try {
+      console.log('🔗 [TransactionService] Calling /transaction_management/pending endpoint...');
+      const data = await this.apiCall('/transaction_management/pending', { requireAuth: true });
+      console.log(`✅ [TransactionService] /transaction_management/pending OK: ${Array.isArray(data) ? data.length : 0} items`);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('❌ [TransactionService] Failed to get /transaction_management/pending:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get periodic từ Odoo controller /transaction_management/periodic
+   */
+  async getPeriodicFromController() {
+    try {
+      console.log('🔗 [TransactionService] Calling /transaction_management/periodic endpoint...');
+      const data = await this.apiCall('/transaction_management/periodic', { requireAuth: true });
+      console.log(`✅ [TransactionService] /transaction_management/periodic OK: ${Array.isArray(data) ? data.length : 0} items`);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('❌ [TransactionService] Failed to get /transaction_management/periodic:', error.message);
+      return [];
     }
   }
 
