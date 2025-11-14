@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Trading Order List View -->
+    <record id="view_trading_order_tree" model="ir.ui.view">
+        <field name="name">trading.order.tree</field>
+        <field name="model">trading.order</field>
+        <field name="arch" type="xml">
+            <list string="Trading Orders" decoration-success="state == 'filled'" decoration-info="state == 'submitted'" decoration-warning="state == 'pending'" decoration-danger="state in ('error', 'rejected')">
+                <field name="name"/>
+                <field name="state" widget="badge" decoration-success="state == 'filled'" decoration-info="state == 'submitted'" decoration-warning="state == 'pending'" decoration-danger="state in ('error', 'rejected')"/>
+                <field name="user_id"/>
+                <field name="order_type"/>
+                <field name="market"/>
+                <field name="instrument_code"/>
+                <field name="buy_sell"/>
+                <field name="order_type_detail"/>
+                <field name="quantity"/>
+                <field name="account"/>
+                <field name="api_order_id"/>
+                <field name="submitted_at"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Trading Order Form View -->
+    <record id="view_trading_order_form" model="ir.ui.view">
+        <field name="name">trading.order.form</field>
+        <field name="model">trading.order</field>
+        <field name="arch" type="xml">
+            <form string="Trading Order">
+                <header>
+                    <button name="action_submit_order" string="Submit Order" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_verify_account" string="Verify Account" type="object" invisible="state != 'draft' or account_verified"/>
+                    <button name="action_get_otp" string="Get OTP" type="object" class="btn-primary" invisible="state != 'draft' or config_two_fa_type != '1'"/>
+                    <button name="action_verify_otp" string="Verify OTP" type="object" invisible="state != 'draft' or config_two_fa_type != '1' or has_valid_write_token"/>
+                    <button name="action_verify_code" string="Verify Code" type="object" invisible="state != 'draft' or has_valid_write_token"/>
+                    <button name="action_modify_order" string="Modify Order" type="object" invisible="(state != 'pending' and state != 'submitted' and state != 'partially_filled') or not api_order_id"/>
+                    <button name="action_cancel_order" string="Cancel Order" type="object" invisible="(state != 'pending' and state != 'submitted' and state != 'partially_filled') or not api_order_id"/>
+                    <button name="action_sync_status" string="Sync Status" type="object" invisible="state == 'draft' or not api_order_id"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,pending,submitted,filled"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="user_id"/>
+                            <field name="config_id" readonly="1" invisible="not user_id"/>
+                            <field name="account" placeholder="Tự động lấy từ config nếu config có account"/>
+                            <field name="config_account" invisible="1"/>
+                            <field name="account_name" readonly="1" invisible="not account_verified"/>
+                            <field name="account_verified" invisible="1"/>
+                            <field name="instrument_id"/>
+                            <field name="instrument_code" readonly="1"/>
+                            <field name="market"/>
+                            <field name="order_type"/>
+                        </group>
+                        <group>
+                            <field name="buy_sell"/>
+                            <field name="order_type_detail" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="purchasing_power" widget="monetary" readonly="1"/>
+                            <field name="quantity"/>
+                            <field name="code" string="OTP Code" password="True" 
+                                   invisible="state != 'draft' or has_valid_write_token"
+                                   required="state == 'draft' and not has_valid_write_token"
+                                   help="Chỉ cần nhập OTP code khi write token hết hạn hoặc chưa có. Nếu đã verify OTP, token sẽ tự động dùng cho các giao dịch tiếp theo trong 8 giờ."/>
+                            <field name="write_token_expires_in" string="Token Cooldown" readonly="1" 
+                                   invisible="state != 'draft' or not has_valid_write_token"
+                                   help="Thời gian còn lại của write token. Token sẽ tự động hết hạn sau thời gian này và cần verify OTP lại."/>
+                            <field name="config_write_access_token" invisible="1"/>
+                            <field name="has_valid_write_token" invisible="1"/>
+                            <field name="request_id" readonly="1"/>
+                            <field name="api_order_id" readonly="1"/>
+                            <field name="submitted_at" readonly="1"/>
+                            <field name="filled_at" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Stop Order" invisible="order_type != 'derivative'">
+                            <group>
+                                <field name="stop_order"/>
+                                <field name="stop_price" required="stop_order"/>
+                                <field name="stop_type"/>
+                                <field name="stop_step"/>
+                                <field name="loss_step"/>
+                                <field name="profit_step"/>
+                            </group>
+                        </page>
+                        <page string="Device Info">
+                            <group>
+                                <field name="device_id"/>
+                                <field name="user_agent"/>
+                            </group>
+                        </page>
+                        <page string="API Response">
+                            <group>
+                                <field name="api_response" widget="text" nolabel="1" readonly="1"/>
+                            </group>
+                            <group string="Error" invisible="not error_message">
+                                <field name="error_message" widget="text" nolabel="1" readonly="1"/>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes" widget="text" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Trading Order Search View -->
+    <record id="view_trading_order_search" model="ir.ui.view">
+        <field name="name">trading.order.search</field>
+        <field name="model">trading.order</field>
+        <field name="arch" type="xml">
+            <search string="Trading Orders">
+                <field name="name"/>
+                <field name="account"/>
+                <field name="instrument_code"/>
+                <field name="api_order_id"/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Pending" name="pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="Submitted" name="submitted" domain="[('state', '=', 'submitted')]"/>
+                <filter string="Filled" name="filled" domain="[('state', '=', 'filled')]"/>
+                <filter string="Stock Orders" name="stock" domain="[('order_type', '=', 'stock')]"/>
+                <filter string="Derivative Orders" name="derivative" domain="[('order_type', '=', 'derivative')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Order Type" name="group_order_type" context="{'group_by': 'order_type'}"/>
+                    <filter string="Market" name="group_market" context="{'group_by': 'market'}"/>
+                    <filter string="Buy/Sell" name="group_buy_sell" context="{'group_by': 'buy_sell'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Trading Order Action -->
+    <record id="action_trading_order" model="ir.actions.act_window">
+        <field name="name">Trading Orders</field>
+        <field name="res_model">trading.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Trading Order Modify Wizard Form -->
+    <record id="view_trading_order_modify_wizard_form" model="ir.ui.view">
+        <field name="name">trading.order.modify.wizard.form</field>
+        <field name="model">trading.order.modify.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Modify Order">
+                <sheet>
+                    <group>
+                        <field name="order_id" readonly="1"/>
+                        <field name="quantity"/>
+                        <field name="code" string="OTP Code" password="True" 
+                               invisible="order_id.has_valid_write_token"
+                               help="Chỉ cần nhập OTP code khi write token hết hạn. Nếu token còn hiệu lực, sẽ tự động dùng cho giao dịch này."/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_modify_order" string="Modify" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
+

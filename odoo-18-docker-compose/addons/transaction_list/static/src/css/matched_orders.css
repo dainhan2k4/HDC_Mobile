@@ -1,0 +1,103 @@
+.matched-orders-tab .tab-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.matched-orders-tab .tab-actions .btn + .btn {
+  margin-left: 8px;
+}
+
+.matched-orders-tab .tab-filters {
+  margin-bottom: 12px;
+}
+
+.matched-orders-tab .orders-table table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.matched-orders-tab .orders-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: linear-gradient(90deg, #ff8a00 0%, #ff6a00 100%);
+  color: #fff;
+}
+
+.matched-orders-tab .no-orders {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6c757d;
+  padding: 16px 0;
+}
+
+.matched-orders-tab .fw-semibold {
+  font-weight: 600;
+}
+
+.matched-orders-tab .text-success {
+  color: #198754 !important;
+}
+
+.matched-orders-tab .text-danger {
+  color: #dc3545 !important;
+}
+
+.matched-orders-tab .table td,
+.matched-orders-tab .table th {
+  vertical-align: middle;
+  text-align: center;
+}
+
+.matched-orders-tab .table tbody tr:hover {
+  background-color: #f5f7fa;
+}
+
+/* New structured layout classes */
+.matched-orders-tab .matched-table {
+  font-size: 0.85rem;
+}
+
+.matched-orders-tab .sticky-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.matched-orders-tab .stt-badge {
+  width: 28px;
+  display: inline-block;
+}
+
+.matched-orders-tab .sub-info {
+  font-size: 0.78em;
+}
+
+.matched-orders-tab .fund-symbol {
+  letter-spacing: 0.3px;
+}
+
+.matched-orders-tab .session-info .in-time {
+  color: #198754;
+  font-weight: 600;
+}
+
+.matched-orders-tab .session-info .out-time {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+/* Sent rows are visually muted and non-interactive */
+.matched-orders-tab .sent-row {
+  opacity: 0.5;
+}
+.matched-orders-tab .sent-row button,
+.matched-orders-tab .sent-row input,
+.matched-orders-tab .sent-row a {
+  pointer-events: none;
+}
+
+
