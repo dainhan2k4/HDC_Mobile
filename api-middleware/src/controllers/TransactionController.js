@@ -159,31 +159,25 @@ class TransactionController {
     console.log('📋 [TransactionController] Getting pending transactions...');
     
     try {
-      const { userId, page = 1, limit = 20 } = req.query;
-      
-      // Get pending transactions
-      const transactions = await this.odooService.getTransactions({
-        status: 'pending',
-        userId: userId ? parseInt(userId) : undefined,
-        page: parseInt(page),
-        limit: parseInt(limit)
-      });
+      // Sử dụng controller endpoint /transaction_management/pending thay vì getTransactions
+      const transactions = await this.odooService.getPendingFromController();
 
       console.log(`✅ [TransactionController] Found ${transactions.length} pending transactions`);
 
       res.json({
         success: true,
         message: 'Pending transactions retrieved successfully',
-        data: transactions,
+        data: Array.isArray(transactions) ? transactions : [],
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: transactions.length
+          page: 1,
+          limit: transactions.length,
+          total: Array.isArray(transactions) ? transactions.length : 0
         }
       });
 
     } catch (error) {
       console.error('❌ [TransactionController] Get pending transactions failed:', error.message);
+      console.error('❌ [TransactionController] Error stack:', error.stack);
       
       res.status(500).json({
         success: false,
@@ -197,19 +191,30 @@ class TransactionController {
     console.log('📜 [TransactionController] Getting transaction history...');
     
     try {
-      const { userId, status, page = 1, limit = 20, startDate, endDate } = req.query;
+      const { userId, status, page = 1, limit = 200, startDate, endDate } = req.query;
       
-      const filters = {
-        userId: userId ? parseInt(userId) : undefined,
-        status: status,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        startDate: startDate,
-        endDate: endDate
-      };
-
-      // Get transaction history
-      const transactions = await this.odooService.getTransactions(filters);
+      // Sử dụng transaction list data endpoint với filters
+      const payload = {};
+      
+      // Chỉ thêm filters nếu có giá trị hợp lệ
+      if (startDate && startDate.trim() !== '') {
+        payload.startDate = startDate;
+      }
+      if (endDate && endDate.trim() !== '') {
+        payload.endDate = endDate;
+      }
+      if (status && status.trim() !== '') {
+        payload.status = status;
+      }
+      if (userId) {
+        payload.userId = parseInt(userId);
+      }
+      
+      // Sử dụng transaction list data endpoint
+      const result = await this.odooService.transactionService.getTransactionListData(payload);
+      
+      // Parse response - có thể là array hoặc object với data property
+      const transactions = Array.isArray(result) ? result : (result?.data || result || []);
 
       console.log(`✅ [TransactionController] Found ${transactions.length} transactions in history`);
 
@@ -218,14 +223,15 @@ class TransactionController {
         message: 'Transaction history retrieved successfully',
         data: transactions,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: transactions.length
+          page: parseInt(page) || 1,
+          limit: parseInt(limit) || 200,
+          total: Array.isArray(transactions) ? transactions.length : 0
         }
       });
 
     } catch (error) {
       console.error('❌ [TransactionController] Get transaction history failed:', error.message);
+      console.error('❌ [TransactionController] Error stack:', error.stack);
       
       res.status(500).json({
         success: false,

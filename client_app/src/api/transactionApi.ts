@@ -10,15 +10,23 @@ export interface Transaction {
   fund_id: number;
   order_date: string;
   order_code: string;
-  amount: number;
+  amount: number | string;
   session_date: string;
   status: string;
   status_detail: string;
   transaction_type: string;
-  units: number;
+  units: number | string;
   currency: string;
   raw_status: string;
   raw_transaction_type: string;
+  previous_nav?: number | string; // NAV kỳ trước
+  nav?: number | string; // NAV hiện tại (alias cho previous_nav)
+  orderDate?: string; // legacy camelCase
+  sessionDate?: string;
+  amount_text?: string;
+  amount_display?: string;
+  transaction_date?: string;
+  created_at?: string;
   // Optional legacy fields
   type?: string;
   date?: string;
@@ -69,11 +77,42 @@ export const getTransactionOrders = async (params?: {
 };
 
 // Get pending transactions - dùng middleware endpoint
+const extractTransactionArray = (response: any, context: string): Transaction[] => {
+  if (!response) {
+    console.warn(`⚠️ [TransactionApi] ${context}: response is empty`);
+    return [];
+  }
+
+  const candidates = [
+    response?.data,
+    response?.data?.data,
+    response?.data?.result,
+    response?.data?.result?.data,
+    response?.result,
+    response?.result?.data,
+    response?.rawResponse?.data,
+    response?.rawResponse?.data?.data,
+    response?.rawResponse?.data?.result
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate as Transaction[];
+    }
+  }
+
+  console.warn(`⚠️ [TransactionApi] ${context}: unexpected response format`, {
+    keys: Object.keys(response || {}),
+    dataKeys: response?.data ? Object.keys(response.data) : null,
+  });
+  return [];
+};
+
 export const getPendingTransactions = async (forceRefresh = false): Promise<Transaction[]> => {
   try {
     console.log(`🔗 [TransactionApi] Getting pending transactions${forceRefresh ? ' (force refresh)' : ''}...`);
-    const response = await apiService.getPendingTransactions();
-    return (response.data as Transaction[]) || [];
+    const response = await apiService.getPendingTransactions(forceRefresh);
+    return extractTransactionArray(response, 'PendingTransactions');
   } catch (error) {
     console.error('❌ [TransactionApi] Error fetching pending transactions:', error);
     throw error;
@@ -136,11 +175,12 @@ export const getTransactionHistory = async (forceRefresh = false, params?: {
       endDate: params.endDate || ''
     } as any).toString() : '';
     const url = `/transaction/history${queryParams ? `?${queryParams}` : ''}`;
-    const response = await apiService.get(url);
-    return (response.data as Transaction[]) || [];
+    const response = await apiService.get(url, undefined, forceRefresh);
+    return extractTransactionArray(response, 'TransactionHistory');
   } catch (error) {
     console.error('❌ [TransactionApi] Error fetching transaction history:', error);
-    throw error;
+    // Trả về empty array thay vì throw error để tránh crash
+    return [];
   }
 };
 

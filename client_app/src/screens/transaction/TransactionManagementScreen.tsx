@@ -66,34 +66,59 @@ const TransactionManagementScreen: React.FC = () => {
 
       // Load both pending orders and transaction history with force refresh if needed
       const [pendingOrders, historyOrders] = await Promise.all([
-        transactionApi.getPendingTransactions(forceRefresh),
-        transactionApi.getTransactionHistory(forceRefresh, { limit: 200 }) 
+        transactionApi.getPendingTransactions(forceRefresh).catch(err => {
+          console.error('❌ [TransactionManagement] Failed to load pending transactions:', err);
+          return []; // Return empty array on error
+        }),
+        transactionApi.getTransactionHistory(forceRefresh, { limit: 200 }).catch(err => {
+          console.error('❌ [TransactionManagement] Failed to load transaction history:', err);
+          return []; // Return empty array on error
+        })
       ]);
       
-      console.log(`📊 [TransactionManagement] Loaded ${pendingOrders.length} pending orders and ${historyOrders.length} history transactions`);
+      // Đảm bảo luôn là array
+      const safePendingOrders = Array.isArray(pendingOrders) ? pendingOrders : [];
+      const safeHistoryOrders = Array.isArray(historyOrders) ? historyOrders : [];
+      
+      console.log(`📊 [TransactionManagement] Loaded ${safePendingOrders.length} pending orders and ${safeHistoryOrders.length} history transactions`);
       
       // Separate buy and sell orders from pending
-      const buyOrdersData = pendingOrders.filter(order => 
-        order.transaction_type.toLowerCase() === 'buy' || 
-        order.transaction_type.toLowerCase() === 'purchase' ||
-        order.transaction_type.toLowerCase() === 'mua'
+      const buyOrdersData = safePendingOrders.filter(order => {
+        const type = order?.transaction_type?.toLowerCase() || '';
+        const isBuy = type === 'buy' || type === 'purchase' || type === 'mua';
+        if (isBuy) {
+          console.log(`✅ [TransactionManagement] Found buy order:`, {
+            id: order.id,
+            fund_name: order.fund_name,
+            transaction_type: order.transaction_type,
+            session_date: order.session_date,
+            order_date: order.order_date,
+            amount: order.amount,
+            units: order.units
+          });
+        }
+        return isBuy;
+      });
+      
+      const sellOrdersData = safePendingOrders.filter(order => 
+        order?.transaction_type && (
+          order.transaction_type.toLowerCase() === 'sell' || 
+          order.transaction_type.toLowerCase() === 'sale' ||
+          order.transaction_type.toLowerCase() === 'bán'
+        )
       );
       
-      const sellOrdersData = pendingOrders.filter(order => 
-        order.transaction_type.toLowerCase() === 'sell' || 
-        order.transaction_type.toLowerCase() === 'sale' ||
-        order.transaction_type.toLowerCase() === 'bán'
-      );
+      console.log(`📊 [TransactionManagement] Separated orders - Buy: ${buyOrdersData.length}, Sell: ${sellOrdersData.length} from ${safePendingOrders.length} pending orders`);
       setAllBuyOrders(buyOrdersData);
       setAllSellOrders(sellOrdersData);
-      setAllTransactionHistory(historyOrders);
+      setAllTransactionHistory(safeHistoryOrders);
       
       // Debug: Log sample dates
-      if (historyOrders.length > 0) {
-        console.log(`📅 [Debug] Sample session_dates:`, historyOrders.slice(0, 3).map(order => order.session_date));
+      if (safeHistoryOrders.length > 0) {
+        console.log(`📅 [Debug] Sample session_dates:`, safeHistoryOrders.slice(0, 3).map(order => order?.session_date));
       }
       
-      console.log(`✅ [TransactionManagement] Data loaded - Buy: ${buyOrdersData.length}, Sell: ${sellOrdersData.length}, History: ${historyOrders.length}`);
+      console.log(`✅ [TransactionManagement] Data loaded - Buy: ${buyOrdersData.length}, Sell: ${sellOrdersData.length}, History: ${safeHistoryOrders.length}`);
 
     } catch (error) {
       console.error('❌ [TransactionManagement] Error loading orders:', error);
@@ -122,16 +147,61 @@ const TransactionManagementScreen: React.FC = () => {
   useEffect(() => {
     console.log(`🔍 [Filter] Auto-filtering with range: ${fromDate.toLocaleDateString()} - ${toDate.toLocaleDateString()}`);
     
-    const isInRange = (dateStr: string) => {
-      const d = parseDate(dateStr);
-      return d >= fromDate && d <= toDate;
+    // Guard clause: đảm bảo tất cả đều là array
+    const safeBuyOrders = Array.isArray(allBuyOrders) ? allBuyOrders : [];
+    const safeSellOrders = Array.isArray(allSellOrders) ? allSellOrders : [];
+    const safeHistory = Array.isArray(allTransactionHistory) ? allTransactionHistory : [];
+    
+    // Helper function để lấy date từ order (ưu tiên session_date, sau đó order_date)
+    const getOrderDate = (order: Transaction): string | null => {
+      return order?.session_date || order?.order_date || order?.date || null;
     };
     
-    const filteredBuy = allBuyOrders.filter(order => isInRange(order.session_date));
-    const filteredSell = allSellOrders.filter(order => isInRange(order.session_date));
-    const filteredHistory = allTransactionHistory.filter(order => isInRange(order.session_date));
+    const isInRange = (dateStr: string | null): boolean => {
+      if (!dateStr) return true; // Nếu không có date, vẫn hiển thị (không filter ra)
+      try {
+        const d = parseDate(dateStr);
+        return d >= fromDate && d <= toDate;
+      } catch (error) {
+        console.warn(`⚠️ [Filter] Failed to parse date: ${dateStr}`, error);
+        return true; // Nếu parse lỗi, vẫn hiển thị
+      }
+    };
     
-    console.log(`📊 [Filter] Results - Buy: ${filteredBuy.length}/${allBuyOrders.length}, Sell: ${filteredSell.length}/${allSellOrders.length}, History: ${filteredHistory.length}/${allTransactionHistory.length}`);
+    // Filter buy orders
+    const filteredBuy = safeBuyOrders.filter(order => {
+      const orderDate = getOrderDate(order);
+      const inRange = isInRange(orderDate);
+      if (!inRange && orderDate) {
+        console.log(`🔍 [Filter] Buy order ${order.id} filtered out - date: ${orderDate}, range: ${fromDate.toLocaleDateString()} - ${toDate.toLocaleDateString()}`);
+      }
+      return inRange;
+    });
+    
+    // Filter sell orders
+    const filteredSell = safeSellOrders.filter(order => {
+      const orderDate = getOrderDate(order);
+      return isInRange(orderDate);
+    });
+    
+    // Filter history
+    const filteredHistory = safeHistory.filter(order => {
+      const orderDate = getOrderDate(order);
+      return isInRange(orderDate);
+    });
+    
+    console.log(`📊 [Filter] Results - Buy: ${filteredBuy.length}/${safeBuyOrders.length}, Sell: ${filteredSell.length}/${safeSellOrders.length}, History: ${filteredHistory.length}/${safeHistory.length}`);
+    
+    // Debug: Log sample buy orders
+    if (safeBuyOrders.length > 0 && filteredBuy.length === 0) {
+      console.log(`⚠️ [Filter] All buy orders filtered out! Sample orders:`, safeBuyOrders.slice(0, 3).map(order => ({
+        id: order.id,
+        fund_name: order.fund_name,
+        session_date: order.session_date,
+        order_date: order.order_date,
+        transaction_type: order.transaction_type
+      })));
+    }
     
     setBuyOrders(filteredBuy);
     setSellOrders(filteredSell);
@@ -146,7 +216,8 @@ const TransactionManagementScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       console.log('🔍 [TransactionManagement] Screen focused, refreshing orders...');
-      loadOrders(false, false);
+      // Force refresh khi screen được focus để đảm bảo lấy dữ liệu mới nhất
+      loadOrders(false, true);
     }, [loadOrders])
   );
 

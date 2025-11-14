@@ -9,6 +9,8 @@ import { AuthNavigator, MainTabNavigator, FundNavigator } from './navigators';
 // Import screens
 import { FundBuyScreen } from '../screens/fund/FundBuyScreen';
 import { FundSellScreen } from '../screens/fund/FundSellScreen';
+import { FundPaymentScreen } from '../screens/fund/FundPaymentScreen';
+import { PaymentSuccessScreen } from '../screens/fund/PaymentSuccessScreen';
 import SignatureScene from '../screens/Signature/SignatureScene';
 import { ContractViewerWrapper } from './components/ContractViewerWrapper';
 import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
@@ -42,6 +44,8 @@ export const AppNavigator = () => {
               <Stack.Screen name="Main" component={MainTabNavigator} />
               <Stack.Screen name="FundBuy" component={FundBuyScreen} />
               <Stack.Screen name="FundSell" component={FundSellScreen} />
+              <Stack.Screen name="FundPayment" component={FundPaymentScreen} />
+              <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
               <Stack.Screen name="SignatureScene" component={SignatureScene} />
               <Stack.Screen name="ContractViewer" component={ContractViewerWrapper} />
               <Stack.Screen name="EditProfile" component={EditProfileScreen} />

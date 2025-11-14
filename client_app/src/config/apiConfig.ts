@@ -89,8 +89,11 @@ export const API_ENDPOINTS = {
   // Authentication endpoints (vẫn gọi trực tiếp Odoo cho auth)
   AUTH: {
     LOGIN: '/web/session/authenticate',
+    SIGNUP: '/web/signup',
     SIGNUP_OTP: '/web/signup/otp',
     VERIFY_OTP: '/web/signup/verify-otp',
+    RESET_PASSWORD: '/web/reset_password',
+    REFRESH_TOKEN: '/web/session/refresh',
   },
   
   // Transaction endpoints (via middleware)
@@ -147,6 +150,7 @@ export const API_ENDPOINTS = {
     SAVE_ALL: '/profile/save_all_profile_data',
     LINK_SSI_ACCOUNT: '/profile/link_ssi_account',
     GET_ACCOUNT_BALANCE: '/profile/get_account_balance',
+    UPLOAD_ID: '/upload_id_image',
   },
 
   // Asset endpoints (via middleware)
@@ -158,6 +162,11 @@ export const API_ENDPOINTS = {
   OTP: {
     CONFIG: '/otp/config',
     VERIFY: '/otp/verify',
+  },
+  
+  // Payment endpoints (via middleware)
+  PAYMENT: {
+    CREATE: '/payment/create',
   },
   
   // Health check

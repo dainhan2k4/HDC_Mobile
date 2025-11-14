@@ -40,5 +40,8 @@ declare module 'react-native' {
   };
   export const StyleSheet: any;
   export const Platform: any;
+  export const Image: ComponentType<any> & {
+    (props: any): ReactElement;
+  };
 }
 

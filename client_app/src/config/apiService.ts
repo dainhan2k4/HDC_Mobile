@@ -512,12 +512,12 @@ export class ApiService {
     return this.get(API_ENDPOINTS.TRANSACTIONS.CONTROLLER.ORDER, params);
   }
 
-  async getPendingTransactions() {
-    return this.get(API_ENDPOINTS.TRANSACTIONS.PENDING);
+  async getPendingTransactions(forceRefresh = false) {
+    return this.get(API_ENDPOINTS.TRANSACTIONS.PENDING, undefined, forceRefresh);
   }
 
-  async getPeriodicTransactions() {
-    return this.get(API_ENDPOINTS.TRANSACTIONS.CONTROLLER.PERIODIC);
+  async getPeriodicTransactions(forceRefresh = false) {
+    return this.get(API_ENDPOINTS.TRANSACTIONS.CONTROLLER.PERIODIC, undefined, forceRefresh);
   }
 
   // Profile methods - dùng middleware endpoints
@@ -646,6 +646,16 @@ export class ApiService {
 
   async verifyOTP(otp: string, debugMode: boolean = false): Promise<ApiResponse<any>> {
     return this.post(API_ENDPOINTS.OTP.VERIFY, { otp, debugMode });
+  }
+
+  // Payment methods - dùng middleware endpoints
+  async createPayOSPayment(data: {
+    transaction_id?: number;
+    amount: number;
+    units: number;
+    description?: string;
+  }): Promise<ApiResponse<any>> {
+    return this.post(API_ENDPOINTS.PAYMENT.CREATE, data);
   }
 }
 

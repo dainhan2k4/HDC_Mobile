@@ -25,6 +25,23 @@ export type RootStackParamList = {
     kycData?: any;
     onComplete?: (result: any) => void;
   };
+  FundPayment: {
+    fundId: number;
+    fundName: string;
+    amount: number;
+    units: number;
+    totalAmount: number;
+    transactionId?: number;
+    orderDate?: string;
+  };
+  PaymentSuccess: {
+    fundId: number;
+    fundName: string;
+    amount: number;
+    units: number;
+    totalAmount: number;
+    transactionId?: number;
+  };
 };
 
 // Auth Stack Types

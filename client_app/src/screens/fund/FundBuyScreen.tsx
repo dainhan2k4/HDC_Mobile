@@ -11,7 +11,8 @@ import {
   Modal,
   FlatList,
   Switch,
-  Dimensions
+  Dimensions,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +39,14 @@ interface TermRate {
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const isMobile = screenWidth < 768;
 
+const useTypedState = <T,>(initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
+  return React.useState(initialValue);
+};
+
+const createTypedRef = <T,>(initialValue: T) => {
+  return React.useRef(initialValue) as React.MutableRefObject<T>;
+};
+
 export const FundBuyScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
@@ -46,13 +55,13 @@ export const FundBuyScreen: React.FC = () => {
   const [amount, setAmount] = useState('');
   const [units, setUnits] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [calculationMode, setCalculationMode] = useState<'amount' | 'units'>('amount');
-  const [termRates, setTermRates] = useState<TermRate[]>([]);
-  const [selectedTerm, setSelectedTerm] = useState<TermRate | null>(null);
+  const [calculationMode, setCalculationMode] = useTypedState<'amount' | 'units'>('amount');
+  const [termRates, setTermRates] = useTypedState<TermRate[]>([]);
+  const [selectedTerm, setSelectedTerm] = useTypedState<TermRate | null>(null);
   const [showTermModal, setShowTermModal] = useState(false);
   const [purchaseFee, setPurchaseFee] = useState(0);
   const [showOTPModal, setShowOTPModal] = useState(false);
-  const [otpType, setOtpType] = useState<'smart' | 'sms_email'>('smart');
+  const [otpType, setOtpType] = useTypedState<'smart' | 'sms_email'>('smart');
   const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
   const [showFeeModal, setShowFeeModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -61,13 +70,50 @@ export const FundBuyScreen: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showOTPSuccessModal, setShowOTPSuccessModal] = useState(false);
-  const [otpExpiresIn, setOtpExpiresIn] = useState<string>('');
+  const [otpExpiresIn, setOtpExpiresIn] = useTypedState<string>('');
   const [showContractSignModal, setShowContractSignModal] = useState(false);
-  const [signatureType, setSignatureType] = useState<'hand' | 'digital'>('hand');
-  const signatureRef = React.useRef<SignatureComponentRef>(null);
+  const [signatureType, setSignatureType] = useTypedState<'hand' | 'digital'>('hand');
+  const signatureRef = createTypedRef<SignatureComponentRef | null>(null);
   const [hasHandSignature, setHasHandSignature] = useState(false);
   const [isContractCollapsed, setIsContractCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<'contract' | 'signature'>('contract');
+  const [activeTab, setActiveTab] = useTypedState<'contract' | 'signature'>('contract');
+  const [showContractPreviewModal, setShowContractPreviewModal] = useState(false);
+  const [savedSignature, setSavedSignature] = useTypedState<string | null>(null);
+  
+  // Callback để nhận signature từ SignatureComponent
+  const handleSignatureReady = React.useCallback((signature: string) => {
+    console.log('✅ [BuyFund] handleSignatureReady called, signature length:', signature?.length || 0);
+    console.log('📝 [BuyFund] Signature preview (first 100 chars):', signature?.substring(0, 100));
+    console.log('📝 [BuyFund] Signature has data: prefix:', signature?.startsWith('data:'));
+    
+    if (signature && signature.length > 0) {
+      // Đảm bảo signature có format đúng (có thể signature đã có prefix hoặc chưa)
+      let formattedSignature = signature;
+      if (!signature.startsWith('data:image')) {
+        // Nếu chưa có prefix, thêm vào
+        formattedSignature = `data:image/png;base64,${signature}`;
+        console.log('🔧 [BuyFund] Added data URI prefix to signature');
+      } else {
+        console.log('✅ [BuyFund] Signature already has data URI prefix');
+      }
+      
+      console.log('💾 [BuyFund] Saving signature and opening preview modal');
+      setSavedSignature(formattedSignature);
+      
+      // Đóng modal ký trước
+      console.log('🚪 [BuyFund] Closing contract sign modal');
+      setShowContractSignModal(false);
+      
+      // Delay để đảm bảo modal đóng hoàn toàn trước khi mở modal mới
+      setTimeout(() => {
+        console.log('📄 [BuyFund] Opening contract preview modal');
+        setShowContractPreviewModal(true);
+      }, 400);
+    } else {
+      console.log('❌ [BuyFund] Invalid signature in handleSignatureReady');
+      Alert.alert('Lỗi', 'Chữ ký không hợp lệ. Vui lòng ký lại.');
+    }
+  }, []);
 
   useEffect(() => {
     loadTermRates();
@@ -230,6 +276,18 @@ export const FundBuyScreen: React.FC = () => {
     return Math.round(fee / 50) * 50;
   };
 
+  // Helper function to round CCQ units
+  const roundCCQUnits = (units: number): number => {
+    if (units <= 0) return 0;
+    if (units < 150) {
+      // Nếu < 150 thì làm tròn về 100
+      return 100;
+    } else {
+      // Nếu >= 150 thì làm tròn lên bội số 100 tiếp theo
+      return Math.ceil(units / 100) * 100;
+    }
+  };
+
   // Calculate units from amount or vice versa
   const handleAmountChange = (value: string) => {
     setAmount(value);
@@ -237,11 +295,27 @@ export const FundBuyScreen: React.FC = () => {
     
     const numericAmount = parseFloat(value.replace(/[,\.]/g, ''));
     if (!isNaN(numericAmount) && numericAmount > 0) {
+      // Tính số CCQ từ số tiền
       const calculatedUnits = numericAmount / currentNav;
-      setUnits(calculatedUnits.toFixed(4));
       
-      // Tính phí mua
-      const fee = calculatePurchaseFee(numericAmount);
+      // Làm tròn số CCQ theo quy tắc
+      const roundedUnits = roundCCQUnits(calculatedUnits);
+      
+      // Format số CCQ để lưu vào state
+      const formattedUnits = roundedUnits % 1 === 0 ? roundedUnits.toString() : roundedUnits.toFixed(4);
+      setUnits(formattedUnits);
+      
+      // Tính lại số tiền từ số CCQ đã làm tròn
+      const recalculatedAmount = roundedUnits * currentNav;
+      // Làm tròn số tiền theo bội số 50
+      const roundedAmount = Math.round(recalculatedAmount / 50) * 50;
+      
+      // Cập nhật lại số tiền (format lại để hiển thị)
+      const formattedAmount = roundedAmount.toString();
+      setAmount(formattedAmount);
+      
+      // Tính phí mua dựa trên số tiền đã làm tròn
+      const fee = calculatePurchaseFee(roundedAmount);
       setPurchaseFee(fee);
     } else {
       setUnits('');
@@ -249,7 +323,33 @@ export const FundBuyScreen: React.FC = () => {
     }
   };
 
+  // Helper function to format units display
+  const formatUnitsDisplay = (value: string): string => {
+    if (!value || value === '' || value === '0') {
+      return '';
+    }
+    const num = parseFloat(value);
+    if (isNaN(num) || num === 0) {
+      return '';
+    }
+    // Nếu là số nguyên, hiển thị không có phần thập phân
+    if (num % 1 === 0) {
+      return num.toString();
+    }
+    // Nếu có phần thập phân, hiển thị với 4 chữ số
+    return num.toFixed(4);
+  };
+
   const handleUnitsChange = (value: string) => {
+    // Nếu người dùng xóa hết, set về rỗng để hiển thị "0"
+    if (value === '' || value === '0') {
+      setUnits('');
+      setAmount('');
+      setPurchaseFee(0);
+      setCalculationMode('units');
+      return;
+    }
+    
     setUnits(value);
     setCalculationMode('units');
     
@@ -275,7 +375,7 @@ export const FundBuyScreen: React.FC = () => {
     
     if (!amount || !units) {
       console.log('❌ [BuyFund] Missing amount or units');
-      Alert.alert('Lỗi', 'Vui lòng nhập số tiền hoặc số đơn vị muốn mua');
+      Alert.alert('Lỗi', 'Vui lòng nhập số tiền hoặc số CCQ muốn mua');
       return;
     }
 
@@ -553,14 +653,30 @@ export const FundBuyScreen: React.FC = () => {
 
           {/* Units Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Số đơn vị muốn mua</Text>
+            <Text style={styles.inputLabel}>Số CCQ muốn mua</Text>
             <View style={styles.unitsInputContainer}>
               <TouchableOpacity 
                 style={styles.unitsButton}
                 onPress={() => {
                   const currentUnits = parseFloat(units) || 0;
-                  if (currentUnits > 0) {
-                    setUnits((currentUnits - 0.0001).toFixed(4));
+                  if (currentUnits >= 100) {
+                    const newUnits = currentUnits - 100;
+                    // Format: nếu là số nguyên thì không có .0000
+                    const formattedUnits = newUnits % 1 === 0 ? newUnits.toString() : newUnits.toFixed(4);
+                    setUnits(formattedUnits);
+                    setCalculationMode('units');
+                    // Tự động tính lại amount
+                    const calculatedAmount = newUnits * currentNav;
+                    // Làm tròn số tiền theo bội số 50
+                    const roundedAmount = Math.round(calculatedAmount / 50) * 50;
+                    setAmount(roundedAmount.toString());
+                    // Tính lại phí mua dựa trên số tiền đã làm tròn
+                    const fee = calculatePurchaseFee(roundedAmount);
+                    setPurchaseFee(fee);
+                  } else if (currentUnits > 0) {
+                    setUnits('');
+                    setAmount('');
+                    setPurchaseFee(0);
                   }
                 }}
               >
@@ -568,9 +684,9 @@ export const FundBuyScreen: React.FC = () => {
               </TouchableOpacity>
               <TextInput
                 style={[styles.input, styles.unitsInput, calculationMode === 'units' && styles.inputActive]}
-                value={units}
+                value={formatUnitsDisplay(units)}
                 onChangeText={handleUnitsChange}
-                placeholder="Nhập số đơn vị"
+                placeholder="0"
                 keyboardType="numeric"
                 editable={!isLoading}
               />
@@ -578,7 +694,19 @@ export const FundBuyScreen: React.FC = () => {
                 style={styles.unitsButton}
                 onPress={() => {
                   const currentUnits = parseFloat(units) || 0;
-                  setUnits((currentUnits + 0.0001).toFixed(4));
+                  const newUnits = currentUnits + 100;
+                  // Format: nếu là số nguyên thì không có .0000
+                  const formattedUnits = newUnits % 1 === 0 ? newUnits.toString() : newUnits.toFixed(4);
+                  setUnits(formattedUnits);
+                  setCalculationMode('units');
+                  // Tự động tính lại amount
+                  const calculatedAmount = newUnits * currentNav;
+                  // Làm tròn số tiền theo bội số 50
+                  const roundedAmount = Math.round(calculatedAmount / 50) * 50;
+                  setAmount(roundedAmount.toString());
+                  // Tính lại phí mua dựa trên số tiền đã làm tròn
+                  const fee = calculatePurchaseFee(roundedAmount);
+                  setPurchaseFee(fee);
                 }}
               >
                 <Text style={styles.unitsButtonText}>+</Text>
@@ -790,10 +918,10 @@ export const FundBuyScreen: React.FC = () => {
           </TouchableOpacity>
         )}
         
-        <TouchableOpacity 
-          style={[styles.buyButton, (!amount || !units || !selectedTerm || isLoading) && styles.buyButtonDisabled]}
+        <TouchableOpacity
+          style={[styles.buyButton, (!amount || !units || !selectedTerm || isLoading || showContractPreviewModal || showContractSignModal) && styles.buyButtonDisabled]}
           onPress={handleBuyFund}
-          disabled={!amount || !units || !selectedTerm || isLoading}
+          disabled={!amount || !units || !selectedTerm || isLoading || showContractPreviewModal || showContractSignModal}
         >
           {isLoading ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -1568,9 +1696,12 @@ export const FundBuyScreen: React.FC = () => {
                       </Text>
                     </View>
                     <View style={styles.signatureCanvasContainer}>
-                      <SignatureComponent 
-                        ref={signatureRef}
-                      />
+                      <View style={styles.signatureCanvasWrapper}>
+                        <SignatureComponent 
+                          ref={signatureRef}
+                          onSignatureReady={handleSignatureReady}
+                        />
+                      </View>
                       <View style={styles.signatureCanvasActions}>
                         <TouchableOpacity
                           style={styles.signatureClearButton}
@@ -1585,20 +1716,48 @@ export const FundBuyScreen: React.FC = () => {
                         <TouchableOpacity
                           style={styles.signatureConfirmButton}
                           onPress={() => {
-                            // Trigger read signature
+                            console.log('🔍 [BuyFund] Confirm signature button pressed');
+                            
+                            // Kiểm tra signature trước (có thể đã được lưu từ lần vẽ trước)
+                            const existingSig = signatureRef.current?.getSignature();
+                            const existingHasSig = signatureRef.current?.hasSignature();
+                            
+                            if (existingHasSig && existingSig && existingSig.length > 0) {
+                              console.log('✅ [BuyFund] Found existing signature, length:', existingSig.length);
+                              handleSignatureReady(existingSig);
+                              return;
+                            }
+                            
+                            // Nếu chưa có, gọi readSignature() để trigger onOK callback
+                            console.log('🔄 [BuyFund] No existing signature, triggering readSignature');
                             signatureRef.current?.readSignature();
                             
-                            // Check after a short delay
-                            setTimeout(() => {
-                              if (signatureRef.current?.hasSignature()) {
-                                const signature = signatureRef.current?.getSignature();
-                                console.log('✅ [BuyFund] Hand signature completed:', signature);
-                                setShowContractSignModal(false);
-                                setShowConfirmModal(true);
+                            // Retry mechanism: kiểm tra nhiều lần với delay tăng dần
+                            let retryCount = 0;
+                            const maxRetries = 5;
+                            const checkSignature = () => {
+                              retryCount++;
+                              const hasSig = signatureRef.current?.hasSignature();
+                              const sig = signatureRef.current?.getSignature();
+                              
+                              console.log(`⏰ [BuyFund] Retry ${retryCount}/${maxRetries} - hasSignature: ${hasSig}, length: ${sig?.length || 0}`);
+                              
+                              if (hasSig && sig && sig.length > 0) {
+                                console.log('✅ [BuyFund] Hand signature found, opening preview');
+                                handleSignatureReady(sig);
+                              } else if (retryCount < maxRetries) {
+                                // Retry với delay tăng dần: 200ms, 400ms, 600ms, 800ms, 1000ms
+                                setTimeout(checkSignature, 200 * retryCount);
                               } else {
-                                Alert.alert('Lỗi', 'Vui lòng ký tên vào ô để xác nhận');
+                                console.log('❌ [BuyFund] No valid signature found after all retries');
+                                console.log('   - hasSignature():', hasSig);
+                                console.log('   - getSignature():', sig ? `${sig.substring(0, 50)}...` : 'null');
+                                Alert.alert('Lỗi', 'Vui lòng ký tên vào ô để xác nhận. Đảm bảo bạn đã vẽ chữ ký trên canvas trước khi nhấn xác nhận.');
                               }
-                            }, 100);
+                            };
+                            
+                            // Bắt đầu kiểm tra sau 300ms
+                            setTimeout(checkSignature, 300);
                           }}
                         >
                           <Ionicons name="checkmark" size={20} color="#FFFFFF" />
@@ -1617,8 +1776,9 @@ export const FundBuyScreen: React.FC = () => {
                       onPress={async () => {
                         // Xử lý ký số
                         console.log('✅ [BuyFund] Digital signature selected');
+                        setSavedSignature('digital'); // Đánh dấu là ký số
                         setShowContractSignModal(false);
-                        setShowConfirmModal(true);
+                        setShowContractPreviewModal(true);
                       }}
                     >
                       <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
@@ -1628,6 +1788,188 @@ export const FundBuyScreen: React.FC = () => {
                 )}
                 </View>
               )}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Contract Preview Modal */}
+      <Modal
+        visible={showContractPreviewModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowContractPreviewModal(false)}
+      >
+        <View style={styles.contractPreviewModalOverlay}>
+          <View style={styles.contractPreviewModalContainer}>
+            {/* Header */}
+            <View style={styles.contractPreviewModalHeader}>
+              <Text style={styles.contractPreviewModalTitle}>Xem trước hợp đồng đã ký</Text>
+              <TouchableOpacity 
+                onPress={() => setShowContractPreviewModal(false)}
+                style={styles.contractPreviewModalCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#6C757D" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Contract Document with Signature */}
+            <ScrollView 
+              style={styles.contractPreviewModalContent}
+              contentContainerStyle={styles.contractPreviewContentContainer}
+              showsVerticalScrollIndicator={true}
+            >
+              <View style={styles.contractPreviewDocument}>
+                <Text style={styles.contractPreviewDocumentTitle}>HỢP ĐỒNG MUA BÁN CCQ</Text>
+                
+                {/* Party A */}
+                <View style={styles.contractPreviewPartySection}>
+                  <Text style={styles.contractPreviewPartyTitle}>Thông tin Bên A - Công ty quản lý quỹ</Text>
+                  <Text style={styles.contractPreviewPartyText}>Tên công ty: Công ty ABC</Text>
+                  <Text style={styles.contractPreviewPartyText}>Địa chỉ: 19 Nguyễn Đình Chiểu, Phường Sài Gòn, TP.HCM</Text>
+                  <Text style={styles.contractPreviewPartyText}>MST: 999999999</Text>
+                  <Text style={styles.contractPreviewPartyText}>Người đại diện:</Text>
+                </View>
+
+                {/* Party B */}
+                <View style={styles.contractPreviewPartySection}>
+                  <Text style={styles.contractPreviewPartyTitle}>Thông tin Bên B - Nhà đầu tư</Text>
+                  <Text style={styles.contractPreviewPartyText}>Họ và tên:</Text>
+                  <Text style={styles.contractPreviewPartyText}>Ngày sinh:</Text>
+                  <Text style={styles.contractPreviewPartyText}>Số CCCD:</Text>
+                  <Text style={styles.contractPreviewPartyText}>Email:</Text>
+                  <Text style={styles.contractPreviewPartyText}>Số điện thoại:</Text>
+                </View>
+
+                {/* Clauses */}
+                <View style={styles.contractPreviewClauseSection}>
+                  <Text style={styles.contractPreviewClauseTitle}>1. Cam kết hiểu biết và chấp nhận rủi ro:</Text>
+                  <Text style={styles.contractPreviewClauseText}>
+                    Nhà đầu tư cam kết đã đọc và hiểu rõ bản cáo bạch, điều lệ quỹ và các tài liệu liên quan. 
+                    Nhà đầu tư hiểu rằng đầu tư vào CCQ có thể chịu ảnh hưởng bởi biến động thị trường.
+                  </Text>
+
+                  <Text style={styles.contractPreviewClauseTitle}>2. Thời hạn giao dịch và thanh toán:</Text>
+                  <Text style={styles.contractPreviewClauseText}>
+                    Nhà đầu tư đồng ý rằng giao dịch CCQ chỉ được thực hiện khi công ty nhận được đầy đủ 
+                    số tiền đầu tư trong thời hạn quy định.
+                  </Text>
+                </View>
+
+                {/* Signatures */}
+                <View style={styles.contractPreviewSignatureSection}>
+                  <View style={styles.contractPreviewSignatureBox}>
+                    <Text style={styles.contractPreviewSignatureLabel}>Xác nhận chữ ký công ty</Text>
+                    <View style={styles.contractPreviewSignaturePlaceholder} />
+                  </View>
+                  <View style={styles.contractPreviewSignatureBox}>
+                    <Text style={styles.contractPreviewSignatureLabel}>Xác nhận chữ ký khách hàng</Text>
+                    {savedSignature && savedSignature !== 'digital' ? (
+                      <View style={styles.contractPreviewSignatureImageContainer}>
+                        {console.log('🖼️ [BuyFund] Rendering signature image, savedSignature length:', savedSignature?.length, 'starts with data:', savedSignature?.startsWith('data:'))}
+                        <Image 
+                          source={{ uri: savedSignature }}
+                          style={styles.contractPreviewSignatureImage}
+                          resizeMode="contain"
+                          onError={(error) => {
+                            console.log('❌ [BuyFund] Image load error:', error);
+                            console.log('   - savedSignature length:', savedSignature?.length);
+                            console.log('   - savedSignature starts with data:', savedSignature?.startsWith('data:'));
+                            console.log('   - savedSignature preview:', savedSignature?.substring(0, 100));
+                          }}
+                          onLoad={() => {
+                            console.log('✅ [BuyFund] Signature image loaded successfully');
+                          }}
+                        />
+                      </View>
+                    ) : savedSignature === 'digital' ? (
+                      <View style={styles.contractPreviewSignatureDigital}>
+                        <Ionicons name="lock-closed" size={24} color="#28A745" />
+                        <Text style={styles.contractPreviewSignatureDigitalText}>Đã ký số</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.contractPreviewSignaturePlaceholder}>
+                        <Text style={styles.contractPreviewSignaturePlaceholderText}>Chưa có chữ ký</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* Footer Buttons */}
+            <View style={styles.contractPreviewModalFooter}>
+              <TouchableOpacity 
+                style={styles.contractPreviewCancelButton}
+                onPress={() => {
+                  console.log('🚫 [BuyFund] Cancel contract preview');
+                  setShowContractPreviewModal(false);
+                }}
+              >
+                <Text style={styles.contractPreviewCancelButtonText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.contractPreviewConfirmButton}
+                onPress={async () => {
+                  console.log('✅ [BuyFund] Confirm contract preview, creating transaction...');
+                  setShowContractPreviewModal(false);
+                  
+                  try {
+                    // Tạo transaction trước khi navigate đến payment screen
+                    const numericAmount = parseFloat(amount.replace(/[,\.]/g, '')) || 0;
+                    const numericUnits = parseFloat(units) || 0;
+                    const numericTotalAmount = numericAmount + purchaseFee;
+                    
+                    console.log('📝 [BuyFund] Creating transaction:', {
+                      fundId: fundId || 0,
+                      amount: numericAmount,
+                      units: numericUnits
+                    });
+                    
+                    // Gọi API tạo transaction
+                    const buyResponse = await apiService.buyFund({
+                      fundId: fundId || 0,
+                      amount: numericAmount,
+                      units: numericUnits
+                    });
+                    
+                    console.log('✅ [BuyFund] Transaction created:', buyResponse);
+                    
+                    // Lấy transaction ID từ response
+                    const responseData = buyResponse?.data as any;
+                    const createdTransactionId = responseData?.id || 
+                                               responseData?.transaction_id ||
+                                               (buyResponse as any)?.transaction_id ||
+                                               undefined;
+                    
+                    console.log('📝 [BuyFund] Transaction ID:', createdTransactionId);
+                    
+                    // Navigate to payment screen với transaction ID
+                    setTimeout(() => {
+                      (navigation as any).navigate('FundPayment', {
+                        fundId: fundId || 0,
+                        fundName: fundName || '',
+                        amount: numericAmount,
+                        units: numericUnits,
+                        totalAmount: numericTotalAmount,
+                        transactionId: createdTransactionId,
+                        orderDate: new Date().toISOString()
+                      });
+                    }, 300);
+                  } catch (error: any) {
+                    console.error('❌ [BuyFund] Failed to create transaction:', error);
+                    Alert.alert(
+                      'Lỗi',
+                      error.message || 'Không thể tạo lệnh mua. Vui lòng thử lại.',
+                      [{ text: 'OK' }]
+                    );
+                    // Mở lại modal nếu lỗi
+                    setShowContractPreviewModal(true);
+                  }
+                }}
+              >
+                <Text style={styles.contractPreviewConfirmButtonText}>Xác nhận</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -2798,8 +3140,13 @@ const styles = StyleSheet.create({
     borderColor: '#DEE2E6',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
-    minHeight: 200,
     marginBottom: 16,
+    overflow: 'hidden',
+  },
+  signatureCanvasWrapper: {
+    width: '100%',
+    height: isMobile ? screenHeight * 0.3 : 250,
+    minHeight: isMobile ? 200 : 250,
   },
   signatureCanvasActions: {
     flexDirection: 'row',
@@ -2850,5 +3197,184 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     marginLeft: 8,
+  },
+  contractPreviewModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contractPreviewModalContainer: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    width: '100%',
+    maxHeight: '95%',
+    marginTop: isMobile ? 0 : 20,
+    borderRadius: isMobile ? 0 : 16,
+  },
+  contractPreviewModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9ECEF',
+    backgroundColor: '#FFFFFF',
+  },
+  contractPreviewModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#212529',
+    flex: 1,
+  },
+  contractPreviewModalCloseButton: {
+    padding: 4,
+  },
+  contractPreviewModalContent: {
+    flex: 1,
+  },
+  contractPreviewContentContainer: {
+    padding: 20,
+  },
+  contractPreviewDocument: {
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  contractPreviewDocumentTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#212529',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  contractPreviewPartySection: {
+    marginBottom: 20,
+  },
+  contractPreviewPartyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#212529',
+    marginBottom: 8,
+  },
+  contractPreviewPartyText: {
+    fontSize: 14,
+    color: '#495057',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  contractPreviewClauseSection: {
+    marginBottom: 20,
+  },
+  contractPreviewClauseTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#212529',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  contractPreviewClauseText: {
+    fontSize: 14,
+    color: '#495057',
+    lineHeight: 22,
+    textAlign: 'justify',
+  },
+  contractPreviewSignatureSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 40,
+    gap: 20,
+  },
+  contractPreviewSignatureBox: {
+    flex: 1,
+  },
+  contractPreviewSignatureLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#212529',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  contractPreviewSignaturePlaceholder: {
+    height: 80,
+    borderWidth: 1,
+    borderColor: '#DEE2E6',
+    borderStyle: 'dashed',
+    borderRadius: 4,
+    backgroundColor: '#F8F9FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contractPreviewSignaturePlaceholderText: {
+    fontSize: 12,
+    color: '#6C757D',
+    fontStyle: 'italic',
+  },
+  contractPreviewSignatureImageContainer: {
+    height: 80,
+    borderWidth: 1,
+    borderColor: '#DEE2E6',
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  contractPreviewSignatureImage: {
+    width: '100%',
+    height: '100%',
+  },
+  contractPreviewSignatureDigital: {
+    height: 80,
+    borderWidth: 1,
+    borderColor: '#28A745',
+    borderRadius: 4,
+    backgroundColor: '#F0F9F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  contractPreviewSignatureDigitalText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#28A745',
+  },
+  contractPreviewModalFooter: {
+    flexDirection: 'row',
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E9ECEF',
+    backgroundColor: '#FFFFFF',
+    gap: 12,
+  },
+  contractPreviewCancelButton: {
+    flex: 1,
+    backgroundColor: '#6C757D',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contractPreviewCancelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  contractPreviewConfirmButton: {
+    flex: 1,
+    backgroundColor: '#FF6B35',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contractPreviewConfirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 

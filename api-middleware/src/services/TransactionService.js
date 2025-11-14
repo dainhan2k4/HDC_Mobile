@@ -347,13 +347,84 @@ class TransactionService extends BaseOdooService {
 
   /**
    * Get pending từ Odoo controller /transaction_management/pending
+   * Parse HTML để extract orders_json từ template
    */
   async getPendingFromController() {
     try {
       console.log('🔗 [TransactionService] Calling /transaction_management/pending endpoint...');
-      const data = await this.apiCall('/transaction_management/pending', { requireAuth: true });
-      console.log(`✅ [TransactionService] /transaction_management/pending OK: ${Array.isArray(data) ? data.length : 0} items`);
-      return Array.isArray(data) ? data : [];
+      const html = await this.apiCall('/transaction_management/pending', { requireAuth: true });
+      
+      // Nếu response là array trực tiếp (JSON), trả về luôn
+      if (Array.isArray(html)) {
+        console.log(`✅ [TransactionService] /transaction_management/pending OK: ${html.length} items (direct array)`);
+        return html;
+      }
+      
+      // Nếu response là string (HTML), parse để extract JSON
+      if (typeof html === 'string') {
+        const { JSDOM } = require('jsdom');
+        const dom = new JSDOM(html);
+        
+        // Ưu tiên lấy data từ attribute data-orders của container
+        const pendingContainer = dom.window.document.querySelector('#pending-widget-container');
+        const globalContainer = dom.window.document.querySelector('[data-orders]');
+        const dataAttr = pendingContainer?.getAttribute('data-orders') || pendingContainer?.dataset?.orders ||
+          globalContainer?.getAttribute('data-orders') || globalContainer?.dataset?.orders;
+        
+        if (dataAttr) {
+          try {
+            // dataset.* trả về string đã decode, còn getAttribute có thể chứa &quot;
+            const normalized = dataAttr
+              .replace(/&quot;/g, '"')
+              .replace(/&#39;/g, "'")
+              .replace(/&amp;/g, '&');
+            const orders = JSON.parse(normalized);
+            console.log(`✅ [TransactionService] /transaction_management/pending OK: ${orders.length} items (parsed from data-orders attribute)`);
+            return Array.isArray(orders) ? orders : [];
+          } catch (parseError) {
+            console.warn('⚠️ [TransactionService] Failed to parse data-orders attribute:', parseError.message);
+          }
+        }
+        
+        // Fallback: tìm trong script tags
+        const scripts = dom.window.document.querySelectorAll('script');
+        for (const script of scripts) {
+          if (!script.textContent || !script.textContent.includes('orders_json')) {
+            continue;
+          }
+          
+          // Tìm pattern: orders_json = [...];
+          const match = script.textContent.match(/orders_json\s*=\s*(\[[\s\S]*?\]);?\s*$/m);
+          if (match && match[1]) {
+            try {
+              const orders = JSON.parse(match[1]);
+              console.log(`✅ [TransactionService] /transaction_management/pending OK: ${orders.length} items (parsed from script)`);
+              return Array.isArray(orders) ? orders : [];
+            } catch (parseError) {
+              console.warn('⚠️ [TransactionService] Failed to parse orders_json from script:', parseError.message);
+            }
+          }
+        }
+        
+        console.warn('⚠️ [TransactionService] orders_json not found in HTML, returning empty array');
+        return [];
+      }
+      
+      // Nếu không phải HTML và không phải array, thử parse như JSON
+      if (typeof html === 'string') {
+        try {
+          const parsed = JSON.parse(html);
+          if (Array.isArray(parsed)) {
+            console.log(`✅ [TransactionService] /transaction_management/pending OK: ${parsed.length} items (parsed JSON)`);
+            return parsed;
+          }
+        } catch (e) {
+          // Không phải JSON
+        }
+      }
+      
+      console.warn('⚠️ [TransactionService] Unexpected response format, returning empty array');
+      return [];
     } catch (error) {
       console.error('❌ [TransactionService] Failed to get /transaction_management/pending:', error.message);
       return [];
@@ -720,6 +791,27 @@ class TransactionService extends BaseOdooService {
    * Transform transaction data for frontend
    */
   transformTransaction(transaction, includeExtended = false) {
+    // Parse NAV từ nhiều format có thể có
+    let previousNav = null;
+    if (transaction.nav !== undefined && transaction.nav !== null) {
+      // Nếu nav là string như "29,850đ", parse nó
+      if (typeof transaction.nav === 'string') {
+        const navStr = transaction.nav.replace(/[^\d.,]/g, '').replace(/,/g, '');
+        previousNav = parseFloat(navStr) || null;
+      } else {
+        previousNav = parseFloat(transaction.nav) || null;
+      }
+    } else if (transaction.previous_nav !== undefined && transaction.previous_nav !== null) {
+      if (typeof transaction.previous_nav === 'string') {
+        const navStr = transaction.previous_nav.replace(/[^\d.,]/g, '').replace(/,/g, '');
+        previousNav = parseFloat(navStr) || null;
+      } else {
+        previousNav = parseFloat(transaction.previous_nav) || null;
+      }
+    } else if (transaction.current_nav !== undefined && transaction.current_nav !== null) {
+      previousNav = parseFloat(transaction.current_nav) || null;
+    }
+
     const transformed = {
       id: transaction.id,
       name: transaction.name,
@@ -736,7 +828,9 @@ class TransactionService extends BaseOdooService {
       units: parseFloat(transaction.units) || 0,
       currency: Array.isArray(transaction.currency_id) ? transaction.currency_id[1] : 'VND',
       raw_status: transaction.status,
-      raw_transaction_type: transaction.transaction_type
+      raw_transaction_type: transaction.transaction_type,
+      previous_nav: previousNav,
+      nav: previousNav // Alias cho compatibility
     };
 
     // Include extended fields for detailed view

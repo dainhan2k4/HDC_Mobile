@@ -97,12 +97,48 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({
         });
         
         const data = response.data as any;
-        if (response.success && data && data.candles && Array.isArray(data.candles) && data.candles.length > 0) {
-          console.log(`✅ [CandlestickChart] Got ${data.candles.length} candles from API`);
+        
+        // Log chi tiết để debug
+        console.log('📊 [CandlestickChart] Parsing response data:', {
+          success: response.success,
+          hasData: !!data,
+          dataType: typeof data,
+          dataKeys: data ? Object.keys(data) : [],
+          hasCandles: !!(data && data.candles),
+          candlesType: data && data.candles ? typeof data.candles : 'N/A',
+          candlesIsArray: data && data.candles ? Array.isArray(data.candles) : false,
+          candlesLength: data && data.candles ? data.candles.length : 0,
+          fullData: JSON.stringify(data).substring(0, 500)
+        });
+        
+        // Kiểm tra nhiều format response có thể có
+        let candles: any[] = [];
+        let labels: string[] = [];
+        
+        if (response.success && data) {
+          // Format 1: data.candles trực tiếp
+          if (data.candles && Array.isArray(data.candles) && data.candles.length > 0) {
+            candles = data.candles;
+            labels = data.labels || data.candles.map((c: any) => c.time || c.timestamp || '');
+          }
+          // Format 2: data.data.candles (nested)
+          else if (data.data && data.data.candles && Array.isArray(data.data.candles) && data.data.candles.length > 0) {
+            candles = data.data.candles;
+            labels = data.data.labels || data.data.candles.map((c: any) => c.time || c.timestamp || '');
+          }
+          // Format 3: data là array trực tiếp
+          else if (Array.isArray(data) && data.length > 0) {
+            candles = data;
+            labels = data.map((c: any) => c.time || c.timestamp || '');
+          }
+        }
+        
+        if (candles.length > 0) {
+          console.log(`✅ [CandlestickChart] Got ${candles.length} candles from API`);
           // Transform API data to chart format
           const chartData = {
-            labels: data.labels || data.candles.map((c: any) => c.time || c.timestamp || ''),
-            candles: data.candles
+            labels: labels,
+            candles: candles
           };
           console.log('📊 [CandlestickChart] Chart data:', {
             labelsCount: chartData.labels.length,
@@ -114,8 +150,10 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({
           // Fallback to mock data if API returns empty
           console.warn('⚠️ [CandlestickChart] No OHLC data from API, using mock data. Response:', {
             success: response.success,
+            hasData: !!data,
             hasCandles: !!(data && data.candles),
-            candlesLength: data && data.candles ? data.candles.length : 0
+            candlesLength: data && data.candles ? data.candles.length : 0,
+            dataPreview: JSON.stringify(data).substring(0, 200)
           });
           setChartData(getMockCandlestickData(timeRange));
         }

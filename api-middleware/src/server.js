@@ -13,6 +13,7 @@ const transactionRoutes = require('./routes/transactionRoutes');
 const assetRoutes = require('./routes/assetRoutes');
 const signatureRoutes = require('./routes/signatureRoutes');
 const otpRoutes = require('./routes/otpRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 // Function to kill process using port
 const killPort = (port) => {
@@ -287,6 +288,8 @@ app.use(`${config.server.apiPrefix}/asset`, cacheMiddleware(assetCacheDuration),
 app.use(`${config.server.apiPrefix}/signature`, signatureRoutes); // No caching for signature validation
 app.use(`${config.server.apiPrefix}/otp`, otpRoutes); // No caching for OTP
 console.log(`✅ [Server] OTP routes registered at ${config.server.apiPrefix}/otp`);
+app.use(`${config.server.apiPrefix}/payment`, paymentRoutes); // No caching for payment
+console.log(`✅ [Server] Payment routes registered at ${config.server.apiPrefix}/payment`);
 
 // Root endpoint
 app.get('/', (req, res) => {

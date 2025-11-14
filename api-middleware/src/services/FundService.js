@@ -442,33 +442,63 @@ class FundService extends BaseOdooService {
         hasData: !!data.data,
         isArray: Array.isArray(data.data),
         dataLength: data.data ? data.data.length : 0,
-        firstItem: data.data && data.data.length > 0 ? data.data[0] : null
+        firstItem: data.data && data.data.length > 0 ? data.data[0] : null,
+        fullResponse: JSON.stringify(data).substring(0, 500)
       });
       
-      if (data && data.status === 'Success' && Array.isArray(data.data)) {
+      // Kiểm tra nhiều format response từ Odoo
+      let ohlcArray = null;
+      
+      // Format 1: { status: 'Success', data: [...] }
+      if (data && data.status === 'Success' && Array.isArray(data.data) && data.data.length > 0) {
+        ohlcArray = data.data;
+      }
+      // Format 2: { success: true, data: [...] }
+      else if (data && data.success === true && Array.isArray(data.data) && data.data.length > 0) {
+        ohlcArray = data.data;
+      }
+      // Format 3: data là array trực tiếp
+      else if (Array.isArray(data) && data.length > 0) {
+        ohlcArray = data;
+      }
+      // Format 4: { result: [...] } (JSON-RPC)
+      else if (data && data.result && Array.isArray(data.result) && data.result.length > 0) {
+        ohlcArray = data.result;
+      }
+      
+      if (ohlcArray && ohlcArray.length > 0) {
+        console.log(`✅ [FundService] Found ${ohlcArray.length} OHLC records for ticker ${ticker}`);
+        
         // Transform Odoo format to client format
-        const candles = data.data.map(item => {
+        const candles = ohlcArray.map(item => {
           // item.t có thể là timestamp (number) hoặc date string (YYYY-MM-DD)
           let timeLabel = '';
           if (typeof item.t === 'number') {
             // Unix timestamp - convert to time string
             const date = new Date(item.t * 1000);
             timeLabel = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-          } else {
+          } else if (item.t) {
             // Date string
             timeLabel = item.t;
+          } else if (item.time) {
+            timeLabel = item.time;
+          } else if (item.timestamp) {
+            const date = new Date(item.timestamp * 1000);
+            timeLabel = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
           }
           
           return {
             time: timeLabel,
-            open: parseFloat(item.o) || 0,
-            high: parseFloat(item.h) || 0,
-            low: parseFloat(item.l) || 0,
-            close: parseFloat(item.c) || 0,
-            volume: parseFloat(item.v) || 0,
-            timestamp: typeof item.t === 'number' ? item.t : item.t
+            open: parseFloat(item.o || item.open || 0) || 0,
+            high: parseFloat(item.h || item.high || 0) || 0,
+            low: parseFloat(item.l || item.low || 0) || 0,
+            close: parseFloat(item.c || item.close || 0) || 0,
+            volume: parseFloat(item.v || item.volume || 0) || 0,
+            timestamp: typeof item.t === 'number' ? item.t : (item.timestamp || item.t)
           };
         });
+        
+        console.log(`✅ [FundService] Transformed ${candles.length} candles for ticker ${ticker}`);
         
         return {
           candles,
@@ -477,7 +507,12 @@ class FundService extends BaseOdooService {
         };
       }
       
-      console.warn(`⚠️ [FundService] No OHLC data found for ticker ${ticker}`);
+      console.warn(`⚠️ [FundService] No OHLC data found for ticker ${ticker}. Response:`, {
+        hasData: !!data,
+        status: data?.status,
+        dataType: Array.isArray(data) ? 'array' : typeof data,
+        dataLength: Array.isArray(data) ? data.length : (data?.data ? data.data.length : 0)
+      });
       return {
         candles: [],
         labels: [],
